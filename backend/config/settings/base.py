@@ -48,10 +48,12 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    # Apps will be registered here as created in subsequent phases
+    "apps.users.apps.UsersConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -141,6 +143,11 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/minute",
+        "user": "120/minute",
+        "auth": "10/minute",
+    },
 }
 
 # Simple JWT

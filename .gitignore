@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -29,6 +29,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Do not ignore frontend source libraries
+!**/src/lib/
 
 # Django
 *.log
@@ -55,6 +58,8 @@ pnpm-debug.log*
 lerna-debug.log*
 frontend/dist/
 frontend/dist-ssr/
+*.tsbuildinfo
+
 
 # Environment Variables & Secrets (Keep .env.example tracked)
 .env

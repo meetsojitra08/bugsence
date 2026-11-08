@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 17% 8%;
+    --surface: 240 14% 97%;
+    --surface-elevated: 0 0% 100%;
+    --border: 240 12% 91%;
+    --text: 240 17% 8%;
+    --text-muted: 240 7% 45%;
+    --primary: 240 60% 60%;
+    --primary-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --warning: 38 92% 44%;
+    --danger: 0 72% 51%;
+
+    /* Priority tokens */
+    --priority-urgent: 0 84% 60%;
+    --priority-high: 25 95% 53%;
+    --priority-medium: 45 93% 47%;
+    --priority-low: 215 16% 47%;
+
+    /* Status tokens */
+    --status-backlog: 215 16% 47%;
+    --status-todo: 217 91% 60%;
+    --status-in-progress: 38 92% 50%;
+    --status-in-review: 263 70% 50%;
+    --status-done: 142 71% 45%;
+    --status-closed: 220 9% 46%;
+  }
+
+  .dark {
+    --background: 240 15% 5%;
+    --foreground: 240 20% 96%;
+    --surface: 240 14% 8%;
+    --surface-elevated: 240 14% 11%;
+    --border: 240 12% 16%;
+    --text: 240 20% 96%;
+    --text-muted: 240 12% 65%;
+    --primary: 240 82% 71%;
+    --primary-foreground: 240 15% 5%;
+    --success: 158 64% 52%;
+    --warning: 45 93% 56%;
+    --danger: 0 91% 71%;
+
+    /* Priority tokens */
+    --priority-urgent: 0 91% 71%;
+    --priority-high: 25 95% 58%;
+    --priority-medium: 45 93% 56%;
+    --priority-low: 215 20% 65%;
+
+    /* Status tokens */
+    --status-backlog: 215 20% 65%;
+    --status-todo: 217 91% 65%;
+    --status-in-progress: 38 92% 56%;
+    --status-in-review: 263 70% 65%;
+    --status-done: 158 64% 52%;
+    --status-closed: 220 14% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background font-sans text-text antialiased selection:bg-primary/20 selection:text-primary;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
