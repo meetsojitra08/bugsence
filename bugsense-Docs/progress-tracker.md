@@ -90,7 +90,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 20 | Phase 3 / tests | `test(issues): cover numbering sequence, filtering, activity logging and permissions` | 6c0afbf | [x] |
 | 21 | Phase 3 / frontend API | `feat(issues): add issues API client and URL-synced filter hooks` | cdd9ad2 | [x] |
 | 22 | Phase 3 / UI | `feat(ui): build issue list view with filter bar and quick create modal` | 7efe3ca | [x] |
-| 23 | Phase 3 / closing | `docs(tracker): complete phase 3 issues core` | 66f4ef0 | [x] |
+| 23 | Phase 3 / closing | `docs(tracker): complete phase 3 issues core` | a49c657 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
