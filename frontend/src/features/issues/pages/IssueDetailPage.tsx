@@ -12,6 +12,7 @@ import {
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { SafeMarkdown } from "../utils/markdown";
 import { IssueTimeline } from "../components/timeline/IssueTimeline";
+import { AISummaryCard } from "../components/ai/AISummaryCard";
 import type { IssuePriority, IssueStatus } from "../types";
 
 export function IssueDetailPage() {
@@ -179,6 +180,9 @@ export function IssueDetailPage() {
 
           {activeTab === "details" ? (
             <div className="space-y-6">
+              {/* AI Summary Card */}
+              <AISummaryCard issueId={issue.id} initialSummary={issue.ai_summary} />
+
               {/* Description */}
               <div className="shadow-xs space-y-2 rounded-xl border border-border bg-surface p-5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-text">

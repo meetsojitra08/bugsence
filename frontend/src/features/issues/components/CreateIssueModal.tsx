@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useCreateIssue, useLabels } from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { SafeMarkdown } from "../utils/markdown";
-import type { IssuePriority, IssueSeverity, IssueStatus, IssueType } from "../types";
+import { AITriageCard } from "./ai/AITriageCard";
+import { AIDuplicateBanner } from "./ai/AIDuplicateBanner";
+import { useFindDuplicates } from "../hooks/useAI";
+import type { AITriageResult, IssuePriority, IssueSeverity, IssueStatus, IssueType } from "../types";
 
 interface CreateIssueModalProps {
   isOpen: boolean;
@@ -33,9 +36,88 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
   const [actual, setActual] = useState("");
   const [environment, setEnvironment] = useState("");
 
+  const [isDuplicateDismissed, setIsDuplicateDismissed] = useState(false);
+  const [previousDraft, setPreviousDraft] = useState<{
+    title: string;
+    type: IssueType;
+    priority: IssuePriority;
+    severity: IssueSeverity;
+    stepsToReproduce: string;
+    expected: string;
+    actual: string;
+    selectedLabels: string[];
+  } | null>(null);
+
   const { data: members = [] } = useProjectMembers(projectId);
   const { data: labels = [] } = useLabels(projectId);
   const createMutation = useCreateIssue(projectId);
+
+  // Debounced duplicate search
+  const { data: duplicates = [] } = useFindDuplicates(projectId, title, description, {
+    enabled: !isDuplicateDismissed && title.trim().length >= 10,
+  });
+
+  const handleTriageApplied = (result: AITriageResult) => {
+    // Save draft for undo
+    setPreviousDraft({
+      title,
+      type,
+      priority,
+      severity,
+      stepsToReproduce,
+      expected,
+      actual,
+      selectedLabels,
+    });
+
+    setTitle(result.title);
+    setType(result.type);
+    setPriority(result.priority);
+    setSeverity(result.severity);
+
+    if (result.steps_to_reproduce && result.steps_to_reproduce.length > 0) {
+      setStepsToReproduce(result.steps_to_reproduce.join("\n"));
+      setShowDetails(true);
+    }
+    if (result.expected_behavior) {
+      setExpected(result.expected_behavior);
+      setShowDetails(true);
+    }
+    if (result.actual_behavior) {
+      setActual(result.actual_behavior);
+      setShowDetails(true);
+    }
+
+    // Match suggested labels to existing project labels
+    if (result.suggested_labels && result.suggested_labels.length > 0 && labels.length > 0) {
+      const matchedIds = labels
+        .filter((l) =>
+          result.suggested_labels.some(
+            (sl) => sl.toLowerCase().trim() === l.name.toLowerCase().trim()
+          )
+        )
+        .map((l) => l.id);
+      if (matchedIds.length > 0) {
+        setSelectedLabels((prev) => Array.from(new Set([...prev, ...matchedIds])));
+      }
+    }
+
+    toast.success("AI triage applied to issue fields");
+  };
+
+  const handleUndoTriage = () => {
+    if (!previousDraft) return;
+    setTitle(previousDraft.title);
+    setType(previousDraft.type);
+    setPriority(previousDraft.priority);
+    setSeverity(previousDraft.severity);
+    setStepsToReproduce(previousDraft.stepsToReproduce);
+    setExpected(previousDraft.expected);
+    setActual(previousDraft.actual);
+    setSelectedLabels(previousDraft.selectedLabels);
+    setPreviousDraft(null);
+    toast.info("Reverted AI triage suggestions");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +167,8 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
     setExpected("");
     setActual("");
     setEnvironment("");
+    setIsDuplicateDismissed(false);
+    setPreviousDraft(null);
     onClose();
   };
 
@@ -102,7 +186,24 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
       description="Report a bug, assign tasks, or request a feature."
       className="max-h-[90vh] max-w-2xl overflow-y-auto"
     >
-      <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-issue-form">
+      <div className="space-y-4">
+        {/* AI Smart Triage Assistant */}
+        <AITriageCard
+          projectId={projectId}
+          onTriageApplied={handleTriageApplied}
+          onUndo={handleUndoTriage}
+          canUndo={!!previousDraft}
+        />
+
+        {/* Duplicate Issue Warning Banner */}
+        {!isDuplicateDismissed && duplicates.length > 0 && (
+          <AIDuplicateBanner
+            candidates={duplicates}
+            onDismiss={() => setIsDuplicateDismissed(true)}
+          />
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-issue-form">
         {/* Title */}
         <div className="space-y-1.5">
           <Label htmlFor="issue-title" className="text-xs font-medium text-text">
@@ -397,6 +498,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
           </Button>
         </div>
       </form>
-    </Modal>
-  );
+    </div>
+  </Modal>
+);
 }
