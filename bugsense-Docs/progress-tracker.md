@@ -76,7 +76,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 6 | Phase 1 / auth backend | `feat(auth): add custom User model and JWT auth endpoints` | 4c34bd5 | [x] |
 | 7 | Phase 1 / auth tests | `test(auth): cover registration, token rotation, logout and profile endpoints` | 1e53063 | [x] |
 | 8 | Phase 1 / frontend auth API | `feat(auth): implement auth state, interceptors and protected routes` | 68d2e30 | [x] |
-| 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | | [ ] |
+| 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | 51532d8 | [x] |
+| 10 | Phase 1 / app shell | `feat(ui): build app shell layout with sidebar, topbar and command palette` | | [ ] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -94,6 +95,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Created full auth test suite covering registration, duplicate rejection, login, generic error responses, token rotation, logout blacklist, and me endpoints | None | Phase 1: Frontend auth integration |
 | 2026-11-08 | Implemented frontend auth API layer, token management with silent 401 refresh queue, AuthContext/useAuth hook, and ProtectedRoute guard | None | Phase 1: Auth pages UI |
 | 2026-11-08 | Built premium login and register pages with split layout, password strength meter, show/hide toggle, and 1-click recruiter demo mode | None | Phase 1: App shell foundation |
+| 2026-11-08 | Built responsive App Shell with collapsible sidebar, topbar breadcrumbs/quick actions, cmdk command palette (⌘K), and dashboard shell | None | Phase 1 closing & verification |
 
 ## Known Issues / Tech Debt
 - (none yet)
