@@ -1,6 +1,8 @@
 import { apiRequest } from "@/lib/apiClient";
 import type {
   BoardData,
+  Comment,
+  CreateCommentPayload,
   CreateIssuePayload,
   IssueActivity,
   IssueDetail,
@@ -10,6 +12,8 @@ import type {
   Label,
   MoveIssuePayload,
   PaginatedIssues,
+  TimelineItem,
+  UpdateCommentPayload,
   UpdateIssuePayload,
 } from "../types";
 
@@ -207,6 +211,35 @@ const DEMO_ACTIVITIES: Record<string, IssueActivity[]> = {
       old_value: "todo",
       new_value: "in_progress",
       created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
+    },
+  ],
+};
+
+const DEMO_COMMENTS: Record<string, Comment[]> = {
+  "demo-issue-1": [
+    {
+      id: "comm-1",
+      author: {
+        id: "sarah-user-id",
+        email: "sarah.chen@bugsense.dev",
+        full_name: "Sarah Chen",
+      },
+      body: "I was able to reproduce this when opening three tabs simultaneously with expired refresh cookies. Investigating the axios retry interceptor lock.",
+      created_at: new Date(Date.now() - 3600000 * 16).toISOString(),
+      edited_at: null,
+      is_edited: false,
+    },
+    {
+      id: "comm-2",
+      author: {
+        id: "demo-user-id",
+        email: "demo@bugsense.dev",
+        full_name: "Demo Recruiter",
+      },
+      body: "Thanks @sarah.chen! Let's prioritize getting this fix into the current sprint.",
+      created_at: new Date(Date.now() - 3600000 * 10).toISOString(),
+      edited_at: null,
+      is_edited: false,
     },
   ],
 };
@@ -515,5 +548,129 @@ export const issuesApi = {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  },
+
+  async listComments(issueId: string): Promise<Comment[]> {
+    if (isDemoSession()) {
+      return DEMO_COMMENTS[issueId] || [];
+    }
+    return apiRequest<Comment[]>(`/issues/${issueId}/comments/`);
+  },
+
+  async createComment(issueId: string, payload: CreateCommentPayload): Promise<Comment> {
+    if (isDemoSession()) {
+      const newComment: Comment = {
+        id: `comm-demo-${Date.now()}`,
+        author: {
+          id: "demo-user-id",
+          email: "demo@bugsense.dev",
+          full_name: "Demo Recruiter",
+        },
+        body: payload.body,
+        created_at: new Date().toISOString(),
+        edited_at: null,
+        is_edited: false,
+      };
+      if (!DEMO_COMMENTS[issueId]) {
+        DEMO_COMMENTS[issueId] = [];
+      }
+      DEMO_COMMENTS[issueId].push(newComment);
+      return newComment;
+    }
+    return apiRequest<Comment>(`/issues/${issueId}/comments/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateComment(commentId: string, payload: UpdateCommentPayload): Promise<Comment> {
+    if (isDemoSession()) {
+      for (const list of Object.values(DEMO_COMMENTS)) {
+        const found = list.find((c) => c.id === commentId);
+        if (found) {
+          found.body = payload.body;
+          found.edited_at = new Date().toISOString();
+          found.is_edited = true;
+          return found;
+        }
+      }
+      return {
+        id: commentId,
+        author: { id: "demo-user-id", email: "demo@bugsense.dev", full_name: "Demo Recruiter" },
+        body: payload.body,
+        created_at: new Date().toISOString(),
+        edited_at: new Date().toISOString(),
+        is_edited: true,
+      };
+    }
+    return apiRequest<Comment>(`/comments/${commentId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteComment(commentId: string): Promise<void> {
+    if (isDemoSession()) {
+      for (const [key, list] of Object.entries(DEMO_COMMENTS)) {
+        DEMO_COMMENTS[key] = list.filter((c) => c.id !== commentId);
+      }
+      return;
+    }
+    await apiRequest<void>(`/comments/${commentId}/`, {
+      method: "DELETE",
+    });
+  },
+
+  async getTimeline(issueId: string): Promise<TimelineItem[]> {
+    if (isDemoSession()) {
+      const acts = DEMO_ACTIVITIES[issueId] || [];
+      const comms = DEMO_COMMENTS[issueId] || [];
+
+      const timeline: TimelineItem[] = [
+        ...acts.map((a) => ({
+          id: a.id,
+          type: "activity" as const,
+          actor: a.actor || { id: "sys", email: "system@bugsense.dev", full_name: "System" },
+          verb: a.verb,
+          field: a.field,
+          old_value: a.old_value,
+          new_value: a.new_value,
+          body: "",
+          is_edited: false,
+          edited_at: null,
+          created_at: a.created_at,
+        })),
+        ...comms.map((c) => ({
+          id: c.id,
+          type: "comment" as const,
+          actor: c.author,
+          verb: "commented",
+          field: "",
+          old_value: "",
+          new_value: "",
+          body: c.body,
+          is_edited: c.is_edited,
+          edited_at: c.edited_at,
+          created_at: c.created_at,
+        })),
+      ];
+
+      return timeline.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    }
+
+    return apiRequest<TimelineItem[]>(`/issues/${issueId}/activity/`);
+  },
+
+  async getTimelineByNumber(projectIdentifier: string, number: number): Promise<TimelineItem[]> {
+    if (isDemoSession()) {
+      const issue = DEMO_ISSUES.find((i) => i.number === number);
+      if (issue) {
+        return this.getTimeline(issue.id);
+      }
+      return this.getTimeline("demo-issue-1");
+    }
+    return apiRequest<TimelineItem[]>(`/projects/${projectIdentifier}/issues/${number}/activity/`);
   },
 };
