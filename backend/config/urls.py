@@ -1,7 +1,7 @@
 """BugSense URL Configuration."""
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -31,6 +31,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Health check
     path("api/v1/health/", HealthCheckView.as_view(), name="health_check"),
+    # Users & Authentication
+    path("api/v1/", include("apps.users.urls")),
     # OpenAPI Schema & Interactive Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
