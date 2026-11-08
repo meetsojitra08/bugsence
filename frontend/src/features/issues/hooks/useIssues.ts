@@ -4,11 +4,14 @@ import { useSearchParams } from "react-router-dom";
 import { issuesApi } from "../api/issuesApi";
 import type {
   BoardData,
+  CreateCommentPayload,
   CreateIssuePayload,
   IssueFilters,
   IssueListItem,
   IssueStatus,
   MoveIssuePayload,
+  TimelineItem,
+  UpdateCommentPayload,
   UpdateIssuePayload,
 } from "../types";
 
@@ -23,6 +26,8 @@ export const ISSUE_KEYS = {
     ["issues", "byNumber", projectKeyOrId, number] as const,
   labels: (projectId: string | null) => ["issues", "labels", projectId] as const,
   activities: (issueId: string | null) => ["issues", "activities", issueId] as const,
+  timeline: (issueIdOrKey: string | null) => ["issues", "timeline", issueIdOrKey] as const,
+  comments: (issueId: string | null) => ["issues", "comments", issueId] as const,
 };
 
 export function useIssues(projectId: string | null, filters?: IssueFilters) {
@@ -332,4 +337,146 @@ export function useIssueUrlFilters() {
     clearFilters,
     activeFilterCount,
   };
+}
+
+export function extractMentions(text: string): string[] {
+  const regex = /@([a-zA-Z0-9_.+-]+)/g;
+  const matches = text.match(regex);
+  if (!matches) return [];
+  return Array.from(new Set(matches.map((m) => m.slice(1).replace(/[.,;:!?]+$/, ""))));
+}
+
+export function useIssueTimeline(issueId?: string, projectKey?: string, issueNumber?: number) {
+  const queryKey = issueId
+    ? ISSUE_KEYS.timeline(issueId)
+    : projectKey && issueNumber
+      ? ISSUE_KEYS.timeline(`${projectKey}-${issueNumber}`)
+      : ["issues", "timeline", "disabled"];
+
+  return useQuery({
+    queryKey,
+    queryFn: () => {
+      if (issueId) {
+        return issuesApi.getTimeline(issueId);
+      }
+      if (projectKey && issueNumber) {
+        return issuesApi.getTimelineByNumber(projectKey, issueNumber);
+      }
+      return Promise.resolve([]);
+    },
+    enabled: Boolean(issueId || (projectKey && issueNumber)),
+  });
+}
+
+export function useCreateComment(issueId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateCommentPayload) => issuesApi.createComment(issueId, payload),
+    onMutate: async (newCommentPayload) => {
+      await queryClient.cancelQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
+      const previousTimeline = queryClient.getQueryData<TimelineItem[]>(
+        ISSUE_KEYS.timeline(issueId)
+      );
+
+      const optimisticItem: TimelineItem = {
+        id: `optimistic-${Date.now()}`,
+        type: "comment",
+        actor: {
+          id: "me",
+          email: "current.user@bugsense.dev",
+          full_name: "You",
+        },
+        verb: "commented",
+        field: "",
+        old_value: "",
+        new_value: "",
+        body: newCommentPayload.body,
+        is_edited: false,
+        edited_at: null,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<TimelineItem[]>(ISSUE_KEYS.timeline(issueId), (old) =>
+        old ? [...old, optimisticItem] : [optimisticItem]
+      );
+
+      return { previousTimeline };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTimeline) {
+        queryClient.setQueryData(ISSUE_KEYS.timeline(issueId), context.previousTimeline);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.detail(issueId) });
+    },
+  });
+}
+
+export function useUpdateComment(issueId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ commentId, payload }: { commentId: string; payload: UpdateCommentPayload }) =>
+      issuesApi.updateComment(commentId, payload),
+    onMutate: async ({ commentId, payload }) => {
+      await queryClient.cancelQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
+      const previousTimeline = queryClient.getQueryData<TimelineItem[]>(
+        ISSUE_KEYS.timeline(issueId)
+      );
+
+      queryClient.setQueryData<TimelineItem[]>(ISSUE_KEYS.timeline(issueId), (old) =>
+        old?.map((item) =>
+          item.id === commentId
+            ? {
+                ...item,
+                body: payload.body,
+                is_edited: true,
+                edited_at: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      return { previousTimeline };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTimeline) {
+        queryClient.setQueryData(ISSUE_KEYS.timeline(issueId), context.previousTimeline);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
+    },
+  });
+}
+
+export function useDeleteComment(issueId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (commentId: string) => issuesApi.deleteComment(commentId),
+    onMutate: async (commentId) => {
+      await queryClient.cancelQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
+      const previousTimeline = queryClient.getQueryData<TimelineItem[]>(
+        ISSUE_KEYS.timeline(issueId)
+      );
+
+      queryClient.setQueryData<TimelineItem[]>(ISSUE_KEYS.timeline(issueId), (old) =>
+        old?.filter((item) => item.id !== commentId)
+      );
+
+      return { previousTimeline };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTimeline) {
+        queryClient.setQueryData(ISSUE_KEYS.timeline(issueId), context.previousTimeline);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
+    },
+  });
 }

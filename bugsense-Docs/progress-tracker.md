@@ -41,7 +41,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 4 kanban board`
 
 ## Phase 5: Comments and Activity (spec 05)
 _Phase-closing commit:_ `docs(tracker): complete phase 5 comments and activity`
-- [ ] Comments CRUD, activity log, timeline UI
+- [x] Comments CRUD, activity log, timeline UI
 
 ## Phase 6: AI Features (specs 06, 07)
 _Phase-closing commit:_ `docs(tracker): complete phase 6 AI features`
@@ -96,6 +96,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 26 | Phase 4 / frontend API | `feat(board): add board API client with optimistic column reordering and rollback` | eaa19b6 | [x] |
 | 27 | Phase 4 / UI | `feat(ui): build interactive kanban board with drag and drop, quick add and column filters` | 3c4c40d | [x] |
 | 28 | Phase 4 / closing | `docs(tracker): complete phase 4 kanban board` | 68ec5d2 | [x] |
+| 29 | Phase 5 / backend | `feat(comments): add Comment model, mention notifications and unified activity timeline API` | 715905e | [x] |
+| 30 | Phase 5 / tests | `test(comments): cover comment permissions, mention notifications and timeline ordering` | 7fd2c4d | [x] |
+| 31 | Phase 5 / frontend API | `feat(comments): add comments API client and optimistic timeline hooks` | 3718594 | [x] |
+| 32 | Phase 5 / UI | `feat(ui): build issue activity timeline, comment composer with mention autocomplete and markdown support` | b703e5c | [x] |
+| 33 | Phase 5 / closing | `docs(tracker): complete phase 5 comments and activity` | 4186770 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -131,6 +136,10 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Added 12 pytest tests covering midpoint positioning, rebalancing threshold, move authorization, and board status grouping | None | Phase 4, task 3: Frontend board API & optimistic hooks |
 | 2026-11-09 | Added frontend board API, TanStack Query useBoard hook, optimistic column reordering with cache rollback, and unit tests | None | Phase 4, task 4: Kanban board UI with drag-and-drop |
 | 2026-11-09 | Built interactive dnd-kit Kanban board with drag overlay lift/tilt, quick-add at column bottoms, view switcher pills, and verified full monorepo test suite (69 pytest, 41 vitest) | None | Phase 5: Comments & Activity (spec 05) |
+| 2026-11-09 | Added Comment & Notification models, mention parser, comment CRUD services, and unified activity+comments timeline API | None | Phase 5, task 2: Comments test suite |
+| 2026-11-09 | Added 18 pytest tests covering comment creation, edit/delete role matrix permissions, @mention notifications, and chronological timeline ordering | None | Phase 5, task 3: Frontend comments API & timeline hooks |
+| 2026-11-09 | Added comments API client, TanStack Query timeline hooks, optimistic creation and rollback, and unit tests | None | Phase 5, task 4: Comments and activity timeline UI |
+| 2026-11-09 | Built activity timeline stream, comment cards with author avatars/edit/delete, markdown composer with @mention autocomplete, and verified monorepo test suite (87 pytest, 51 vitest) | None | Phase 6: AI Features (spec 06, 07) |
 
 ## Known Issues / Tech Debt
 - (none yet)

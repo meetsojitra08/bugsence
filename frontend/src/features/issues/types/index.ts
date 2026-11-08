@@ -127,3 +127,34 @@ export interface BoardData {
   columns: Record<IssueStatus, IssueListItem[]>;
   counts: Record<IssueStatus, number>;
 }
+
+export interface Comment {
+  id: string;
+  author: IssueUser;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  is_edited: boolean;
+}
+
+export interface CreateCommentPayload {
+  body: string;
+}
+
+export interface UpdateCommentPayload {
+  body: string;
+}
+
+export interface TimelineItem {
+  id: string;
+  type: "activity" | "comment";
+  actor: IssueUser;
+  verb: string;
+  field: string;
+  old_value: string;
+  new_value: string;
+  body: string;
+  is_edited: boolean;
+  edited_at: string | null;
+  created_at: string;
+}

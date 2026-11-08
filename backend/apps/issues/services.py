@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.issues.models import (
     Activity,
+    Comment,
     Issue,
     IssuePriority,
     IssueSeverity,
@@ -17,7 +18,8 @@ from apps.issues.models import (
     IssueType,
     Label,
 )
-from apps.projects.models import Project
+from apps.notifications.models import Notification, NotificationKind
+from apps.projects.models import Membership, Project
 
 User = get_user_model()
 
@@ -400,3 +402,155 @@ def move_issue(
             )
 
     return issue
+
+
+MENTION_REGEX = re.compile(r"@([a-zA-Z0-9_.+-]+)")
+
+
+def extract_mention_tokens(text: str) -> list[str]:
+    """Extracts raw mention tokens from text (e.g. ['priya', 'alex@example.com'])."""
+    matches = MENTION_REGEX.findall(text)
+    tokens: list[str] = []
+    for match in matches:
+        cleaned = match.rstrip(".,;:!?")
+        if cleaned and cleaned not in tokens:
+            tokens.append(cleaned)
+    return tokens
+
+
+def notify_mentioned_users(
+    *,
+    comment: Comment,
+    actor: User,
+) -> list[Notification]:
+    """
+    Parses mentions from comment body and creates Notification records
+    for project members matched by email prefix, full email, or UUID.
+    Never notifies the actor/author.
+    """
+    tokens = extract_mention_tokens(comment.body)
+    if not tokens:
+        return []
+
+    project = comment.issue.project
+    project_members = list(Membership.objects.filter(project=project).select_related("user"))
+
+    already_notified = set(
+        Notification.objects.filter(comment=comment).values_list("recipient_id", flat=True)
+    )
+    already_notified.add(actor.id)
+
+    notifications_to_create: list[Notification] = []
+
+    for member in project_members:
+        u = member.user
+        if u.id in already_notified:
+            continue
+
+        email_prefix = u.email.split("@")[0].lower()
+        full_email = u.email.lower()
+        uuid_str = str(u.id).lower()
+        full_name_clean = u.full_name.lower().replace(" ", "") if u.full_name else ""
+
+        matched = False
+        for token in tokens:
+            t = token.lower()
+            if (
+                t == email_prefix
+                or t == full_email
+                or t == uuid_str
+                or (full_name_clean and t == full_name_clean)
+            ):
+                matched = True
+                break
+
+        if matched:
+            actor_name = actor.full_name or actor.email
+            notifications_to_create.append(
+                Notification(
+                    recipient=u,
+                    actor=actor,
+                    issue=comment.issue,
+                    comment=comment,
+                    kind=NotificationKind.MENTION,
+                    title=f"{actor_name} mentioned you on {comment.issue.key}",
+                    message=comment.body[:300],
+                )
+            )
+            already_notified.add(u.id)
+
+    if notifications_to_create:
+        Notification.objects.bulk_create(notifications_to_create)
+
+    return notifications_to_create
+
+
+def create_comment(
+    *,
+    issue: Issue,
+    author: User,
+    body: str,
+) -> Comment:
+    """
+    Creates a new comment on an issue, writes an activity log entry,
+    and dispatches notifications to any mentioned project members.
+    """
+    cleaned_body = body.strip()
+    if not cleaned_body:
+        raise ValidationError({"body": "Comment body cannot be blank."})
+
+    with transaction.atomic():
+        comment = Comment.objects.create(
+            issue=issue,
+            author=author,
+            body=cleaned_body,
+        )
+
+        log_activity(
+            project=issue.project,
+            issue=issue,
+            actor=author,
+            verb="commented",
+            field="",
+            old_value="",
+            new_value=cleaned_body[:100],
+        )
+
+        notify_mentioned_users(comment=comment, actor=author)
+
+    return comment
+
+
+def update_comment(
+    *,
+    comment: Comment,
+    actor: User,
+    body: str,
+) -> Comment:
+    """
+    Updates an existing comment's body, marks edited_at, and notifies
+    any newly mentioned users.
+    """
+    cleaned_body = body.strip()
+    if not cleaned_body:
+        raise ValidationError({"body": "Comment body cannot be blank."})
+
+    with transaction.atomic():
+        comment.body = cleaned_body
+        comment.edited_at = timezone.now()
+        comment.save(update_fields=["body", "edited_at"])
+
+        notify_mentioned_users(comment=comment, actor=actor)
+
+    return comment
+
+
+def delete_comment(
+    *,
+    comment: Comment,
+    actor: User,
+) -> None:
+    """
+    Deletes a comment.
+    """
+    comment.delete()

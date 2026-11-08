@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { SafeMarkdown } from "../utils/markdown";
 import { useIssue, useIssueActivities, useUpdateIssue } from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
+import { IssueTimeline } from "./timeline/IssueTimeline";
 import type { IssueListItem, IssuePriority, IssueStatus } from "../types";
 
 interface IssueDetailPanelProps {
@@ -290,39 +291,14 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
             )}
           </div>
         ) : (
-          /* Activity timeline */
-          <div className="space-y-3" data-testid="activity-timeline">
-            {activities.length === 0 ? (
-              <p className="text-xs italic text-text-muted">No activity recorded yet.</p>
-            ) : (
-              activities.map((act) => (
-                <div key={act.id} className="flex items-start gap-2.5 text-xs">
-                  <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-text">
-                      <span className="font-semibold text-text">
-                        {act.actor?.full_name || "System"}
-                      </span>{" "}
-                      <span className="text-text-muted">{act.verb}</span>{" "}
-                      {act.field && (
-                        <span className="font-mono text-[11px] text-primary">{act.field}</span>
-                      )}
-                      {act.new_value && (
-                        <span className="font-medium text-text"> → {act.new_value}</span>
-                      )}
-                    </p>
-                    <span className="text-[10px] text-text-muted">
-                      {new Date(act.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+          /* Activity & Comments timeline */
+          <div data-testid="activity-timeline">
+            <IssueTimeline
+              issueId={issue.id}
+              projectId={projectId}
+              projectKey={issue.project_key}
+              issueNumber={issue.number}
+            />
           </div>
         )}
       </div>

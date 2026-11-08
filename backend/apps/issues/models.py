@@ -216,3 +216,34 @@ class Activity(models.Model):
     def __str__(self) -> str:
         actor_name = self.actor.email if self.actor else "System"
         return f"{actor_name} {self.verb} on {self.issue or self.project}"
+
+
+class Comment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "comments"
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["issue", "created_at"], name="comment_issue_created_idx"),
+        ]
+
+    @property
+    def is_edited(self) -> bool:
+        return self.edited_at is not None
+
+    def __str__(self) -> str:
+        return f"Comment by {self.author.email} on {self.issue.key}"

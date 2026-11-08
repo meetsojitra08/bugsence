@@ -1,13 +1,17 @@
 from django.urls import path
 
 from apps.issues.views import (
+    CommentDetailView,
     IssueActivityView,
+    IssueCommentsView,
     IssueDetailViewSet,
     IssueMoveView,
     IssueRestoreView,
     LabelDetailView,
     ProjectBoardView,
     ProjectIssueByNumberView,
+    ProjectIssueCommentsByNumberView,
+    ProjectIssueTimelineByNumberView,
     ProjectIssueViewSet,
     ProjectLabelViewSet,
 )
@@ -24,6 +28,18 @@ urlpatterns = [
         "projects/<str:project_identifier>/issues/<int:number>/",
         ProjectIssueByNumberView.as_view(),
         name="project-issue-by-number",
+    ),
+    # Project issue activity/timeline by key/UUID and number
+    path(
+        "projects/<str:project_identifier>/issues/<int:number>/activity/",
+        ProjectIssueTimelineByNumberView.as_view(),
+        name="project-issue-activity-by-number",
+    ),
+    # Project issue comments by key/UUID and number
+    path(
+        "projects/<str:project_identifier>/issues/<int:number>/comments/",
+        ProjectIssueCommentsByNumberView.as_view(),
+        name="project-issue-comments-by-number",
     ),
     # Direct issue detail, update and delete: /api/v1/issues/{id}/
     path(
@@ -55,7 +71,19 @@ urlpatterns = [
         ProjectBoardView.as_view(),
         name="project-board",
     ),
-    # Issue activity history: /api/v1/issues/{id}/activity/
+    # Issue comments: /api/v1/issues/{id}/comments/
+    path(
+        "issues/<uuid:pk>/comments/",
+        IssueCommentsView.as_view(),
+        name="issue-comments",
+    ),
+    # Comment detail (patch/delete): /api/v1/comments/{id}/
+    path(
+        "comments/<uuid:pk>/",
+        CommentDetailView.as_view(),
+        name="comment-detail",
+    ),
+    # Issue activity/timeline history: /api/v1/issues/{id}/activity/
     path(
         "issues/<uuid:pk>/activity/",
         IssueActivityView.as_view(),

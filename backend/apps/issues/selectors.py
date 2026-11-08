@@ -3,7 +3,7 @@ from uuid import UUID
 from django.contrib.auth import get_user_model
 from django.db.models import Q, QuerySet
 
-from apps.issues.models import Activity, Issue, IssueStatus, Label
+from apps.issues.models import Activity, Comment, Issue, IssueStatus, Label
 from apps.projects.selectors import get_project_for_user
 
 User = get_user_model()
@@ -191,3 +191,110 @@ def get_project_board_issues(
             board[item.status].append(item)
 
     return board
+
+
+def get_issue_comments(
+    *,
+    issue_id: UUID,
+    user: User,
+) -> QuerySet[Comment] | None:
+    """
+    Returns comments for an issue if the user is a member of its project.
+    Ordered chronologically by created_at ascending.
+    """
+    issue = get_issue_for_user(issue_id=issue_id, user=user)
+    if not issue:
+        return None
+
+    return Comment.objects.filter(issue_id=issue_id).select_related("author").order_by("created_at")
+
+
+def get_comment_for_user(
+    *,
+    comment_id: UUID,
+    user: User,
+) -> Comment | None:
+    """
+    Returns a comment if the user is a member of its project.
+    """
+    return (
+        Comment.objects.filter(
+            id=comment_id,
+            issue__project__memberships__user=user,
+        )
+        .select_related("issue", "issue__project", "author")
+        .first()
+    )
+
+
+def get_issue_timeline(
+    *,
+    issue_id: UUID,
+    user: User,
+) -> list[dict] | None:
+    """
+    Merges activities and comments for an issue into a unified chronological timeline.
+    Ordered by created_at ASC.
+    Returns None if user is not a project member or issue doesn't exist.
+    """
+    issue = get_issue_for_user(issue_id=issue_id, user=user)
+    if not issue:
+        return None
+
+    activities = list(
+        Activity.objects.filter(issue_id=issue_id).select_related("actor").order_by("created_at")
+    )
+    comments = list(
+        Comment.objects.filter(issue_id=issue_id).select_related("author").order_by("created_at")
+    )
+
+    timeline: list[dict] = []
+
+    for act in activities:
+        actor_data = {
+            "id": act.actor.id if act.actor else None,
+            "email": act.actor.email if act.actor else "system@bugsense.dev",
+            "full_name": act.actor.full_name if act.actor else "System",
+            "avatar_url": getattr(act.actor, "avatar_url", "") if act.actor else "",
+        }
+        timeline.append(
+            {
+                "id": act.id,
+                "type": "activity",
+                "actor": actor_data,
+                "verb": act.verb,
+                "field": act.field,
+                "old_value": act.old_value,
+                "new_value": act.new_value,
+                "body": "",
+                "is_edited": False,
+                "edited_at": None,
+                "created_at": act.created_at,
+            }
+        )
+
+    for comm in comments:
+        author_data = {
+            "id": comm.author.id,
+            "email": comm.author.email,
+            "full_name": comm.author.full_name,
+            "avatar_url": getattr(comm.author, "avatar_url", ""),
+        }
+        timeline.append(
+            {
+                "id": comm.id,
+                "type": "comment",
+                "actor": author_data,
+                "verb": "commented",
+                "field": "",
+                "old_value": "",
+                "new_value": "",
+                "body": comm.body,
+                "is_edited": comm.is_edited,
+                "edited_at": comm.edited_at,
+                "created_at": comm.created_at,
+            }
+        )
+
+    timeline.sort(key=lambda x: x["created_at"])
+    return timeline

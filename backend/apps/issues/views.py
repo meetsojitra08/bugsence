@@ -12,7 +12,9 @@ from rest_framework.views import APIView
 from apps.issues import selectors, services
 from apps.issues.models import Issue, Label
 from apps.issues.serializers import (
-    ActivitySerializer,
+    CommentCreateSerializer,
+    CommentSerializer,
+    CommentUpdateSerializer,
     IssueCreateSerializer,
     IssueDetailSerializer,
     IssueListSerializer,
@@ -21,6 +23,7 @@ from apps.issues.serializers import (
     LabelCreateSerializer,
     LabelSerializer,
     ProjectBoardSerializer,
+    TimelineItemSerializer,
 )
 from apps.projects.models import Membership, Project, RoleChoices
 from apps.projects.selectors import get_project_for_user, get_user_role_in_project
@@ -436,21 +439,21 @@ class LabelDetailView(APIView):
 
 
 class IssueActivityView(APIView):
-    """List activity timeline for an issue."""
+    """List unified activity timeline (activities + comments) for an issue."""
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="List activity log entries for an issue",
-        responses={200: ActivitySerializer(many=True)},
+        summary="List activity log and comment timeline entries for an issue",
+        responses={200: TimelineItemSerializer(many=True)},
     )
     def get(self, request: Request, pk: UUID) -> Response:
         issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
         if not issue:
             raise NotFound("Issue not found.")
 
-        activities = selectors.get_issue_activities(issue_id=pk, user=request.user)
-        return Response(ActivitySerializer(activities, many=True).data)
+        timeline = selectors.get_issue_timeline(issue_id=pk, user=request.user)
+        return Response(TimelineItemSerializer(timeline, many=True).data)
 
 
 class IssueMoveView(APIView):
@@ -534,3 +537,212 @@ class ProjectBoardView(APIView):
                 "counts": counts_data,
             }
         )
+
+
+class IssueCommentsView(APIView):
+    """List comments and create new comment on an issue."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="List comments for an issue",
+        responses={200: CommentSerializer(many=True)},
+    )
+    def get(self, request: Request, pk: UUID) -> Response:
+        comments = selectors.get_issue_comments(issue_id=pk, user=request.user)
+        if comments is None:
+            raise NotFound("Issue not found.")
+        return Response(CommentSerializer(comments, many=True).data)
+
+    @extend_schema(
+        summary="Create a comment on an issue",
+        request=CommentCreateSerializer,
+        responses={201: CommentSerializer},
+    )
+    def post(self, request: Request, pk: UUID) -> Response:
+        issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot create comments.")
+
+        serializer = CommentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            comment = services.create_comment(
+                issue=issue,
+                author=request.user,
+                body=serializer.validated_data["body"],
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
+
+
+class CommentDetailView(APIView):
+    """Update or delete an existing comment."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Update a comment",
+        request=CommentUpdateSerializer,
+        responses={200: CommentSerializer},
+    )
+    def patch(self, request: Request, pk: UUID) -> Response:
+        comment = selectors.get_comment_for_user(comment_id=pk, user=request.user)
+        if not comment:
+            raise NotFound("Comment not found.")
+
+        user_role = get_user_role_in_project(project_id=comment.issue.project_id, user=request.user)
+        is_author = comment.author_id == request.user.id
+        is_admin_or_owner = user_role in [RoleChoices.ADMIN, RoleChoices.OWNER]
+
+        if not (is_author or is_admin_or_owner):
+            raise PermissionDenied("You do not have permission to edit this comment.")
+
+        serializer = CommentUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            updated = services.update_comment(
+                comment=comment,
+                actor=request.user,
+                body=serializer.validated_data["body"],
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(CommentSerializer(updated).data)
+
+    @extend_schema(
+        summary="Delete a comment",
+        responses={204: None},
+    )
+    def delete(self, request: Request, pk: UUID) -> Response:
+        comment = selectors.get_comment_for_user(comment_id=pk, user=request.user)
+        if not comment:
+            raise NotFound("Comment not found.")
+
+        user_role = get_user_role_in_project(project_id=comment.issue.project_id, user=request.user)
+        is_author = comment.author_id == request.user.id
+        is_admin_or_owner = user_role in [RoleChoices.ADMIN, RoleChoices.OWNER]
+
+        if not (is_author or is_admin_or_owner):
+            raise PermissionDenied("You do not have permission to delete this comment.")
+
+        services.delete_comment(comment=comment, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProjectIssueTimelineByNumberView(APIView):
+    """
+    Unified activity timeline for issue lookup by project key and sequential number.
+    Route: /api/v1/projects/:key/issues/:number/activity/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="List timeline entries by project key and issue number",
+        responses={200: TimelineItemSerializer(many=True)},
+    )
+    def get(self, request: Request, project_identifier: str, number: int) -> Response:
+        project_filter = {"memberships__user": request.user}
+        try:
+            uuid_obj = UUID(project_identifier)
+            project_filter["id"] = uuid_obj
+        except ValueError:
+            project_filter["key__iexact"] = project_identifier
+
+        project = Project.objects.filter(**project_filter).first()
+        if not project:
+            raise NotFound("Project not found.")
+
+        issue = Issue.objects.filter(project=project, number=number).first()
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        timeline = selectors.get_issue_timeline(issue_id=issue.id, user=request.user)
+        return Response(TimelineItemSerializer(timeline, many=True).data)
+
+
+class ProjectIssueCommentsByNumberView(APIView):
+    """
+    Comments listing and creation by project key and sequential number.
+    Route: /api/v1/projects/:key/issues/:number/comments/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="List comments by project key and issue number",
+        responses={200: CommentSerializer(many=True)},
+    )
+    def get(self, request: Request, project_identifier: str, number: int) -> Response:
+        project_filter = {"memberships__user": request.user}
+        try:
+            uuid_obj = UUID(project_identifier)
+            project_filter["id"] = uuid_obj
+        except ValueError:
+            project_filter["key__iexact"] = project_identifier
+
+        project = Project.objects.filter(**project_filter).first()
+        if not project:
+            raise NotFound("Project not found.")
+
+        issue = Issue.objects.filter(project=project, number=number).first()
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        comments = selectors.get_issue_comments(issue_id=issue.id, user=request.user)
+        return Response(CommentSerializer(comments, many=True).data)
+
+    @extend_schema(
+        summary="Create comment by project key and issue number",
+        request=CommentCreateSerializer,
+        responses={201: CommentSerializer},
+    )
+    def post(self, request: Request, project_identifier: str, number: int) -> Response:
+        project_filter = {"memberships__user": request.user}
+        try:
+            uuid_obj = UUID(project_identifier)
+            project_filter["id"] = uuid_obj
+        except ValueError:
+            project_filter["key__iexact"] = project_identifier
+
+        project = Project.objects.filter(**project_filter).first()
+        if not project:
+            raise NotFound("Project not found.")
+
+        issue = Issue.objects.filter(project=project, number=number).first()
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=project.id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot create comments.")
+
+        serializer = CommentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            comment = services.create_comment(
+                issue=issue,
+                author=request.user,
+                body=serializer.validated_data["body"],
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
