@@ -100,7 +100,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 30 | Phase 5 / tests | `test(comments): cover comment permissions, mention notifications and timeline ordering` | 7fd2c4d | [x] |
 | 31 | Phase 5 / frontend API | `feat(comments): add comments API client and optimistic timeline hooks` | 3718594 | [x] |
 | 32 | Phase 5 / UI | `feat(ui): build issue activity timeline, comment composer with mention autocomplete and markdown support` | b703e5c | [x] |
-| 33 | Phase 5 / closing | `docs(tracker): complete phase 5 comments and activity` | 4186770 | [x] |
+| 33 | Phase 5 / closing | `docs(tracker): complete phase 5 comments and activity` | cf56ce5 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
