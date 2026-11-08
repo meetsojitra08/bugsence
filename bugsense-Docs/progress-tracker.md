@@ -45,10 +45,10 @@ _Phase-closing commit:_ `docs(tracker): complete phase 5 comments and activity`
 
 ## Phase 6: AI Features (specs 06, 07)
 _Phase-closing commit:_ `docs(tracker): complete phase 6 AI features`
-- [ ] Gemini service wrapper, throttling, logging
-- [ ] AI triage endpoint + UI
-- [ ] Embeddings + duplicate detection
-- [ ] Issue summary
+- [x] Gemini service wrapper, throttling, logging
+- [x] AI triage endpoint + UI
+- [x] Embeddings + duplicate detection
+- [x] Issue summary
 
 ## Phase 7: Dashboard and Notifications (specs 08, 09)
 _Phase-closing commit:_ `docs(tracker): complete phase 7 dashboard and notifications`
@@ -101,6 +101,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 31 | Phase 5 / frontend API | `feat(comments): add comments API client and optimistic timeline hooks` | 3718594 | [x] |
 | 32 | Phase 5 / UI | `feat(ui): build issue activity timeline, comment composer with mention autocomplete and markdown support` | b703e5c | [x] |
 | 33 | Phase 5 / closing | `docs(tracker): complete phase 5 comments and activity` | cf56ce5 | [x] |
+| 34 | Phase 6 / backend AI | `feat(ai): implement Gemini service wrapper, AIRequestLog and AI endpoints for triage, duplicates and summary` | 5d59dc5 | [x] |
+| 35 | Phase 6 / tests | `test(ai): cover Gemini triage schema validation, duplicate detection, summary caching and throttling` | 7d5ca40 | [x] |
+| 36 | Phase 6 / frontend API | `feat(ai): add AI API client, TanStack Query hooks and offline demo handlers` | 4616fdd | [x] |
+| 37 | Phase 6 / UI | `feat(ui): build AI triage auto-fill modal, duplicate detection banner and issue summary card` | 5f849fe | [x] |
+| 38 | Phase 6 / closing | `docs(tracker): complete phase 6 AI features` | pending | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -140,6 +145,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Added 18 pytest tests covering comment creation, edit/delete role matrix permissions, @mention notifications, and chronological timeline ordering | None | Phase 5, task 3: Frontend comments API & timeline hooks |
 | 2026-11-09 | Added comments API client, TanStack Query timeline hooks, optimistic creation and rollback, and unit tests | None | Phase 5, task 4: Comments and activity timeline UI |
 | 2026-11-09 | Built activity timeline stream, comment cards with author avatars/edit/delete, markdown composer with @mention autocomplete, and verified monorepo test suite (87 pytest, 51 vitest) | None | Phase 6: AI Features (spec 06, 07) |
+| 2026-11-09 | Built Gemini service wrapper with Pydantic validation, AIRequestLog tracking, 20/min throttling, pgvector cosine duplicates with trigram fallback, and issue summary caching | None | Phase 6, task 2: Backend AI test suite |
+| 2026-11-09 | Covered Gemini triage schema validation, malformed JSON retry, timeout handling, pgvector + trigram duplicate scoping, summary caching/staleness, and throttling | None | Phase 6, task 3: Frontend AI API client & hooks |
+| 2026-11-09 | Added frontend AI API client with demo mode, TanStack Query hooks (useAITriage, useFindDuplicates, useSummarizeIssue), and unit tests | None | Phase 6, task 4: AI triage modal, duplicate banner and summary UI |
+| 2026-11-09 | Built AITriageCard with Cmd+J shortcut, AIDuplicateBanner with match similarity scores, and AISummaryCard with TL;DR/status/next steps and regeneration | None | Phase 6 closing & merge |
+| 2026-11-09 | Completed Phase 6 AI Features across backend and frontend (110 pytest tests, 62 vitest tests, all gates clean) | None | Phase 7: Dashboard and Notifications (specs 08, 09) |
 
 ## Known Issues / Tech Debt
 - (none yet)
