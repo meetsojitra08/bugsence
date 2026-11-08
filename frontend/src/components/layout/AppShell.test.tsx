@@ -29,7 +29,7 @@ describe("AppLayout and App Shell", () => {
 
     expect(screen.getByTestId("app-topbar")).toBeDefined();
     expect(screen.getAllByRole("link", { name: /dashboard/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: /my issues/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /issues/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /team members/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /settings/i }).length).toBeGreaterThan(0);
   });
