@@ -52,6 +52,7 @@ LOCAL_APPS = [
     "apps.projects.apps.ProjectsConfig",
     "apps.issues.apps.IssuesConfig",
     "apps.notifications.apps.NotificationsConfig",
+    "apps.ai.apps.AIConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -150,6 +151,7 @@ REST_FRAMEWORK = {
         "anon": "30/minute",
         "user": "120/minute",
         "auth": "10/minute",
+        "ai": "20/minute",
     },
 }
 

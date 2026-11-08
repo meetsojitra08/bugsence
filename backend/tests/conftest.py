@@ -12,6 +12,7 @@ def relaxed_throttles_for_tests(settings):
         "anon": "1000/minute",
         "user": "1000/minute",
         "auth": "1000/minute",
+        "ai": "1000/minute",
     }
     settings.REST_FRAMEWORK = rf_settings
 

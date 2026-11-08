@@ -14,6 +14,7 @@ import { SafeMarkdown } from "../utils/markdown";
 import { useIssue, useIssueActivities, useUpdateIssue } from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { IssueTimeline } from "./timeline/IssueTimeline";
+import { AISummaryCard } from "./ai/AISummaryCard";
 import type { IssueListItem, IssuePriority, IssueStatus } from "../types";
 
 interface IssueDetailPanelProps {
@@ -236,6 +237,9 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
 
         {activeTab === "details" ? (
           <div className="space-y-5">
+            {/* AI Summary Card */}
+            <AISummaryCard issueId={issue.id} initialSummary={detail?.ai_summary} />
+
             {/* Description */}
             <div className="space-y-1.5">
               <span className="text-xs font-semibold text-text">Description</span>

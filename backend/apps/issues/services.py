@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import date
 from typing import Any
@@ -21,7 +22,26 @@ from apps.issues.models import (
 from apps.notifications.models import Notification, NotificationKind
 from apps.projects.models import Membership, Project
 
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
+
+
+def sync_issue_embedding(issue: Issue) -> None:
+    """
+    Generates and updates a dense vector embedding for an issue.
+    Safe failure fallback when Gemini API is unconfigured or in offline environments.
+    """
+    try:
+        from apps.ai.services.gemini import gemini_service
+
+        text = f"{issue.title}\n{issue.description}".strip()
+        embedding = gemini_service.generate_embedding(text)
+        if embedding:
+            issue.embedding = embedding
+            issue.save(update_fields=["embedding"])
+    except Exception as exc:
+        logger.debug("Automatic issue embedding sync skipped: %s", exc)
 
 
 def allocate_next_issue_number(project: Project) -> int:
@@ -124,6 +144,7 @@ def create_issue(
             new_value=issue.title,
         )
 
+    sync_issue_embedding(issue)
     return issue
 
 
@@ -214,6 +235,9 @@ def update_issue(
 
         if activities_to_create:
             Activity.objects.bulk_create(activities_to_create)
+
+    if any(f in update_fields for f in ("title", "description")):
+        sync_issue_embedding(issue)
 
     return issue
 
@@ -515,6 +539,12 @@ def create_comment(
             old_value="",
             new_value=cleaned_body[:100],
         )
+
+        if issue.ai_summary:
+            meta = issue.ai_metadata or {}
+            meta["summary_stale"] = True
+            issue.ai_metadata = meta
+            issue.save(update_fields=["ai_metadata"])
 
         notify_mentioned_users(comment=comment, actor=author)
 
