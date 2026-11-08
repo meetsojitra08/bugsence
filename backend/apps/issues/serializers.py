@@ -172,3 +172,20 @@ class ActivitySerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = fields
+
+
+class IssueMoveSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=IssueStatus.choices, required=True)
+    before_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    after_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+
+
+class ProjectBoardSerializer(serializers.Serializer):
+    columns = serializers.DictField(
+        child=IssueListSerializer(many=True),
+        help_text="Issues grouped by status column in ascending board position order",
+    )
+    counts = serializers.DictField(
+        child=serializers.IntegerField(),
+        help_text="Total active issue count per column",
+    )

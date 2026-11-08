@@ -72,6 +72,7 @@ def create_issue(
     assignee: User | None = None,
     labels: list[Label] | None = None,
     due_date: date | None = None,
+    position: float | None = None,
 ) -> Issue:
     """
     Creates a new issue in the project inside an atomic transaction.
@@ -81,14 +82,15 @@ def create_issue(
     with transaction.atomic():
         number = allocate_next_issue_number(project)
 
-        # Board position: place at end of status column
-        last_in_column = (
-            Issue.objects.filter(project=project, status=status)
-            .order_by("-position")
-            .values_list("position", flat=True)
-            .first()
-        )
-        position = (last_in_column + 65536.0) if last_in_column is not None else 65536.0
+        # Board position: place at end of status column if not explicitly provided
+        if position is None:
+            last_in_column = (
+                Issue.objects.filter(project=project, status=status)
+                .order_by("-position")
+                .values_list("position", flat=True)
+                .first()
+            )
+            position = (last_in_column + 65536.0) if last_in_column is not None else 65536.0
 
         issue = Issue.objects.create(
             project=project,
@@ -288,3 +290,113 @@ def create_label(
         color=cleaned_color,
         description=description.strip(),
     )
+
+
+POSITION_GAP_THRESHOLD = 1e-6
+POSITION_DEFAULT_STEP = 65536.0
+
+
+def rebalance_positions(*, project: Project, status: str) -> None:
+    """
+    Rebalances the position values for all active issues in a column
+    to restore clean 65536.0 float spacing whenever gaps fall below 1e-6.
+    """
+    issues = list(
+        Issue.objects.filter(project=project, status=status).order_by("position", "created_at")
+    )
+    for index, issue in enumerate(issues):
+        issue.position = (index + 1) * POSITION_DEFAULT_STEP
+    Issue.objects.bulk_update(issues, ["position"])
+
+
+def move_issue(
+    *,
+    issue: Issue,
+    actor: User,
+    status: str,
+    before_id: UUID | None = None,
+    after_id: UUID | None = None,
+) -> Issue:
+    """
+    Moves an issue to a new status column and/or updates its board position.
+    Calculates position as the midpoint between neighbors.
+    Rebalances column positions when the gap falls below 1e-6.
+    Writes a status_changed activity entry if status transitioned.
+    """
+    with transaction.atomic():
+        if status not in [choice[0] for choice in IssueStatus.choices]:
+            raise ValidationError({"status": f"Invalid status: {status}"})
+
+        before_issue = None
+        after_issue = None
+
+        if before_id:
+            before_issue = Issue.objects.filter(
+                id=before_id,
+                project=issue.project,
+            ).first()
+            if not before_issue:
+                raise ValidationError({"before_id": "Before issue not found in this project."})
+
+        if after_id:
+            after_issue = Issue.objects.filter(
+                id=after_id,
+                project=issue.project,
+            ).first()
+            if not after_issue:
+                raise ValidationError({"after_id": "After issue not found in this project."})
+
+        # Calculate new position
+        if before_issue and after_issue:
+            gap = abs(after_issue.position - before_issue.position)
+            if gap < POSITION_GAP_THRESHOLD:
+                rebalance_positions(project=issue.project, status=status)
+                before_issue.refresh_from_db(fields=["position"])
+                after_issue.refresh_from_db(fields=["position"])
+            new_position = (before_issue.position + after_issue.position) / 2.0
+        elif before_issue:
+            # Placed after before_issue (towards bottom)
+            new_position = before_issue.position + POSITION_DEFAULT_STEP
+        elif after_issue:
+            # Placed before after_issue (at top of column)
+            if after_issue.position < (POSITION_GAP_THRESHOLD * 2):
+                rebalance_positions(project=issue.project, status=status)
+                after_issue.refresh_from_db(fields=["position"])
+            new_position = after_issue.position / 2.0
+            if new_position < POSITION_GAP_THRESHOLD:
+                rebalance_positions(project=issue.project, status=status)
+                after_issue.refresh_from_db(fields=["position"])
+                new_position = after_issue.position / 2.0
+        else:
+            # Placed in empty column
+            last_in_column = (
+                Issue.objects.filter(project=issue.project, status=status)
+                .exclude(id=issue.id)
+                .order_by("-position")
+                .first()
+            )
+            new_position = (
+                (last_in_column.position + POSITION_DEFAULT_STEP)
+                if last_in_column
+                else POSITION_DEFAULT_STEP
+            )
+
+        old_status = issue.status
+        status_changed = old_status != status
+
+        issue.status = status
+        issue.position = new_position
+        issue.save(update_fields=["status", "position", "updated_at"])
+
+        if status_changed:
+            log_activity(
+                project=issue.project,
+                issue=issue,
+                actor=actor,
+                verb="status_changed",
+                field="status",
+                old_value=old_status,
+                new_value=status,
+            )
+
+    return issue

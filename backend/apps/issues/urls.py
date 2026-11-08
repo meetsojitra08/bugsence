@@ -3,8 +3,10 @@ from django.urls import path
 from apps.issues.views import (
     IssueActivityView,
     IssueDetailViewSet,
+    IssueMoveView,
     IssueRestoreView,
     LabelDetailView,
+    ProjectBoardView,
     ProjectIssueByNumberView,
     ProjectIssueViewSet,
     ProjectLabelViewSet,
@@ -40,6 +42,18 @@ urlpatterns = [
         "issues/<uuid:pk>/restore/",
         IssueRestoreView.as_view(),
         name="issue-restore",
+    ),
+    # Move issue status/position on board: /api/v1/issues/{id}/move/
+    path(
+        "issues/<uuid:pk>/move/",
+        IssueMoveView.as_view(),
+        name="issue-move",
+    ),
+    # Kanban board column view: /api/v1/projects/{project_id}/board/
+    path(
+        "projects/<uuid:project_id>/board/",
+        ProjectBoardView.as_view(),
+        name="project-board",
     ),
     # Issue activity history: /api/v1/issues/{id}/activity/
     path(

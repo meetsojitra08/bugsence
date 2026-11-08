@@ -16,9 +16,11 @@ from apps.issues.serializers import (
     IssueCreateSerializer,
     IssueDetailSerializer,
     IssueListSerializer,
+    IssueMoveSerializer,
     IssueUpdateSerializer,
     LabelCreateSerializer,
     LabelSerializer,
+    ProjectBoardSerializer,
 )
 from apps.projects.models import Membership, Project, RoleChoices
 from apps.projects.selectors import get_project_for_user, get_user_role_in_project
@@ -449,3 +451,86 @@ class IssueActivityView(APIView):
 
         activities = selectors.get_issue_activities(issue_id=pk, user=request.user)
         return Response(ActivitySerializer(activities, many=True).data)
+
+
+class IssueMoveView(APIView):
+    """Move an issue to a new status and/or update its board position."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Move issue status and position on kanban board",
+        request=IssueMoveSerializer,
+        responses={200: IssueDetailSerializer},
+    )
+    def post(self, request: Request, pk: UUID) -> Response:
+        issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot move issues.")
+
+        serializer = IssueMoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            moved = services.move_issue(
+                issue=issue,
+                actor=request.user,
+                status=serializer.validated_data["status"],
+                before_id=serializer.validated_data.get("before_id"),
+                after_id=serializer.validated_data.get("after_id"),
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(IssueDetailSerializer(moved).data)
+
+
+class ProjectBoardView(APIView):
+    """Retrieve issues for a project grouped by kanban board column."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Retrieve project kanban board issues grouped by status",
+        parameters=[
+            OpenApiParameter(name="priority", type=str, description="Filter by priority"),
+            OpenApiParameter(
+                name="assignee",
+                type=str,
+                description="Filter by assignee UUID or 'unassigned'",
+            ),
+            OpenApiParameter(name="label", type=str, description="Filter by label name"),
+            OpenApiParameter(name="search", type=str, description="Search query"),
+        ],
+        responses={200: ProjectBoardSerializer},
+    )
+    def get(self, request: Request, project_id: UUID) -> Response:
+        board = selectors.get_project_board_issues(
+            project_id=project_id,
+            user=request.user,
+            priority=request.query_params.get("priority"),
+            assignee_id=request.query_params.get("assignee"),
+            label_name=request.query_params.get("label"),
+            search=request.query_params.get("search"),
+        )
+        if board is None:
+            raise NotFound("Project not found.")
+
+        columns_data = {}
+        counts_data = {}
+        for status_key, issues in board.items():
+            columns_data[status_key] = IssueListSerializer(issues, many=True).data
+            counts_data[status_key] = len(issues)
+
+        return Response(
+            {
+                "columns": columns_data,
+                "counts": counts_data,
+            }
+        )

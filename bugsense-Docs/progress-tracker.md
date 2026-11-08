@@ -37,7 +37,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 3 issues core`
 
 ## Phase 4: Board (spec 04)
 _Phase-closing commit:_ `docs(tracker): complete phase 4 kanban board`
-- [ ] Move endpoint + ordering, dnd-kit board, optimistic updates
+- [x] Move endpoint + ordering, dnd-kit board, optimistic updates
 
 ## Phase 5: Comments and Activity (spec 05)
 _Phase-closing commit:_ `docs(tracker): complete phase 5 comments and activity`
@@ -91,6 +91,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 21 | Phase 3 / frontend API | `feat(issues): add issues API client and URL-synced filter hooks` | cdd9ad2 | [x] |
 | 22 | Phase 3 / UI | `feat(ui): build issue list view with filter bar and quick create modal` | 7efe3ca | [x] |
 | 23 | Phase 3 / closing | `docs(tracker): complete phase 3 issues core` | a49c657 | [x] |
+| 24 | Phase 4 / backend | `feat(board): implement issue move endpoint with midpoint rebalancing and board column API` | bdc30bf | [x] |
+| 25 | Phase 4 / tests | `test(board): cover issue move positioning, rebalancing threshold and board grouping` | 363df14 | [x] |
+| 26 | Phase 4 / frontend API | `feat(board): add board API client with optimistic column reordering and rollback` | eaa19b6 | [x] |
+| 27 | Phase 4 / UI | `feat(ui): build interactive kanban board with drag and drop, quick add and column filters` | 3c4c40d | [x] |
+| 28 | Phase 4 / closing | `docs(tracker): complete phase 4 kanban board` | 53337e5 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -122,6 +127,10 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Built frontend issues API client with demo mode, TanStack Query hooks, URL filter synchronization, and unit tests | None | Phase 3, task 5: Issue list view & create modal UI |
 | 2026-11-09 | Built dense issue list table, status chips filter bar, quick create modal (shortcut 'C'), detail side panel, full page route, SafeMarkdown sanitization, and UI tests | None | Phase 3 closing & merge |
 | 2026-11-09 | Completed Phase 3 Issues Core across backend and frontend (57 pytest tests, 33 vitest tests, all gates clean) | None | Phase 4: Kanban Board (spec 04) |
+| 2026-11-09 | Implemented board issue move endpoint with float midpoint positioning, rebalancing under 1e-6 gap threshold, and column serializer | None | Phase 4, task 2: Board test suite |
+| 2026-11-09 | Added 12 pytest tests covering midpoint positioning, rebalancing threshold, move authorization, and board status grouping | None | Phase 4, task 3: Frontend board API & optimistic hooks |
+| 2026-11-09 | Added frontend board API, TanStack Query useBoard hook, optimistic column reordering with cache rollback, and unit tests | None | Phase 4, task 4: Kanban board UI with drag-and-drop |
+| 2026-11-09 | Built interactive dnd-kit Kanban board with drag overlay lift/tilt, quick-add at column bottoms, view switcher pills, and verified full monorepo test suite (69 pytest, 41 vitest) | None | Phase 5: Comments & Activity (spec 05) |
 
 ## Known Issues / Tech Debt
 - (none yet)

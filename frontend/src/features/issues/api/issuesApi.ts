@@ -1,11 +1,14 @@
 import { apiRequest } from "@/lib/apiClient";
 import type {
+  BoardData,
   CreateIssuePayload,
   IssueActivity,
   IssueDetail,
   IssueFilters,
   IssueListItem,
+  IssueStatus,
   Label,
+  MoveIssuePayload,
   PaginatedIssues,
   UpdateIssuePayload,
 } from "../types";
@@ -434,5 +437,83 @@ export const issuesApi = {
       return DEMO_ACTIVITIES[issueId] || [];
     }
     return apiRequest<IssueActivity[]>(`/issues/${issueId}/activity/`);
+  },
+
+  async getBoard(projectId: string, filters?: IssueFilters): Promise<BoardData> {
+    if (isDemoSession()) {
+      const listRes = await this.list(projectId, filters);
+      const columns: Record<IssueStatus, IssueListItem[]> = {
+        backlog: [],
+        todo: [],
+        in_progress: [],
+        in_review: [],
+        done: [],
+        closed: [],
+      };
+      const counts: Record<IssueStatus, number> = {
+        backlog: 0,
+        todo: 0,
+        in_progress: 0,
+        in_review: 0,
+        done: 0,
+        closed: 0,
+      };
+
+      const sorted = [...listRes.results].sort((a, b) => a.position - b.position);
+      sorted.forEach((item) => {
+        if (columns[item.status]) {
+          columns[item.status].push(item);
+          counts[item.status]++;
+        }
+      });
+
+      return { columns, counts };
+    }
+
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== "") {
+          params.append(key, String(val));
+        }
+      });
+    }
+    const queryStr = params.toString() ? `?${params.toString()}` : "";
+    return apiRequest<BoardData>(`/projects/${projectId}/board/${queryStr}`);
+  },
+
+  async move(issueId: string, payload: MoveIssuePayload): Promise<IssueDetail> {
+    if (isDemoSession()) {
+      const idx = DEMO_ISSUES.findIndex((i) => i.id === issueId);
+      if (idx !== -1) {
+        let newPos = DEMO_ISSUES[idx].position;
+        const before = payload.before_id
+          ? DEMO_ISSUES.find((i) => i.id === payload.before_id)
+          : null;
+        const after = payload.after_id ? DEMO_ISSUES.find((i) => i.id === payload.after_id) : null;
+
+        if (before && after) {
+          newPos = (before.position + after.position) / 2.0;
+        } else if (before) {
+          newPos = before.position + 65536.0;
+        } else if (after) {
+          newPos = after.position / 2.0;
+        }
+
+        DEMO_ISSUES[idx] = {
+          ...DEMO_ISSUES[idx],
+          status: payload.status,
+          position: newPos,
+          updated_at: new Date().toISOString(),
+        };
+        return DEMO_ISSUES[idx];
+      }
+      return DEMO_ISSUES[0];
+    }
+
+    return apiRequest<IssueDetail>(`/issues/${issueId}/move/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   },
 };
