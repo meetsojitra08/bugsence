@@ -4,9 +4,9 @@
 
 **Commit convention:** one separate commit per completed, verified step; one closing `docs(tracker): complete phase N ...` commit per phase. Log every commit in the Commit Log below.
 
-**Current phase:** Phase 0 (complete, ready for closing commit)
+**Current phase:** Phase 1 (Next: spec 01 authentication)
 **Last updated:** 2026-11-08
-**Next task:** Phase 1, task 1
+**Next task:** Phase 1, task 1 (Custom User model, register/login/refresh/logout, users/me)
 
 ## Phase 0: Setup
 _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
@@ -71,7 +71,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 1 | Phase 0 / repo init | `chore(setup): initialize repository with README and gitignore` | a2aefe5 | [x] |
 | 2 | Phase 0 / backend scaffold | `chore(setup): scaffold Django project with split settings` | 7fa39a8 | [x] |
 | 3 | Phase 0 / frontend scaffold | `chore(setup): scaffold React app with Vite, Tailwind and shadcn/ui` | fdd4c8c | [x] |
-| 4 | Phase 0 / CI | `ci: add GitHub Actions workflow for lint, test and build` | | [ ] |
+| 4 | Phase 0 / CI | `ci: add GitHub Actions workflow for lint, test and build` | a4a8af0 | [x] |
+| 5 | Phase 0 / closing | `docs(tracker): complete phase 0 project setup` | d060d58 | [x] |
 | | | | | |
 
 ## Decision Log
