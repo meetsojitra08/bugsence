@@ -158,3 +158,35 @@ export interface TimelineItem {
   edited_at: string | null;
   created_at: string;
 }
+
+export interface AITriageResult {
+  title: string;
+  type: IssueType;
+  priority: IssuePriority;
+  severity: IssueSeverity;
+  steps_to_reproduce: string[];
+  expected_behavior: string;
+  actual_behavior: string;
+  suggested_labels: string[];
+  possible_root_cause: string;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface AIDuplicateCandidate {
+  id: string;
+  number: number;
+  key: string;
+  title: string;
+  status: IssueStatus;
+  similarity: number;
+}
+
+export interface AISummaryResult {
+  tldr: string;
+  status: string;
+  open_questions: string[];
+  next_steps: string[];
+  is_stale: boolean;
+  generated_at: string | null;
+}
