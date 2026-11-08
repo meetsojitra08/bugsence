@@ -84,7 +84,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 14 | Phase 2 / tests | `test(projects): cover project isolation, role matrix and last-owner protection` | 91817b6 | [x] |
 | 15 | Phase 2 / frontend API | `feat(projects): add projects API client and active project context` | f89e108 | [x] |
 | 16 | Phase 2 / UI | `feat(ui): build project switcher, creation modal and member management table` | 235aff5 | [x] |
-| 17 | Phase 2 / closing | `docs(tracker): complete phase 2 projects and members` | 9135dac | [x] |
+| 17 | Phase 2 / closing | `docs(tracker): complete phase 2 projects and members` | e88ac1d | [x] |
+| 18 | Phase 3 / models | `feat(issues): add Label, Issue and Activity models with per-project numbering sequence` | 3ae4990 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -110,6 +111,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Built frontend projects API client, TanStack Query hooks, Zustand active project store, and unit tests | None | Phase 2: Project switcher and members UI |
 | 2026-11-09 | Built ProjectSwitcher, CreateProjectModal with live key generator, and ProjectMembersPage with invite/roles/remove | None | Phase 2 closing & verification |
 | 2026-11-09 | Completed and verified Phase 2 across backend and frontend (41 pytest tests, 17 vitest tests, build gates clean) | None | Phase 3: Issues Core (spec 03) |
+| 2026-11-09 | Added Label, Issue, and Activity models with per-project sequence numbering, pgvector embeddings, and initial migrations | None | Phase 3: Issue & Label API endpoints |
 
 ## Known Issues / Tech Debt
 - (none yet)
