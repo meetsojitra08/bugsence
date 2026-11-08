@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { ThemeProvider } from "@/app/theme-provider";
 import { AuthProvider } from "@/features/auth/context/AuthContext";
 import { ProtectedRoute } from "@/app/ProtectedRoute";
+import { LandingPage } from "@/features/landing/LandingPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -21,20 +22,20 @@ export function App() {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public Auth Routes */}
+              {/* Public Marketing Landing & Auth Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/landing" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
 
               {/* Protected App Shell Routes */}
               <Route
-                path="/"
                 element={
                   <ProtectedRoute>
                     <AppLayout />
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="p/:key/dashboard" element={<DashboardPage />} />
                 <Route path="issues" element={<IssuesPage />} />
