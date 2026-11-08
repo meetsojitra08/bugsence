@@ -144,6 +144,17 @@ def create_issue(
             new_value=issue.title,
         )
 
+        if assignee and assignee != reporter:
+            actor_name = reporter.full_name or reporter.email
+            Notification.objects.create(
+                recipient=assignee,
+                actor=reporter,
+                issue=issue,
+                kind=NotificationKind.ASSIGNED,
+                title=f"{actor_name} assigned you to {issue.key}",
+                message=issue.title,
+            )
+
     sync_issue_embedding(issue)
     return issue
 
@@ -176,6 +187,8 @@ def update_issue(
 
     update_fields = ["updated_at"]
     activities_to_create = []
+    old_assignee = issue.assignee
+    old_status = issue.status
 
     with transaction.atomic():
         for field_name in allowed_fields:
@@ -235,6 +248,50 @@ def update_issue(
 
         if activities_to_create:
             Activity.objects.bulk_create(activities_to_create)
+
+        # Notification Triggers: Assigned & Status Changed
+        actor_name = actor.full_name or actor.email
+        notifs_to_create: list[Notification] = []
+
+        if (
+            "assignee" in kwargs
+            and issue.assignee
+            and issue.assignee != old_assignee
+            and issue.assignee != actor
+        ):
+            notifs_to_create.append(
+                Notification(
+                    recipient=issue.assignee,
+                    actor=actor,
+                    issue=issue,
+                    kind=NotificationKind.ASSIGNED,
+                    title=f"{actor_name} assigned you to {issue.key}",
+                    message=issue.title,
+                )
+            )
+
+        if "status" in kwargs and issue.status != old_status:
+            recipients = set()
+            if issue.reporter_id != actor.id:
+                recipients.add(issue.reporter)
+            if issue.assignee and issue.assignee_id != actor.id:
+                recipients.add(issue.assignee)
+
+            for r in recipients:
+                msg = f"{actor_name} moved {issue.key} from {old_status} to {issue.status}."
+                notifs_to_create.append(
+                    Notification(
+                        recipient=r,
+                        actor=actor,
+                        issue=issue,
+                        kind=NotificationKind.STATUS_CHANGED,
+                        title=f"Status changed to {issue.status} on {issue.key}",
+                        message=msg,
+                    )
+                )
+
+        if notifs_to_create:
+            Notification.objects.bulk_create(notifs_to_create)
 
     if any(f in update_fields for f in ("title", "description")):
         sync_issue_embedding(issue)
@@ -425,6 +482,27 @@ def move_issue(
                 new_value=status,
             )
 
+            actor_name = actor.full_name or actor.email
+            recipients = set()
+            if issue.reporter_id != actor.id:
+                recipients.add(issue.reporter)
+            if issue.assignee and issue.assignee_id != actor.id:
+                recipients.add(issue.assignee)
+
+            move_notifs = [
+                Notification(
+                    recipient=r,
+                    actor=actor,
+                    issue=issue,
+                    kind=NotificationKind.STATUS_CHANGED,
+                    title=f"Status changed to {status} on {issue.key}",
+                    message=f"{actor_name} moved {issue.key} from {old_status} to {status}.",
+                )
+                for r in recipients
+            ]
+            if move_notifs:
+                Notification.objects.bulk_create(move_notifs)
+
     return issue
 
 
@@ -546,7 +624,28 @@ def create_comment(
             issue.ai_metadata = meta
             issue.save(update_fields=["ai_metadata"])
 
-        notify_mentioned_users(comment=comment, actor=author)
+        mentioned = notify_mentioned_users(comment=comment, actor=author)
+        mentioned_ids = {n.recipient_id for n in mentioned}
+
+        actor_name = author.full_name or author.email
+        comment_notifs: list[Notification] = []
+        for person in (issue.reporter, issue.assignee):
+            if person and person.id != author.id and person.id not in mentioned_ids:
+                comment_notifs.append(
+                    Notification(
+                        recipient=person,
+                        actor=author,
+                        issue=issue,
+                        comment=comment,
+                        kind=NotificationKind.COMMENT,
+                        title=f"New comment on {issue.key} by {actor_name}",
+                        message=cleaned_body[:300],
+                    )
+                )
+                mentioned_ids.add(person.id)
+
+        if comment_notifs:
+            Notification.objects.bulk_create(comment_notifs)
 
     return comment
 

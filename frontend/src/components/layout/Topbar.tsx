@@ -5,6 +5,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { ProjectSwitcher } from "@/features/projects/components/ProjectSwitcher";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 interface TopbarProps {
   onMobileMenuToggle?: () => void;
@@ -77,6 +78,9 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
             ⌘K
           </kbd>
         </button>
+
+        {/* Notifications Popover */}
+        <NotificationBell />
 
         {/* AI Quick Indicator */}
         <div className="hidden items-center gap-1.5 rounded-md border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400 sm:flex">

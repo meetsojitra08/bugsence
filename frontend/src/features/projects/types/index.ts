@@ -48,3 +48,6 @@ export interface InviteMemberPayload {
 export interface UpdateMemberRolePayload {
   role: ProjectRole;
 }
+
+export * from "./analytics";
+

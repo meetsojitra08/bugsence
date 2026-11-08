@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.ai.views import AISummarizeView
+from apps.projects.search import GlobalSearchView
 
 
 class HealthCheckView(APIView):
@@ -46,6 +47,10 @@ urlpatterns = [
         AISummarizeView.as_view(),
         name="issue_ai_summarize",
     ),
+    # Notifications
+    path("api/v1/", include("apps.notifications.urls")),
+    # Global Search
+    path("api/v1/search/", GlobalSearchView.as_view(), name="global-search"),
     # OpenAPI Schema & Interactive Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
