@@ -33,6 +33,8 @@ urlpatterns = [
     path("api/v1/health/", HealthCheckView.as_view(), name="health_check"),
     # Users & Authentication
     path("api/v1/", include("apps.users.urls")),
+    # Projects & Members
+    path("api/v1/", include("apps.projects.urls")),
     # OpenAPI Schema & Interactive Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

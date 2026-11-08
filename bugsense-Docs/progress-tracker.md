@@ -79,7 +79,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | 51532d8 | [x] |
 | 10 | Phase 1 / app shell | `feat(ui): build app shell layout with sidebar, topbar and command palette` | db9c185 | [x] |
 | 11 | Phase 1 / closing | `docs(tracker): complete phase 1 auth and foundation` | 4f3f9c1 | [x] |
-| 12 | Phase 2 / models | `feat(projects): add Project and Membership models with role enum` | 64ec052 | [x] |
+| 12 | Phase 2 / models | `feat(projects): add Project and Membership models with role enum` | f778e9b | [x] |
+| 13 | Phase 2 / API | `feat(projects): implement scoped project and member management endpoints` | 5f0c626 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -100,6 +101,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Built responsive App Shell with collapsible sidebar, topbar breadcrumbs/quick actions, cmdk command palette (⌘K), and dashboard shell | None | Phase 1 closing & verification |
 | 2026-11-08 | Verified full Phase 1 gates across backend and frontend, completed Phase 1 documentation | None | Phase 2: Projects and Members (spec 02) |
 | 2026-11-08 | Added Project and Membership models, RoleChoices enum, key immutability, unique constraints, and initial migrations | None | Phase 2: Project & member API endpoints |
+| 2026-11-09 | Implemented scoped project CRUD, member invitations, role management, sole-owner protection, and OpenAPI documentation | None | Phase 2: Project test suite |
 
 ## Known Issues / Tech Debt
 - (none yet)
