@@ -105,7 +105,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 35 | Phase 6 / tests | `test(ai): cover Gemini triage schema validation, duplicate detection, summary caching and throttling` | 7d5ca40 | [x] |
 | 36 | Phase 6 / frontend API | `feat(ai): add AI API client, TanStack Query hooks and offline demo handlers` | 4616fdd | [x] |
 | 37 | Phase 6 / UI | `feat(ui): build AI triage auto-fill modal, duplicate detection banner and issue summary card` | 5f849fe | [x] |
-| 38 | Phase 6 / closing | `docs(tracker): complete phase 6 AI features` | pending | [x] |
+| 38 | Phase 6 / closing | `docs(tracker): complete phase 6 AI features` | a8d5847 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
