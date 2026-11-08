@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { CommandPalette } from "./CommandPalette";
+import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsModal";
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -42,8 +43,9 @@ export function AppLayout() {
         </main>
       </div>
 
-      {/* Global Command Menu */}
+      {/* Global Command Menu & Shortcuts */}
       <CommandPalette />
+      <KeyboardShortcutsModal />
     </div>
   );
 }

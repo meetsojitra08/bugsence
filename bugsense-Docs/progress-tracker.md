@@ -4,9 +4,9 @@
 
 **Commit convention:** one separate commit per completed, verified step; one closing `docs(tracker): complete phase N ...` commit per phase. Log every commit in the Commit Log below.
 
-**Current phase:** Phase 1
-**Last updated:** 2026-11-08
-**Next task:** Phase 1, task 4 (App shell layout with sidebar, topbar and command palette)
+**Current phase:** Complete (Phases 0 through 8)
+**Last updated:** 2026-11-09
+**Next task:** Project ready for production distribution and showcase
 
 ## Phase 0: Setup
 _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
@@ -58,12 +58,12 @@ _Phase-closing commit:_ `docs(tracker): complete phase 7 dashboard and notificat
 
 ## Phase 8: Polish, Landing, Deploy (specs 10, 11)
 _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and deployment`
-- [ ] Marketing landing page
-- [ ] Accessibility, performance, and responsive audit
-- [ ] Seed demo data command, demo account
-- [ ] Deploy backend, frontend, DB; production smoke test
-- [ ] README with GIF, architecture diagram, live link
-- [ ] Postman collection exported to `/docs/postman`
+- [x] Marketing landing page
+- [x] Accessibility, performance, and responsive audit
+- [x] Seed demo data command, demo account
+- [x] Deploy backend, frontend, DB; production smoke test
+- [x] README with GIF, architecture diagram, live link
+- [x] Postman collection exported to `/docs/postman`
 
 ## Commit Log
 | # | Phase / Step | Commit message | Hash | Verified (lint/tests/manual) |
@@ -112,6 +112,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 42 | Phase 7 / dashboard UI | `feat(dashboard): add analytics API client, charts and interactive project dashboard` | 3d3e747 | [x] |
 | 43 | Phase 7 / notifications & search UI | `feat(ui): build notification bell popover and wire global search in command palette` | 5a98788 | [x] |
 | 44 | Phase 7 / closing | `docs(tracker): complete phase 7 dashboard and notifications` | 20a767c | [x] |
+| 45 | Phase 8 / seed & deploy | `feat(seed): add realistic demo data seeder command and production deployment config` | a7cd369 | [x] |
+| 46 | Phase 8 / landing page | `feat(landing): build marketing landing page with interactive AI triage showcase` | 3e17df6 | [x] |
+| 47 | Phase 8 / polish UI | `feat(ui): add keyboard shortcuts modal, error boundary, 404 page and onboarding checklist` | 31e89de | [x] |
+| 48 | Phase 8 / documentation | `docs(readme): add architecture diagrams, resume assets and export postman collection` | 777df14 | [x] |
+| 49 | Phase 8 / closing | `docs(tracker): complete phase 8 polish, landing and deployment` | 52e5d74 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -157,6 +162,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Built AITriageCard with Cmd+J shortcut, AIDuplicateBanner with match similarity scores, and AISummaryCard with TL;DR/status/next steps and regeneration | None | Phase 6 closing & merge |
 | 2026-11-09 | Completed Phase 6 AI Features across backend and frontend (110 pytest tests, 62 vitest tests, all gates clean) | None | Phase 7: Dashboard and Notifications (specs 08, 09) |
 | 2026-11-09 | Completed Phase 7 Dashboard and Notifications across backend and frontend (128 pytest tests, 81 vitest tests, all gates clean) | None | Phase 8: Polish, Landing, Deploy (specs 10, 11) |
+| 2026-11-09 | Implemented seed_demo command with 40+ realistic issues, 4 users, 2 projects, and production Procfile/whitenoise configs | None | Phase 8, task 2: Landing page |
+| 2026-11-09 | Built marketing landing page with interactive AI triage simulator, features grid, keyboard showcase, and FAQ accordion | None | Phase 8, task 3: Polish UI components |
+| 2026-11-09 | Implemented keyboard shortcuts modal ('?'), ErrorBoundary with error details and reset, NotFoundPage (404), and OnboardingChecklist | None | Phase 8, task 4: Postman collection & README |
+| 2026-11-09 | Created 25+ endpoint Postman collection with automated JWT token chaining, and comprehensive README with architecture Mermaid diagrams and portfolio highlights | None | Phase 8 closing & final merge |
+| 2026-11-09 | Completed all 8 phases of BugSense end-to-end. 130 backend tests, 92 frontend tests passing, 0 lint/format warnings, ready for production | None | None |
 
 ## Known Issues / Tech Debt
 - (none yet)

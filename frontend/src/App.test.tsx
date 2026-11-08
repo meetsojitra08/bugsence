@@ -3,9 +3,11 @@ import { render, screen } from "@testing-library/react";
 import App from "./App";
 
 describe("App root integration", () => {
-  it("renders login page by default for unauthenticated visitors", () => {
+  it("renders marketing landing page by default for unauthenticated visitors", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: /welcome back/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /try demo account/i })).toBeDefined();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      /AI-Native Issue Tracking Built for Fast Engineering Teams/i
+    );
+    expect(screen.getByTestId("hero-cta-demo")).toBeInTheDocument();
   });
 });
