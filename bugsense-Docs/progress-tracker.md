@@ -52,9 +52,9 @@ _Phase-closing commit:_ `docs(tracker): complete phase 6 AI features`
 
 ## Phase 7: Dashboard and Notifications (specs 08, 09)
 _Phase-closing commit:_ `docs(tracker): complete phase 7 dashboard and notifications`
-- [ ] Analytics endpoints + charts
-- [ ] Notifications + bell UI
-- [ ] Global search / command palette wiring
+- [x] Analytics endpoints + charts
+- [x] Notifications + bell UI
+- [x] Global search / command palette wiring
 
 ## Phase 8: Polish, Landing, Deploy (specs 10, 11)
 _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and deployment`
@@ -106,6 +106,12 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 36 | Phase 6 / frontend API | `feat(ai): add AI API client, TanStack Query hooks and offline demo handlers` | 4616fdd | [x] |
 | 37 | Phase 6 / UI | `feat(ui): build AI triage auto-fill modal, duplicate detection banner and issue summary card` | 5f849fe | [x] |
 | 38 | Phase 6 / closing | `docs(tracker): complete phase 6 AI features` | a8d5847 | [x] |
+| 39 | Phase 7 / backend analytics | `feat(analytics): implement project analytics endpoints for overview, trends and workload` | 64ef58f | [x] |
+| 40 | Phase 7 / backend notifications & search | `feat(notifications): add notification endpoints, triggers and global search API` | c524188 | [x] |
+| 41 | Phase 7 / tests | `test(analytics): cover analytics aggregations, notification triggers and search scoping` | 973aae9 | [x] |
+| 42 | Phase 7 / dashboard UI | `feat(dashboard): add analytics API client, charts and interactive project dashboard` | 3d3e747 | [x] |
+| 43 | Phase 7 / notifications & search UI | `feat(ui): build notification bell popover and wire global search in command palette` | 5a98788 | [x] |
+| 44 | Phase 7 / closing | `docs(tracker): complete phase 7 dashboard and notifications` | pending | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -150,6 +156,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Added frontend AI API client with demo mode, TanStack Query hooks (useAITriage, useFindDuplicates, useSummarizeIssue), and unit tests | None | Phase 6, task 4: AI triage modal, duplicate banner and summary UI |
 | 2026-11-09 | Built AITriageCard with Cmd+J shortcut, AIDuplicateBanner with match similarity scores, and AISummaryCard with TL;DR/status/next steps and regeneration | None | Phase 6 closing & merge |
 | 2026-11-09 | Completed Phase 6 AI Features across backend and frontend (110 pytest tests, 62 vitest tests, all gates clean) | None | Phase 7: Dashboard and Notifications (specs 08, 09) |
+| 2026-11-09 | Completed Phase 7 Dashboard and Notifications across backend and frontend (128 pytest tests, 81 vitest tests, all gates clean) | None | Phase 8: Polish, Landing, Deploy (specs 10, 11) |
 
 ## Known Issues / Tech Debt
 - (none yet)
