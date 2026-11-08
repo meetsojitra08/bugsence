@@ -1,0 +1,1 @@
+# BugSense Django configuration package

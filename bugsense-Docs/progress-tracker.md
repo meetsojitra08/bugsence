@@ -6,14 +6,14 @@
 
 **Current phase:** Phase 0
 **Last updated:** 2026-11-08
-**Next task:** Phase 0, task 2
+**Next task:** Phase 0, task 3
 
 ## Phase 0: Setup
 _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
 - [x] Create GitHub repo, `.gitignore`, README skeleton, LICENSE
-- [ ] Scaffold Django project (`config/`, split settings, django-environ)
-- [ ] Configure PostgreSQL (docker-compose) + pgvector extension
-- [ ] Install DRF, simplejwt, corsheaders, drf-spectacular (OpenAPI docs)
+- [x] Scaffold Django project (`config/`, split settings, django-environ)
+- [x] Configure PostgreSQL (docker-compose) + pgvector extension
+- [x] Install DRF, simplejwt, corsheaders, drf-spectacular (OpenAPI docs)
 - [ ] Scaffold React + Vite + TS + Tailwind + shadcn/ui + TanStack Query + Router
 - [ ] Configure ruff, eslint, prettier, pre-commit hooks
 - [ ] GitHub Actions CI (lint + test + build)
@@ -68,7 +68,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 ## Commit Log
 | # | Phase / Step | Commit message | Hash | Verified (lint/tests/manual) |
 |---|---|---|---|---|
-| 1 | Phase 0 / repo init | `chore(setup): initialize repository with README and gitignore` | | [ ] |
+| 1 | Phase 0 / repo init | `chore(setup): initialize repository with README and gitignore` | a2aefe5 | [x] |
 | 2 | Phase 0 / backend scaffold | `chore(setup): scaffold Django project with split settings` | | [ ] |
 | 3 | Phase 0 / frontend scaffold | `chore(setup): scaffold React app with Vite, Tailwind and shadcn/ui` | | [ ] |
 | 4 | Phase 0 / CI | `ci: add GitHub Actions workflow for lint, test and build` | | [ ] |
@@ -83,6 +83,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | Date | What was done | Blockers | Next |
 |---|---|---|---|
 | 2026-11-08 | Initialized git repository, added .gitignore, LICENSE, and README skeleton | None | Phase 0, task 2: Backend scaffold |
+| 2026-11-08 | Scaffolded Django 5 backend with split settings, DRF, SimpleJWT, drf-spectacular, PostgreSQL pgvector docker-compose, and health tests | None | Phase 0, task 3: Frontend scaffold |
 
 ## Known Issues / Tech Debt
 - (none yet)

@@ -1,0 +1,10 @@
+-r requirements.txt
+
+# Testing
+pytest>=8.2.0
+pytest-django>=4.8.0
+factory-boy>=3.3.0
+
+# Linting & Formatting
+ruff>=0.4.4
+pre-commit>=3.7.0
