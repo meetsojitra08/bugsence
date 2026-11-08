@@ -6,7 +6,7 @@
 
 **Current phase:** Phase 1
 **Last updated:** 2026-11-08
-**Next task:** Phase 1, task 3 (Frontend auth pages: login, register, split layout)
+**Next task:** Phase 1, task 4 (App shell layout with sidebar, topbar and command palette)
 
 ## Phase 0: Setup
 _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
@@ -75,7 +75,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 5 | Phase 0 / closing | `docs(tracker): complete phase 0 project setup` | d060d58 | [x] |
 | 6 | Phase 1 / auth backend | `feat(auth): add custom User model and JWT auth endpoints` | 4c34bd5 | [x] |
 | 7 | Phase 1 / auth tests | `test(auth): cover registration, token rotation, logout and profile endpoints` | 1e53063 | [x] |
-| 8 | Phase 1 / frontend auth API | `feat(auth): implement auth state, interceptors and protected routes` | | [ ] |
+| 8 | Phase 1 / frontend auth API | `feat(auth): implement auth state, interceptors and protected routes` | 68d2e30 | [x] |
+| 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | | [ ] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -92,6 +93,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Implemented custom User model, migrations, registration, login, token refresh, logout (blacklist), and me/change-password endpoints | None | Phase 1: Auth test suite |
 | 2026-11-08 | Created full auth test suite covering registration, duplicate rejection, login, generic error responses, token rotation, logout blacklist, and me endpoints | None | Phase 1: Frontend auth integration |
 | 2026-11-08 | Implemented frontend auth API layer, token management with silent 401 refresh queue, AuthContext/useAuth hook, and ProtectedRoute guard | None | Phase 1: Auth pages UI |
+| 2026-11-08 | Built premium login and register pages with split layout, password strength meter, show/hide toggle, and 1-click recruiter demo mode | None | Phase 1: App shell foundation |
 
 ## Known Issues / Tech Debt
 - (none yet)
