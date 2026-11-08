@@ -1,5 +1,4 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -19,10 +18,7 @@ class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(
-  endpoint: string,
-  options: RequestOptions = {}
-): Promise<T> {
+export async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers, ...customConfig } = options;
 
   let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
@@ -73,7 +69,8 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const errorData = (data as { error?: { code?: string; message?: string; details?: unknown } })?.error;
+    const errorData = (data as { error?: { code?: string; message?: string; details?: unknown } })
+      ?.error;
     throw new ApiError(
       response.status,
       errorData?.code || "unknown_error",
