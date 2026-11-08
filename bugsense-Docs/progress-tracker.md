@@ -32,8 +32,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 2 projects and members`
 
 ## Phase 3: Issues Core (spec 03)
 _Phase-closing commit:_ `docs(tracker): complete phase 3 issues core`
-- [ ] Issue/Label models, numbering, CRUD, filters, search, pagination
-- [ ] List view, create modal, detail panel
+- [x] Issue/Label models, numbering, CRUD, filters, search, pagination
+- [x] List view, create modal, detail panel
 
 ## Phase 4: Board (spec 04)
 _Phase-closing commit:_ `docs(tracker): complete phase 4 kanban board`
@@ -85,7 +85,12 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 15 | Phase 2 / frontend API | `feat(projects): add projects API client and active project context` | f89e108 | [x] |
 | 16 | Phase 2 / UI | `feat(ui): build project switcher, creation modal and member management table` | 235aff5 | [x] |
 | 17 | Phase 2 / closing | `docs(tracker): complete phase 2 projects and members` | e88ac1d | [x] |
-| 18 | Phase 3 / models | `feat(issues): add Label, Issue and Activity models with per-project numbering sequence` | 3ae4990 | [x] |
+| 18 | Phase 3 / models | `feat(issues): add Label, Issue and Activity models with per-project numbering sequence` | 28d0e54 | [x] |
+| 19 | Phase 3 / API | `feat(issues): implement issue CRUD, activity logging and label endpoints` | 2e635cb | [x] |
+| 20 | Phase 3 / tests | `test(issues): cover numbering sequence, filtering, activity logging and permissions` | 6c0afbf | [x] |
+| 21 | Phase 3 / frontend API | `feat(issues): add issues API client and URL-synced filter hooks` | cdd9ad2 | [x] |
+| 22 | Phase 3 / UI | `feat(ui): build issue list view with filter bar and quick create modal` | 7efe3ca | [x] |
+| 23 | Phase 3 / closing | `docs(tracker): complete phase 3 issues core` | 66f4ef0 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -112,6 +117,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Built ProjectSwitcher, CreateProjectModal with live key generator, and ProjectMembersPage with invite/roles/remove | None | Phase 2 closing & verification |
 | 2026-11-09 | Completed and verified Phase 2 across backend and frontend (41 pytest tests, 17 vitest tests, build gates clean) | None | Phase 3: Issues Core (spec 03) |
 | 2026-11-09 | Added Label, Issue, and Activity models with per-project sequence numbering, pgvector embeddings, and initial migrations | None | Phase 3: Issue & Label API endpoints |
+| 2026-11-09 | Implemented issue CRUD, filtering, pagination, activity logging, undo/restore, and label endpoints | None | Phase 3, task 3: Backend issue test suite |
+| 2026-11-09 | Added 16 pytest tests covering issue numbering concurrency, filters, role permissions, activity logs, and undo | None | Phase 3, task 4: Frontend issues API & hooks |
+| 2026-11-09 | Built frontend issues API client with demo mode, TanStack Query hooks, URL filter synchronization, and unit tests | None | Phase 3, task 5: Issue list view & create modal UI |
+| 2026-11-09 | Built dense issue list table, status chips filter bar, quick create modal (shortcut 'C'), detail side panel, full page route, SafeMarkdown sanitization, and UI tests | None | Phase 3 closing & merge |
+| 2026-11-09 | Completed Phase 3 Issues Core across backend and frontend (57 pytest tests, 33 vitest tests, all gates clean) | None | Phase 4: Kanban Board (spec 04) |
 
 ## Known Issues / Tech Debt
 - (none yet)
