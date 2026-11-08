@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   CheckSquare,
+  LayoutGrid,
   Settings,
   Bug,
   PanelLeftClose,
@@ -16,6 +17,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Issues", href: "/issues", icon: CheckSquare },
+  { name: "Board", href: "/board", icon: LayoutGrid },
   { name: "Team Members", href: "/settings/members", icon: Users },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

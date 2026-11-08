@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { LayoutGrid, List } from "lucide-react";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useProjects } from "@/features/projects/hooks/useProjects";
 import {
@@ -118,7 +119,7 @@ export function IssuesPage() {
   return (
     <div className="space-y-4" data-testid="issues-page">
       {/* Header section */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-text">Issues</h1>
           <p className="text-xs text-text-muted">
@@ -126,6 +127,25 @@ export function IssuesPage() {
               ? `Manage and track bugs, features, and tasks in ${activeProject.name}`
               : "Select a project to view and manage issues"}
           </p>
+        </div>
+
+        {/* View Switcher Pills */}
+        <div className="flex items-center rounded-lg border border-border bg-surface p-1 text-xs">
+          <div
+            className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 font-semibold text-primary"
+            data-testid="list-view-active"
+          >
+            <List className="h-3.5 w-3.5" />
+            <span>List</span>
+          </div>
+          <Link
+            to={activeProject ? `/p/${activeProject.key.toLowerCase()}/board` : "/board"}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-text-muted transition-colors hover:text-text"
+            data-testid="switch-to-board-view"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            <span>Board</span>
+          </Link>
         </div>
       </div>
 

@@ -11,6 +11,7 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ProjectMembersPage } from "@/features/projects/pages/ProjectMembersPage";
 import { IssuesPage } from "@/features/issues/pages/IssuesPage";
 import { IssueDetailPage } from "@/features/issues/pages/IssueDetailPage";
+import { BoardPage } from "@/features/issues/pages/BoardPage";
 import { Toaster } from "sonner";
 
 export function App() {
@@ -37,7 +38,9 @@ export function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="issues" element={<IssuesPage />} />
                 <Route path="my-issues" element={<IssuesPage />} />
+                <Route path="board" element={<BoardPage />} />
                 <Route path="p/:key/issues" element={<IssuesPage />} />
+                <Route path="p/:key/board" element={<BoardPage />} />
                 <Route path="p/:key/issues/:number" element={<IssueDetailPage />} />
                 <Route path="projects" element={<Navigate to="/settings/members" replace />} />
                 <Route path="settings/members" element={<ProjectMembersPage />} />
