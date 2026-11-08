@@ -19,3 +19,23 @@ def relaxed_throttles_for_tests(settings):
 @pytest.fixture
 def api_client():
     return APIClient()
+
+
+@pytest.fixture
+def user(db):
+    """A standard authenticated user for test cases."""
+    from tests.factories import UserFactory
+
+    return UserFactory(
+        email="developer@bugsense.dev",
+        password="ValidPassword123!",
+        full_name="Alex Developer",
+    )
+
+
+@pytest.fixture
+def auth_client(api_client, user):
+    """APIClient pre-authenticated with the default user."""
+    api_client.force_authenticate(user=user)
+    return api_client
+

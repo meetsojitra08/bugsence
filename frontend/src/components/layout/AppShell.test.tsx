@@ -1,9 +1,23 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppLayout } from "./AppLayout";
 import { AuthProvider } from "@/features/auth/context/AuthContext";
 import { clearTokens } from "@/lib/apiClient";
+
+function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <AuthProvider>{ui}</AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+}
 
 describe("AppLayout and App Shell", () => {
   beforeEach(() => {
@@ -11,29 +25,17 @@ describe("AppLayout and App Shell", () => {
   });
 
   it("renders desktop sidebar navigation links", () => {
-    render(
-      <MemoryRouter initialEntries={["/dashboard"]}>
-        <AuthProvider>
-          <AppLayout />
-        </AuthProvider>
-      </MemoryRouter>
-    );
+    renderWithProviders(<AppLayout />);
 
     expect(screen.getByTestId("app-topbar")).toBeDefined();
     expect(screen.getAllByRole("link", { name: /dashboard/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /my issues/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: /projects/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /team members/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: /settings/i }).length).toBeGreaterThan(0);
   });
 
   it("opens command palette on search button click", () => {
-    render(
-      <MemoryRouter initialEntries={["/dashboard"]}>
-        <AuthProvider>
-          <AppLayout />
-        </AuthProvider>
-      </MemoryRouter>
-    );
+    renderWithProviders(<AppLayout />);
 
     // Initial state: dialog not visible
     expect(screen.queryByTestId("command-palette-dialog")).toBeNull();
