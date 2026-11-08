@@ -4,9 +4,9 @@
 
 **Commit convention:** one separate commit per completed, verified step; one closing `docs(tracker): complete phase N ...` commit per phase. Log every commit in the Commit Log below.
 
-**Current phase:** Phase 1 (Next: spec 01 authentication)
+**Current phase:** Phase 1
 **Last updated:** 2026-11-08
-**Next task:** Phase 1, task 1 (Custom User model, register/login/refresh/logout, users/me)
+**Next task:** Phase 1, task 2 (Frontend auth API, interceptors, protected routes)
 
 ## Phase 0: Setup
 _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
@@ -73,7 +73,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 3 | Phase 0 / frontend scaffold | `chore(setup): scaffold React app with Vite, Tailwind and shadcn/ui` | fdd4c8c | [x] |
 | 4 | Phase 0 / CI | `ci: add GitHub Actions workflow for lint, test and build` | a4a8af0 | [x] |
 | 5 | Phase 0 / closing | `docs(tracker): complete phase 0 project setup` | d060d58 | [x] |
-| | | | | |
+| 6 | Phase 1 / auth backend | `feat(auth): add custom User model and JWT auth endpoints` | 4c34bd5 | [x] |
+| 7 | Phase 1 / auth tests | `test(auth): cover registration, token rotation, logout and profile endpoints` | | [ ] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -87,6 +88,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Scaffolded Django 5 backend with split settings, DRF, SimpleJWT, drf-spectacular, PostgreSQL pgvector docker-compose, and health tests | None | Phase 0, task 3: Frontend scaffold |
 | 2026-11-08 | Scaffolded React 18 + Vite + TypeScript frontend with Tailwind CSS design tokens, shadcn Button primitive, TanStack Query, and Vitest suite | None | Phase 0, task 4: Tooling & Pre-commit hooks |
 | 2026-11-08 | Configured ESLint, Prettier, pre-commit hooks, and GitHub Actions CI workflow covering backend & frontend lint, tests, and build | None | Phase 0 closing commit |
+| 2026-11-08 | Implemented custom User model, migrations, registration, login, token refresh, logout (blacklist), and me/change-password endpoints | None | Phase 1: Auth test suite |
+| 2026-11-08 | Created full auth test suite covering registration, duplicate rejection, login, generic error responses, token rotation, logout blacklist, and me endpoints | None | Phase 1: Frontend auth integration |
 
 ## Known Issues / Tech Debt
 - (none yet)
