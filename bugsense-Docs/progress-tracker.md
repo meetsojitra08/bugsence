@@ -116,7 +116,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 46 | Phase 8 / landing page | `feat(landing): build marketing landing page with interactive AI triage showcase` | 3e17df6 | [x] |
 | 47 | Phase 8 / polish UI | `feat(ui): add keyboard shortcuts modal, error boundary, 404 page and onboarding checklist` | 31e89de | [x] |
 | 48 | Phase 8 / documentation | `docs(readme): add architecture diagrams, resume assets and export postman collection` | 777df14 | [x] |
-| 49 | Phase 8 / closing | `docs(tracker): complete phase 8 polish, landing and deployment` | pending | [x] |
+| 49 | Phase 8 / closing | `docs(tracker): complete phase 8 polish, landing and deployment` | 52e5d74 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
