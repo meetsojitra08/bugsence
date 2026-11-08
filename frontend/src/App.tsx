@@ -8,6 +8,7 @@ import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { ProjectMembersPage } from "@/features/projects/pages/ProjectMembersPage";
 import { Toaster } from "sonner";
 
 export function App() {
@@ -40,22 +41,10 @@ export function App() {
                     </div>
                   }
                 />
-                <Route
-                  path="projects"
-                  element={
-                    <div className="rounded-xl border border-border bg-surface p-8 text-center text-xs text-text-muted">
-                      Projects management will be wired in Phase 2.
-                    </div>
-                  }
-                />
-                <Route
-                  path="settings"
-                  element={
-                    <div className="rounded-xl border border-border bg-surface p-8 text-center text-xs text-text-muted">
-                      Account &amp; organization settings will be wired in Phase 2.
-                    </div>
-                  }
-                />
+                <Route path="projects" element={<Navigate to="/settings/members" replace />} />
+                <Route path="settings/members" element={<ProjectMembersPage />} />
+                <Route path="projects/members" element={<ProjectMembersPage />} />
+                <Route path="settings" element={<ProjectMembersPage />} />
               </Route>
 
               {/* Catch-all Fallback */}

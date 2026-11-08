@@ -1,9 +1,10 @@
 import { useLocation } from "react-router-dom";
-import { Search, Sparkles, Sun, Moon, LogOut, ChevronRight, Menu } from "lucide-react";
+import { Search, Sparkles, Sun, Moon, LogOut, Menu } from "lucide-react";
 import { useUiStore } from "@/stores/useUiStore";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
+import { ProjectSwitcher } from "@/features/projects/components/ProjectSwitcher";
 
 interface TopbarProps {
   onMobileMenuToggle?: () => void;
@@ -21,8 +22,9 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
         return "Dashboard";
       case "/my-issues":
         return "My Issues";
-      case "/projects":
-        return "Projects";
+      case "/settings/members":
+      case "/projects/members":
+        return "Team Members";
       case "/settings":
         return "Settings";
       default:
@@ -35,8 +37,8 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
       className="flex h-14 w-full items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md"
       data-testid="app-topbar"
     >
-      {/* Left: Mobile hamburger & Breadcrumb */}
-      <div className="flex items-center gap-2">
+      {/* Left: Mobile hamburger & Project Switcher & Breadcrumb */}
+      <div className="flex items-center gap-2.5">
         {onMobileMenuToggle && (
           <Button
             variant="ghost"
@@ -49,13 +51,15 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
           </Button>
         )}
 
-        <nav className="flex items-center gap-1.5 text-xs text-text-muted">
-          <span className="cursor-pointer font-medium text-text-muted hover:text-text">
-            BugSense
-          </span>
-          <ChevronRight className="h-3 w-3" />
-          <span className="font-semibold text-text">{getPageTitle(location.pathname)}</span>
-        </nav>
+        <div className="w-48 sm:w-56">
+          <ProjectSwitcher />
+        </div>
+
+        <div className="hidden h-4 w-px bg-border sm:block" />
+
+        <span className="text-text-primary hidden text-xs font-semibold sm:inline">
+          {getPageTitle(location.pathname)}
+        </span>
       </div>
 
       {/* Right Controls */}

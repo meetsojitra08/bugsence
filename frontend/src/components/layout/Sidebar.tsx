@@ -2,12 +2,12 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   CheckSquare,
-  FolderGit2,
   Settings,
   Bug,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/useUiStore";
@@ -16,7 +16,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Issues", href: "/my-issues", icon: CheckSquare },
-  { name: "Projects", href: "/projects", icon: FolderGit2 },
+  { name: "Team Members", href: "/settings/members", icon: Users },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
