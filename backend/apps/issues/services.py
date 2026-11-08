@@ -72,6 +72,7 @@ def create_issue(
     assignee: User | None = None,
     labels: list[Label] | None = None,
     due_date: date | None = None,
+    position: float | None = None,
 ) -> Issue:
     """
     Creates a new issue in the project inside an atomic transaction.
@@ -81,14 +82,15 @@ def create_issue(
     with transaction.atomic():
         number = allocate_next_issue_number(project)
 
-        # Board position: place at end of status column
-        last_in_column = (
-            Issue.objects.filter(project=project, status=status)
-            .order_by("-position")
-            .values_list("position", flat=True)
-            .first()
-        )
-        position = (last_in_column + 65536.0) if last_in_column is not None else 65536.0
+        # Board position: place at end of status column if not explicitly provided
+        if position is None:
+            last_in_column = (
+                Issue.objects.filter(project=project, status=status)
+                .order_by("-position")
+                .values_list("position", flat=True)
+                .first()
+            )
+            position = (last_in_column + 65536.0) if last_in_column is not None else 65536.0
 
         issue = Issue.objects.create(
             project=project,
