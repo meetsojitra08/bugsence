@@ -62,4 +62,3 @@ class MembershipFactory(factory.django.DjangoModelFactory):
     project = factory.SubFactory(ProjectFactory)
     user = factory.SubFactory(UserFactory)
     role = RoleChoices.MEMBER
-

@@ -249,9 +249,7 @@ class TestProjectMembers:
     def test_update_member_role_success(self, auth_client, user):
         project = ProjectFactory(owner=user, key="ROLE1")
         member_user = UserFactory()
-        membership = MembershipFactory(
-            project=project, user=member_user, role=RoleChoices.MEMBER
-        )
+        membership = MembershipFactory(project=project, user=member_user, role=RoleChoices.MEMBER)
 
         url = reverse(
             "project-members-detail",
@@ -296,9 +294,7 @@ class TestProjectMembers:
     def test_remove_member_self_leave(self, auth_client, user):
         owner = UserFactory()
         project = ProjectFactory(owner=owner, key="LEAVE")
-        my_membership = MembershipFactory(
-            project=project, user=user, role=RoleChoices.MEMBER
-        )
+        my_membership = MembershipFactory(project=project, user=user, role=RoleChoices.MEMBER)
 
         url = reverse(
             "project-members-detail",

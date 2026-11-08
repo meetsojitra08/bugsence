@@ -38,4 +38,3 @@ def auth_client(api_client, user):
     """APIClient pre-authenticated with the default user."""
     api_client.force_authenticate(user=user)
     return api_client
-

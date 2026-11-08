@@ -313,4 +313,3 @@ class DirectMemberDetailView(viewsets.GenericViewSet):
             ) from exc
 
         return Response(status=status.HTTP_204_NO_CONTENT)
-
