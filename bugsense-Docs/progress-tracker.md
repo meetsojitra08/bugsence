@@ -95,7 +95,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 25 | Phase 4 / tests | `test(board): cover issue move positioning, rebalancing threshold and board grouping` | 363df14 | [x] |
 | 26 | Phase 4 / frontend API | `feat(board): add board API client with optimistic column reordering and rollback` | eaa19b6 | [x] |
 | 27 | Phase 4 / UI | `feat(ui): build interactive kanban board with drag and drop, quick add and column filters` | 3c4c40d | [x] |
-| 28 | Phase 4 / closing | `docs(tracker): complete phase 4 kanban board` | 53337e5 | [x] |
+| 28 | Phase 4 / closing | `docs(tracker): complete phase 4 kanban board` | 68ec5d2 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
