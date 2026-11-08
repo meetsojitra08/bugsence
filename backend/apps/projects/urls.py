@@ -1,12 +1,33 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
+from apps.projects.analytics import (
+    ProjectAnalyticsOverviewView,
+    ProjectAnalyticsTrendsView,
+    ProjectAnalyticsWorkloadView,
+)
 from apps.projects.views import DirectMemberDetailView, ProjectMemberViewSet, ProjectViewSet
 
 router = SimpleRouter()
 router.register(r"projects", ProjectViewSet, basename="project")
 
 urlpatterns = [
+    # Project Analytics endpoints
+    path(
+        "projects/<uuid:project_id>/analytics/overview/",
+        ProjectAnalyticsOverviewView.as_view(),
+        name="project-analytics-overview",
+    ),
+    path(
+        "projects/<uuid:project_id>/analytics/trends/",
+        ProjectAnalyticsTrendsView.as_view(),
+        name="project-analytics-trends",
+    ),
+    path(
+        "projects/<uuid:project_id>/analytics/workload/",
+        ProjectAnalyticsWorkloadView.as_view(),
+        name="project-analytics-workload",
+    ),
     # Project Member management endpoints
     path(
         "projects/<uuid:project_id>/members/",
