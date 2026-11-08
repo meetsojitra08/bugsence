@@ -27,8 +27,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 1 auth and foundation`
 
 ## Phase 2: Projects and Members (spec 02)
 _Phase-closing commit:_ `docs(tracker): complete phase 2 projects and members`
-- [ ] Project + Membership models, role permissions
-- [ ] Project CRUD UI, member invite/manage UI
+- [x] Project + Membership models, role permissions
+- [x] Project CRUD UI, member invite/manage UI
 
 ## Phase 3: Issues Core (spec 03)
 _Phase-closing commit:_ `docs(tracker): complete phase 3 issues core`
@@ -79,6 +79,12 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | 51532d8 | [x] |
 | 10 | Phase 1 / app shell | `feat(ui): build app shell layout with sidebar, topbar and command palette` | db9c185 | [x] |
 | 11 | Phase 1 / closing | `docs(tracker): complete phase 1 auth and foundation` | 4f3f9c1 | [x] |
+| 12 | Phase 2 / models | `feat(projects): add Project and Membership models with role enum` | f778e9b | [x] |
+| 13 | Phase 2 / API | `feat(projects): implement scoped project and member management endpoints` | e641fd4 | [x] |
+| 14 | Phase 2 / tests | `test(projects): cover project isolation, role matrix and last-owner protection` | 91817b6 | [x] |
+| 15 | Phase 2 / frontend API | `feat(projects): add projects API client and active project context` | f89e108 | [x] |
+| 16 | Phase 2 / UI | `feat(ui): build project switcher, creation modal and member management table` | 235aff5 | [x] |
+| 17 | Phase 2 / closing | `docs(tracker): complete phase 2 projects and members` | 9135dac | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -98,6 +104,12 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Built premium login and register pages with split layout, password strength meter, show/hide toggle, and 1-click recruiter demo mode | None | Phase 1: App shell foundation |
 | 2026-11-08 | Built responsive App Shell with collapsible sidebar, topbar breadcrumbs/quick actions, cmdk command palette (⌘K), and dashboard shell | None | Phase 1 closing & verification |
 | 2026-11-08 | Verified full Phase 1 gates across backend and frontend, completed Phase 1 documentation | None | Phase 2: Projects and Members (spec 02) |
+| 2026-11-08 | Added Project and Membership models, RoleChoices enum, key immutability, unique constraints, and initial migrations | None | Phase 2: Project & member API endpoints |
+| 2026-11-09 | Implemented scoped project CRUD, member invitations, role management, sole-owner protection, and OpenAPI documentation | None | Phase 2: Project test suite |
+| 2026-11-09 | Added 24 pytest tests covering project isolation, role matrix permissions, key immutability, and sole-owner protection | None | Phase 2: Frontend projects API & state |
+| 2026-11-09 | Built frontend projects API client, TanStack Query hooks, Zustand active project store, and unit tests | None | Phase 2: Project switcher and members UI |
+| 2026-11-09 | Built ProjectSwitcher, CreateProjectModal with live key generator, and ProjectMembersPage with invite/roles/remove | None | Phase 2 closing & verification |
+| 2026-11-09 | Completed and verified Phase 2 across backend and frontend (41 pytest tests, 17 vitest tests, build gates clean) | None | Phase 3: Issues Core (spec 03) |
 
 ## Known Issues / Tech Debt
 - (none yet)
