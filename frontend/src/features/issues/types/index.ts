@@ -116,3 +116,14 @@ export interface PaginatedIssues {
   previous: string | null;
   results: IssueListItem[];
 }
+
+export interface MoveIssuePayload {
+  status: IssueStatus;
+  before_id?: string | null;
+  after_id?: string | null;
+}
+
+export interface BoardData {
+  columns: Record<IssueStatus, IssueListItem[]>;
+  counts: Record<IssueStatus, number>;
+}

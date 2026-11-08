@@ -2,12 +2,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { issuesApi } from "../api/issuesApi";
-import type { CreateIssuePayload, IssueFilters, UpdateIssuePayload } from "../types";
+import type {
+  BoardData,
+  CreateIssuePayload,
+  IssueFilters,
+  IssueListItem,
+  IssueStatus,
+  MoveIssuePayload,
+  UpdateIssuePayload,
+} from "../types";
 
 export const ISSUE_KEYS = {
   all: ["issues"] as const,
   list: (projectId: string | null, filters?: IssueFilters) =>
     ["issues", "list", projectId, filters] as const,
+  board: (projectId: string | null, filters?: IssueFilters) =>
+    ["issues", "board", projectId, filters] as const,
   detail: (issueId: string | null) => ["issues", "detail", issueId] as const,
   byNumber: (projectKeyOrId: string | null, number: number | null) =>
     ["issues", "byNumber", projectKeyOrId, number] as const,
@@ -149,6 +159,109 @@ export function useIssueActivities(issueId: string | null) {
     queryFn: () =>
       issueId ? issuesApi.listActivities(issueId) : Promise.reject(new Error("No issue ID")),
     enabled: Boolean(issueId),
+  });
+}
+
+export function useBoard(projectId: string | null, filters?: IssueFilters) {
+  return useQuery({
+    queryKey: ISSUE_KEYS.board(projectId, filters),
+    queryFn: () =>
+      projectId
+        ? issuesApi.getBoard(projectId, filters)
+        : Promise.reject(new Error("No active project ID")),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useMoveIssue(projectId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ issueId, payload }: { issueId: string; payload: MoveIssuePayload }) =>
+      issuesApi.move(issueId, payload),
+
+    onMutate: async ({ issueId, payload }) => {
+      if (!projectId) return;
+
+      await queryClient.cancelQueries({ queryKey: ["issues", "board", projectId] });
+
+      const previousBoard = queryClient.getQueryData<BoardData>(
+        ISSUE_KEYS.board(projectId, undefined)
+      );
+
+      queryClient.setQueriesData<BoardData>({ queryKey: ["issues", "board", projectId] }, (old) => {
+        if (!old) return old;
+
+        let targetItem: IssueListItem | null = null;
+        const newColumns: Record<IssueStatus, IssueListItem[]> = {
+          backlog: [...old.columns.backlog],
+          todo: [...old.columns.todo],
+          in_progress: [...old.columns.in_progress],
+          in_review: [...old.columns.in_review],
+          done: [...old.columns.done],
+          closed: [...old.columns.closed],
+        };
+
+        for (const statusKey of Object.keys(newColumns) as IssueStatus[]) {
+          const idx = newColumns[statusKey].findIndex((i) => i.id === issueId);
+          if (idx !== -1) {
+            targetItem = {
+              ...newColumns[statusKey][idx],
+              status: payload.status,
+            };
+            newColumns[statusKey].splice(idx, 1);
+            break;
+          }
+        }
+
+        if (!targetItem) return old;
+
+        const targetCol = newColumns[payload.status];
+        if (payload.before_id && payload.after_id) {
+          const afterIdx = targetCol.findIndex((i) => i.id === payload.after_id);
+          if (afterIdx !== -1) {
+            targetCol.splice(afterIdx, 0, targetItem);
+          } else {
+            targetCol.push(targetItem);
+          }
+        } else if (payload.after_id) {
+          const afterIdx = targetCol.findIndex((i) => i.id === payload.after_id);
+          if (afterIdx !== -1) {
+            targetCol.splice(afterIdx, 0, targetItem);
+          } else {
+            targetCol.unshift(targetItem);
+          }
+        } else {
+          targetCol.push(targetItem);
+        }
+
+        const newCounts: Record<IssueStatus, number> = {
+          backlog: newColumns.backlog.length,
+          todo: newColumns.todo.length,
+          in_progress: newColumns.in_progress.length,
+          in_review: newColumns.in_review.length,
+          done: newColumns.done.length,
+          closed: newColumns.closed.length,
+        };
+
+        return {
+          columns: newColumns,
+          counts: newCounts,
+        };
+      });
+
+      return { previousBoard };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previousBoard && projectId) {
+        queryClient.setQueryData(ISSUE_KEYS.board(projectId, undefined), context.previousBoard);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.all });
+    },
   });
 }
 
