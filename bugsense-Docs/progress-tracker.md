@@ -81,7 +81,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 11 | Phase 1 / closing | `docs(tracker): complete phase 1 auth and foundation` | 4f3f9c1 | [x] |
 | 12 | Phase 2 / models | `feat(projects): add Project and Membership models with role enum` | f778e9b | [x] |
 | 13 | Phase 2 / API | `feat(projects): implement scoped project and member management endpoints` | e641fd4 | [x] |
-| 14 | Phase 2 / tests | `test(projects): cover project isolation, role matrix and last-owner protection` | 5d54b82 | [x] |
+| 14 | Phase 2 / tests | `test(projects): cover project isolation, role matrix and last-owner protection` | 91817b6 | [x] |
+| 15 | Phase 2 / frontend API | `feat(projects): add projects API client and active project context` | 1d9958e | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -104,6 +105,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Added Project and Membership models, RoleChoices enum, key immutability, unique constraints, and initial migrations | None | Phase 2: Project & member API endpoints |
 | 2026-11-09 | Implemented scoped project CRUD, member invitations, role management, sole-owner protection, and OpenAPI documentation | None | Phase 2: Project test suite |
 | 2026-11-09 | Added 24 pytest tests covering project isolation, role matrix permissions, key immutability, and sole-owner protection | None | Phase 2: Frontend projects API & state |
+| 2026-11-09 | Built frontend projects API client, TanStack Query hooks, Zustand active project store, and unit tests | None | Phase 2: Project switcher and members UI |
 
 ## Known Issues / Tech Debt
 - (none yet)
