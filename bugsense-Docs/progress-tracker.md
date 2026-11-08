@@ -21,9 +21,9 @@ _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
 
 ## Phase 1: Auth and Foundation (spec 01)
 _Phase-closing commit:_ `docs(tracker): complete phase 1 auth and foundation`
-- [ ] Custom User model, register/login/refresh/logout, `users/me`
-- [ ] Frontend auth pages, protected routes, token refresh interceptor
-- [ ] App shell: sidebar, topbar, theme toggle, command palette skeleton
+- [x] Custom User model, register/login/refresh/logout, `users/me`
+- [x] Frontend auth pages, protected routes, token refresh interceptor
+- [x] App shell: sidebar, topbar, theme toggle, command palette skeleton
 
 ## Phase 2: Projects and Members (spec 02)
 _Phase-closing commit:_ `docs(tracker): complete phase 2 projects and members`
@@ -77,7 +77,8 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 7 | Phase 1 / auth tests | `test(auth): cover registration, token rotation, logout and profile endpoints` | 1e53063 | [x] |
 | 8 | Phase 1 / frontend auth API | `feat(auth): implement auth state, interceptors and protected routes` | 68d2e30 | [x] |
 | 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | 51532d8 | [x] |
-| 10 | Phase 1 / app shell | `feat(ui): build app shell layout with sidebar, topbar and command palette` | | [ ] |
+| 10 | Phase 1 / app shell | `feat(ui): build app shell layout with sidebar, topbar and command palette` | db9c185 | [x] |
+| 11 | Phase 1 / closing | `docs(tracker): complete phase 1 auth and foundation` | 4f3f9c1 | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
@@ -96,6 +97,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Implemented frontend auth API layer, token management with silent 401 refresh queue, AuthContext/useAuth hook, and ProtectedRoute guard | None | Phase 1: Auth pages UI |
 | 2026-11-08 | Built premium login and register pages with split layout, password strength meter, show/hide toggle, and 1-click recruiter demo mode | None | Phase 1: App shell foundation |
 | 2026-11-08 | Built responsive App Shell with collapsible sidebar, topbar breadcrumbs/quick actions, cmdk command palette (⌘K), and dashboard shell | None | Phase 1 closing & verification |
+| 2026-11-08 | Verified full Phase 1 gates across backend and frontend, completed Phase 1 documentation | None | Phase 2: Projects and Members (spec 02) |
 
 ## Known Issues / Tech Debt
 - (none yet)
