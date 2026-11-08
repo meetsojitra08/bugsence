@@ -111,7 +111,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 41 | Phase 7 / tests | `test(analytics): cover analytics aggregations, notification triggers and search scoping` | 973aae9 | [x] |
 | 42 | Phase 7 / dashboard UI | `feat(dashboard): add analytics API client, charts and interactive project dashboard` | 3d3e747 | [x] |
 | 43 | Phase 7 / notifications & search UI | `feat(ui): build notification bell popover and wire global search in command palette` | 5a98788 | [x] |
-| 44 | Phase 7 / closing | `docs(tracker): complete phase 7 dashboard and notifications` | pending | [x] |
+| 44 | Phase 7 / closing | `docs(tracker): complete phase 7 dashboard and notifications` | 20a767c | [x] |
 
 ## Decision Log
 | Date | Decision | Reason |
