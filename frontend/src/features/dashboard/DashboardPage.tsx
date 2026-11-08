@@ -18,6 +18,7 @@ import { StatusDistributionChart } from "./components/StatusDistributionChart";
 import { SeverityPriorityBreakdown } from "./components/SeverityPriorityBreakdown";
 import { WorkloadChart } from "./components/WorkloadChart";
 import { AIInsightCard } from "./components/AIInsightCard";
+import { OnboardingChecklist } from "./components/OnboardingChecklist";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -141,6 +142,12 @@ export function DashboardPage() {
         <>
           {/* AI Insight Card */}
           <AIInsightCard overview={overview} />
+
+          {/* Onboarding Setup Guide */}
+          <OnboardingChecklist
+            project={activeProject}
+            totalIssues={overview.total_issues}
+          />
 
           {/* KPI Stat Cards */}
           <DashboardKpis overview={overview} />
