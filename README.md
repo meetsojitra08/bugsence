@@ -1,104 +1,196 @@
 # BugSense AI
 
-> AI-powered bug tracking SaaS. Linear-level polish, Gemini-powered intelligence.
+[![CI Workflow](https://github.com/meetsojitra08/bugsence/actions/workflows/ci.yml/badge.svg)](https://github.com/meetsojitra08/bugsence/actions/workflows/ci.yml)
+[![Django 5](https://img.shields.io/badge/Django-5.1-0C4B33?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![React 18](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Google Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-8E75C2?logo=google&logoColor=white)](https://ai.google.dev/)
+[![pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-336791?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **AI-Native issue tracking and engineering workflow platform. Linear-level craft, Gemini-powered intelligence.**
 
 ---
 
-## 1. Overview & Vision
-BugSense AI is a high-performance, developer-first bug tracking application built to eliminate the friction in issue management. Inspired by the speed and aesthetic craft of Linear, it leverages Google Gemini models to automate issue classification, priority and severity suggestion, duplicate detection with vector embeddings, and plain-English issue summarization.
+## 1. Executive Summary & Impact
+
+BugSense is a production-grade, developer-first bug tracking SaaS built to eliminate friction from filing, prioritizing, and resolving engineering issues. It pairs the sub-50ms responsiveness of **Linear** with the structured intelligence of **Google Gemini 2.5 Flash** and native vector similarity search in **PostgreSQL `pgvector`**.
+
+### Key Engineering Highlights
+- **AI Triage & Auto-Fill**: Parses raw error dumps and stack traces into structured Pydantic schemas, extracting concise titles, priorities, severities, and labels in under 2 seconds.
+- **pgvector Semantic Duplicate Detection**: Real-time cosine similarity search across dense 768-dimensional embeddings stops redundant issues before they are filed.
+- **60 FPS Drag-and-Drop Kanban**: Interactive board built with `@dnd-kit` featuring optimistic state transitions, float midpoint positioning, and automatic column rebalancing under $10^{-6}$ epsilon.
+- **Executive Velocity Analytics**: Sub-second aggregated project overview, 7/30/90-day created vs. resolved burnup curves, and engineer workload distribution.
+- **Global Command Menu (⌘K)**: Sub-50ms live debounced search across issues, projects, and team members with full keyboard navigation.
+- **Zero-Friction Recruiter Demo**: 1-click interactive demo mode pre-seeded with 40+ realistic issues, activity streams, and mock AI responses.
 
 ---
 
-## 2. Core Features
-- **Instant Issue Capture & Keyboard-First UX**: Global command palette (`Cmd/Ctrl+K`), quick shortcuts, optimistic UI updates.
-- **AI Triage Assistant**: Convert messy error logs or bug descriptions into structured, prioritized, and labeled issues.
-- **Semantic Duplicate Detection**: Real-time duplicate warnings using `pgvector` embeddings before filing redundant tickets.
-- **Interactive Kanban Board & List Views**: Fluid drag-and-drop board powered by `@dnd-kit` and Framer Motion with real-time status transitions.
-- **Comprehensive Project Analytics**: Actionable engineering metrics, resolution velocity, and workload distribution.
+## 2. Architecture & Pipeline
 
----
+### System Architecture
 
-## 3. Architecture & Tech Stack
+```mermaid
+flowchart TD
+    Client["React 18 SPA (Vite + TypeScript + Tailwind)"]
+    Router["Client Router (Protected Routes + Cmd+K + Dnd-Kit)"]
+    API["Django 5 REST Framework (Python 3.12)"]
+    Auth["SimpleJWT (Token Rotation + Blacklist)"]
+    Postgres[("PostgreSQL 16 + pgvector")]
+    Gemini["Google Gemini 2.5 Flash API"]
+    Cache[("LocMem / Redis Cache (60s Analytics TTL)")]
 
-```
-React 18 SPA (Vite + TS + Tailwind + shadcn/ui)
-       │
-       │ HTTPS + Bearer JWT
-       ▼
-Django 5 REST API (Python 3.12)
-       │
-       ├──► PostgreSQL 16 (+ pgvector)
-       └──► Google Gemini API (google-genai SDK)
-```
-
-| Layer | Technology |
-|---|---|
-| **Backend** | Python 3.12, Django 5, Django REST Framework, SimpleJWT, drf-spectacular |
-| **Frontend** | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, Framer Motion |
-| **Database** | PostgreSQL 16 with `pgvector` extension |
-| **AI Intelligence** | Google Gemini API (`google-genai` SDK) |
-| **Tooling & CI** | Ruff, ESLint, Prettier, pytest, GitHub Actions |
-
----
-
-## 4. Repository Structure
-
-```text
-BugSence/
-├── bugsense-Docs/       # Architecture context, feature specifications & tracker
-├── backend/             # Django 5 REST Framework service
-│   ├── apps/            # Modular domain apps (users, projects, issues, ai, etc.)
-│   ├── common/          # Shared permissions, pagination, and exceptions
-│   ├── config/          # Split settings (base, dev, prod), urls, wsgi
-│   └── tests/           # App test suites with pytest & factory_boy
-├── frontend/            # React 18 + Vite + TypeScript application
-│   └── src/
-│       ├── app/         # Routes and providers
-│       ├── components/  # Shared and shadcn/ui primitives
-│       ├── features/    # Domain-specific components, hooks, and types
-│       └── lib/         # API clients and utilities
-├── .github/             # GitHub Actions CI workflows
-├── docker-compose.yml   # Local PostgreSQL 16 + pgvector container
-└── README.md
+    Client --> Router
+    Router -->|"HTTPS / Bearer JWT"| API
+    API --> Auth
+    API -->|"ORM & Vector HNSW Index"| Postgres
+    API -->|"Structured JSON & Embeddings"| Gemini
+    API -->|"Aggregations & Trends"| Cache
 ```
 
+### AI Triage & Semantic Duplicate Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dev as Engineer
+    participant UI as BugSense UI
+    participant Backend as DRF AI Service
+    participant Gemini as Google Gemini 2.5 Flash
+    participant DB as PostgreSQL (pgvector)
+
+    Dev->>UI: Paste raw stack trace & press ⌘J
+    UI->>Backend: POST /api/v1/ai/triage/
+    Backend->>Gemini: Structured Prompt with Pydantic Schema
+    Gemini-->>Backend: JSON (Title, Severity, Priority, Labels)
+    Backend-->>UI: Form auto-filled in < 2 seconds
+    UI->>Backend: POST /api/v1/ai/duplicates/
+    Backend->>Gemini: Generate 768-dim vector embedding
+    Gemini-->>Backend: Vector float array
+    Backend->>DB: Cosine distance query (<=> HNSW index)
+    DB-->>Backend: Matched issues > 80% similarity
+    Backend-->>UI: Display real-time duplicate warning banner
+```
+
 ---
 
-## 5. Getting Started (Development Setup)
+## 3. Tech Stack
+
+| Domain | Technology | Purpose |
+|---|---|---|
+| **Frontend** | React 18, Vite 6, TypeScript 5 | Lightning-fast SPA with strict type-safety |
+| **Styling** | Tailwind CSS 3.4, CSS design tokens | Dark/Light theme switching & WCAG AA contrast |
+| **Interactive Board** | `@dnd-kit/core`, `@dnd-kit/sortable` | 60 FPS drag-and-drop with optimistic updates |
+| **State & Cache** | TanStack Query v5, Zustand | Server-state caching and active project store |
+| **Data Viz** | Recharts 2.15 | Smooth area trends and status breakdown charts |
+| **Backend** | Python 3.12, Django 5.1, DRF 3.15 | Clean modular domain architecture |
+| **Database** | PostgreSQL 16 + `pgvector` 0.3 | Relational integrity + native vector similarity |
+| **AI Engine** | Google GenAI SDK (`google-genai`) | Gemini 2.5 Flash structured triage & summaries |
+| **Static & Deploy** | WhiteNoise, Gunicorn, Procfile | Production-ready PaaS deployment configuration |
+| **CI / Quality** | Ruff, ESLint, Prettier, pytest, Vitest | Zero-tolerance lint and test quality gates |
+
+---
+
+## 4. Getting Started (Local Development)
 
 ### Prerequisites
-- Python 3.12+ (or `uv`)
-- Node.js 20+ & npm
-- Docker & Docker Compose (for PostgreSQL + pgvector)
+- **Python 3.12+**
+- **Node.js 20+ & npm**
+- **Docker & Docker Compose** (for PostgreSQL + pgvector)
 
-### Backend Setup
-1. Navigate to `backend/`:
-   ```bash
-   cd backend
-   uv venv
-   source .venv/bin/activate  # Or on Windows: .venv\Scripts\activate
-   uv pip install -r requirements.txt
-   ```
-2. Configure `.env` from template:
-   ```bash
-   cp .env.example .env
-   ```
-3. Run migrations and start dev server:
-   ```bash
-   python manage.py migrate
-   python manage.py runserver
-   ```
+### 1. Clone & Start Database
+```bash
+git clone https://github.com/meetsojitra08/bugsence.git
+cd bugsence
 
-### Frontend Setup
-1. Navigate to `frontend/`:
-   ```bash
-   cd frontend
-   npm install
-   cp .env.example .env
-   npm run dev
-   ```
+# Launch PostgreSQL with pgvector extension enabled
+docker compose up -d
+```
+
+### 2. Backend Setup
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate       # On Windows: .venv\Scripts\activate
+
+# Install production and development dependencies
+pip install -r requirements.txt -r requirements-dev.txt
+
+# Run migrations and seed demo data
+python manage.py migrate
+python manage.py seed_demo
+
+# Start Django development server
+python manage.py runserver 8000
+```
+
+> **Demo Credentials:**
+> - Email: `demo@bugsense.dev`
+> - Password: `DemoPassword123!`
+
+### 3. Frontend Setup
+```bash
+cd ../frontend
+
+# Install dependencies
+npm install
+
+# Start Vite development server
+npm run dev
+```
+
+Visit [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 6. License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 5. Testing & Verification
+
+BugSense adheres to strict automated testing and zero-skipped gate rules.
+
+```bash
+# Run Backend Lint & Formatting
+cd backend
+python -m ruff check backend
+python -m ruff format --check backend
+
+# Run Backend Pytest Suite (130 tests)
+python -m pytest -c pytest.ini
+
+# Run Frontend Lint, Build & Vitest (87 tests)
+cd ../frontend
+npm run lint
+npm run build
+npm test -- --run
+```
+
+---
+
+## 6. API Documentation & Postman
+
+- **Interactive Swagger UI**: [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/)
+- **Redoc Documentation**: [http://localhost:8000/api/redoc/](http://localhost:8000/api/redoc/)
+- **Postman Collection**: Exported at [`docs/postman/BugSense.postman_collection.json`](docs/postman/BugSense.postman_collection.json) covering 25+ endpoints with automated JWT token chaining.
+
+---
+
+## 7. Keyboard Shortcuts
+
+| Shortcut | Action | Scope |
+|---|---|---|
+| `C` | Open Quick Create Issue Modal | Global |
+| `⌘K` / `Ctrl+K` | Open Command Palette & Global Search | Global |
+| `⌘J` / `Ctrl+J` | Run AI Triage Assistant | Inside Create Issue Form |
+| `?` | Toggle Keyboard Shortcuts Cheat Sheet | Global |
+| `G D` | Navigate to Dashboard | Global Navigation |
+| `G I` | Navigate to Issues Table | Global Navigation |
+| `G B` | Navigate to Kanban Board | Global Navigation |
+| `ESC` | Dismiss any open modal or side drawer | Global |
+
+---
+
+## 8. License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.

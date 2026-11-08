@@ -1,0 +1,402 @@
+{
+  "info": {
+    "_postman_id": "7b8f9a2e-4b3c-4a1d-9c8e-3a2b1c0d4e5f",
+    "name": "BugSense AI API",
+    "description": "Production API collection for BugSense — AI-Native Issue Tracking with Google Gemini 2.5 Flash and PostgreSQL pgvector.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "issue_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/",
+              "host": ["{{base_url}}"],
+              "path": ["health", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"engineer@bugsense.dev\",\n  \"password\": \"SecurePass123!\",\n  \"fullName\": \"Senior Engineer\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/register/", "host": ["{{base_url}}"], "path": ["auth", "register", ""] }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access) pm.collectionVariables.set('access_token', json.access);",
+                  "if (json.refresh) pm.collectionVariables.set('refresh_token', json.refresh);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@bugsense.dev\",\n  \"password\": \"DemoPassword123!\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] }
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access) pm.collectionVariables.set('access_token', json.access);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/refresh/", "host": ["{{base_url}}"], "path": ["auth", "refresh", ""] }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/users/me/", "host": ["{{base_url}}"], "path": ["users", "me", ""] }
+          }
+        },
+        {
+          "name": "Logout (Blacklist Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/logout/", "host": ["{{base_url}}"], "path": ["auth", "logout", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "List Projects",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/", "host": ["{{base_url}}"], "path": ["projects", ""] }
+          }
+        },
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cloud Infrastructure\",\n  \"key\": \"INFRA\",\n  \"description\": \"Core Kubernetes and Terraform platform services\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/projects/", "host": ["{{base_url}}"], "path": ["projects", ""] }
+          }
+        },
+        {
+          "name": "Get Project Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", ""] }
+          }
+        },
+        {
+          "name": "List Project Members",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/members/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "members", ""] }
+          }
+        },
+        {
+          "name": "Invite Project Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sarah.chen@bugsense.dev\",\n  \"role\": \"member\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/members/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "members", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Issues & Board",
+      "item": [
+        {
+          "name": "List Issues (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/issues/?status=in_progress&priority=urgent",
+              "host": ["{{base_url}}"],
+              "path": ["issues", ""],
+              "query": [
+                { "key": "status", "value": "in_progress" },
+                { "key": "priority", "value": "urgent" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Issue",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project\": \"{{project_id}}\",\n  \"title\": \"Fix race condition in token refresh\",\n  \"description\": \"Simultaneous requests cause 401 unhandled logout\",\n  \"status\": \"todo\",\n  \"priority\": \"urgent\",\n  \"severity\": \"critical\",\n  \"type\": \"bug\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/issues/", "host": ["{{base_url}}"], "path": ["issues", ""] }
+          }
+        },
+        {
+          "name": "Move Issue on Kanban Board",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"target_prev_id\": null,\n  \"target_next_id\": null\n}"
+            },
+            "url": { "raw": "{{base_url}}/issues/{{issue_id}}/move/", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "move", ""] }
+          }
+        },
+        {
+          "name": "Get Kanban Board by Status Columns",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/BUG/board/", "host": ["{{base_url}}"], "path": ["projects", "BUG", "board", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments & Timeline",
+      "item": [
+        {
+          "name": "Get Issue Unified Timeline",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/issues/{{issue_id}}/timeline/", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "timeline", ""] }
+          }
+        },
+        {
+          "name": "Create Comment with Mentions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Investigated the logs with @Sarah Chen. The fix is ready for review.\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/issues/{{issue_id}}/comments/", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "comments", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Intelligence",
+      "item": [
+        {
+          "name": "AI Triage Raw Bug Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"{{project_id}}\",\n  \"raw_text\": \"Fatal: DB connection pool exhaustion during peak triage queries. PostgreSQL returns 500.\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/ai/triage/", "host": ["{{base_url}}"], "path": ["ai", "triage", ""] }
+          }
+        },
+        {
+          "name": "AI Semantic Duplicate Detection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": \"{{project_id}}\",\n  \"title\": \"Postgres connection exhaustion during triage\",\n  \"description\": \"Connection pool fills up on heavy load\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/ai/duplicates/", "host": ["{{base_url}}"], "path": ["ai", "duplicates", ""] }
+          }
+        },
+        {
+          "name": "AI Summarize Issue & Comments",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"regenerate\": false\n}" },
+            "url": { "raw": "{{base_url}}/issues/{{issue_id}}/ai/summarize/", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "ai", "summarize", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Project Analytics Overview",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/analytics/overview/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "analytics", "overview", ""] }
+          }
+        },
+        {
+          "name": "Project Analytics Trends",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/analytics/trends/?days=30", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "analytics", "trends", ""], "query": [{ "key": "days", "value": "30" }] }
+          }
+        },
+        {
+          "name": "Project Team Workload",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/projects/{{project_id}}/analytics/workload/", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "analytics", "workload", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications & Search",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/notifications/?unread=true", "host": ["{{base_url}}"], "path": ["notifications", ""], "query": [{ "key": "unread", "value": "true" }] }
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/notifications/unread-count/", "host": ["{{base_url}}"], "path": ["notifications", "unread-count", ""] }
+          }
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/notifications/mark-all-read/", "host": ["{{base_url}}"], "path": ["notifications", "mark-all-read", ""] }
+          }
+        },
+        {
+          "name": "Global Search (Command Palette)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/search/?q=BUG", "host": ["{{base_url}}"], "path": ["search", ""], "query": [{ "key": "q", "value": "BUG" }] }
+          }
+        }
+      ]
+    }
+  ]
+}
