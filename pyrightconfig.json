@@ -1,0 +1,17 @@
+{
+  "include": [
+    "backend"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "backend/.venv",
+    "frontend"
+  ],
+  "venvPath": "backend",
+  "venv": ".venv",
+  "extraPaths": [
+    "backend"
+  ],
+  "typeCheckingMode": "off",
+  "reportInvalidTypeForm": "none"
+}
