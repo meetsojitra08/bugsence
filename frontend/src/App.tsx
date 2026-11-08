@@ -36,6 +36,7 @@ export function App() {
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="p/:key/dashboard" element={<DashboardPage />} />
                 <Route path="issues" element={<IssuesPage />} />
                 <Route path="my-issues" element={<IssuesPage />} />
                 <Route path="board" element={<BoardPage />} />
