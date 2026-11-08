@@ -11,6 +11,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.ai.views import AISummarizeView
+
 
 class HealthCheckView(APIView):
     """Health check endpoint for deployment probes and uptime monitors."""
@@ -37,6 +39,13 @@ urlpatterns = [
     path("api/v1/", include("apps.projects.urls")),
     # Issues & Labels
     path("api/v1/", include("apps.issues.urls")),
+    # AI Features (Triage, Duplicates, Summarize)
+    path("api/v1/ai/", include("apps.ai.urls")),
+    path(
+        "api/v1/issues/<uuid:issue_id>/ai/summarize/",
+        AISummarizeView.as_view(),
+        name="issue_ai_summarize",
+    ),
     # OpenAPI Schema & Interactive Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
