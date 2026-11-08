@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from apps.issues.models import (
     Activity,
+    Comment,
     Issue,
     IssuePriority,
     IssueSeverity,
@@ -189,3 +190,54 @@ class ProjectBoardSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         help_text="Total active issue count per column",
     )
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = IssueUserSummarySerializer(read_only=True)
+    is_edited = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = (
+            "id",
+            "author",
+            "body",
+            "created_at",
+            "edited_at",
+            "is_edited",
+        )
+        read_only_fields = ("id", "author", "created_at", "edited_at", "is_edited")
+
+
+class CommentCreateSerializer(serializers.Serializer):
+    body = serializers.CharField(required=True, allow_blank=False, min_length=1)
+
+    def validate_body(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Comment body cannot be blank.")
+        return cleaned
+
+
+class CommentUpdateSerializer(serializers.Serializer):
+    body = serializers.CharField(required=True, allow_blank=False, min_length=1)
+
+    def validate_body(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Comment body cannot be blank.")
+        return cleaned
+
+
+class TimelineItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    type = serializers.ChoiceField(choices=["activity", "comment"])
+    actor = IssueUserSummarySerializer()
+    verb = serializers.CharField()
+    field = serializers.CharField(allow_blank=True, default="")
+    old_value = serializers.CharField(allow_blank=True, default="")
+    new_value = serializers.CharField(allow_blank=True, default="")
+    body = serializers.CharField(allow_blank=True, default="")
+    is_edited = serializers.BooleanField(default=False)
+    edited_at = serializers.DateTimeField(allow_null=True, default=None)
+    created_at = serializers.DateTimeField()
