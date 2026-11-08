@@ -11,6 +11,7 @@ import {
 } from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { SafeMarkdown } from "../utils/markdown";
+import { IssueTimeline } from "../components/timeline/IssueTimeline";
 import type { IssuePriority, IssueStatus } from "../types";
 
 export function IssueDetailPage() {
@@ -235,37 +236,17 @@ export function IssueDetailPage() {
               )}
             </div>
           ) : (
-            /* Activity timeline */
-            <div className="space-y-4 rounded-xl border border-border bg-surface p-5">
-              {activities.length === 0 ? (
-                <p className="text-xs italic text-text-muted">No activity entries yet.</p>
-              ) : (
-                activities.map((act) => (
-                  <div
-                    key={act.id}
-                    className="flex items-start gap-3 border-b border-border/40 pb-3 text-xs last:border-none"
-                  >
-                    <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
-                    <div className="flex-1 space-y-1">
-                      <p className="text-text">
-                        <span className="font-semibold text-text">
-                          {act.actor?.full_name || "System"}
-                        </span>{" "}
-                        <span className="text-text-muted">{act.verb}</span>{" "}
-                        {act.field && (
-                          <span className="font-mono text-[11px] text-primary">{act.field}</span>
-                        )}
-                        {act.new_value && (
-                          <span className="font-medium text-text"> → {act.new_value}</span>
-                        )}
-                      </p>
-                      <span className="text-[10px] text-text-muted">
-                        {new Date(act.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+            /* Activity & Comments timeline */
+            <div
+              className="rounded-xl border border-border bg-surface p-5"
+              data-testid="activity-timeline"
+            >
+              <IssueTimeline
+                issueId={issue.id}
+                projectId={issue.project_id}
+                projectKey={issue.project_key}
+                issueNumber={issue.number}
+              />
             </div>
           )}
         </div>
