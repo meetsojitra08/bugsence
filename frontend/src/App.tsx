@@ -9,6 +9,8 @@ import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ProjectMembersPage } from "@/features/projects/pages/ProjectMembersPage";
+import { IssuesPage } from "@/features/issues/pages/IssuesPage";
+import { IssueDetailPage } from "@/features/issues/pages/IssueDetailPage";
 import { Toaster } from "sonner";
 
 export function App() {
@@ -33,14 +35,10 @@ export function App() {
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
-                <Route
-                  path="my-issues"
-                  element={
-                    <div className="rounded-xl border border-border bg-surface p-8 text-center text-xs text-text-muted">
-                      My Issues view will be wired in Phase 3.
-                    </div>
-                  }
-                />
+                <Route path="issues" element={<IssuesPage />} />
+                <Route path="my-issues" element={<IssuesPage />} />
+                <Route path="p/:key/issues" element={<IssuesPage />} />
+                <Route path="p/:key/issues/:number" element={<IssueDetailPage />} />
                 <Route path="projects" element={<Navigate to="/settings/members" replace />} />
                 <Route path="settings/members" element={<ProjectMembersPage />} />
                 <Route path="projects/members" element={<ProjectMembersPage />} />
