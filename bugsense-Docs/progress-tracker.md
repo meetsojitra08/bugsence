@@ -6,7 +6,7 @@
 
 **Current phase:** Phase 0
 **Last updated:** 2026-11-08
-**Next task:** Phase 0, task 3
+**Next task:** Phase 0, task 4
 
 ## Phase 0: Setup
 _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
@@ -14,10 +14,10 @@ _Phase-closing commit:_ `docs(tracker): complete phase 0 project setup`
 - [x] Scaffold Django project (`config/`, split settings, django-environ)
 - [x] Configure PostgreSQL (docker-compose) + pgvector extension
 - [x] Install DRF, simplejwt, corsheaders, drf-spectacular (OpenAPI docs)
-- [ ] Scaffold React + Vite + TS + Tailwind + shadcn/ui + TanStack Query + Router
+- [x] Scaffold React + Vite + TS + Tailwind + shadcn/ui + TanStack Query + Router
 - [ ] Configure ruff, eslint, prettier, pre-commit hooks
 - [ ] GitHub Actions CI (lint + test + build)
-- [ ] `.env.example` for backend and frontend
+- [x] `.env.example` for backend and frontend
 
 ## Phase 1: Auth and Foundation (spec 01)
 _Phase-closing commit:_ `docs(tracker): complete phase 1 auth and foundation`
@@ -69,7 +69,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | # | Phase / Step | Commit message | Hash | Verified (lint/tests/manual) |
 |---|---|---|---|---|
 | 1 | Phase 0 / repo init | `chore(setup): initialize repository with README and gitignore` | a2aefe5 | [x] |
-| 2 | Phase 0 / backend scaffold | `chore(setup): scaffold Django project with split settings` | | [ ] |
+| 2 | Phase 0 / backend scaffold | `chore(setup): scaffold Django project with split settings` | 7fa39a8 | [x] |
 | 3 | Phase 0 / frontend scaffold | `chore(setup): scaffold React app with Vite, Tailwind and shadcn/ui` | | [ ] |
 | 4 | Phase 0 / CI | `ci: add GitHub Actions workflow for lint, test and build` | | [ ] |
 | | | | | |
@@ -84,6 +84,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 |---|---|---|---|
 | 2026-11-08 | Initialized git repository, added .gitignore, LICENSE, and README skeleton | None | Phase 0, task 2: Backend scaffold |
 | 2026-11-08 | Scaffolded Django 5 backend with split settings, DRF, SimpleJWT, drf-spectacular, PostgreSQL pgvector docker-compose, and health tests | None | Phase 0, task 3: Frontend scaffold |
+| 2026-11-08 | Scaffolded React 18 + Vite + TypeScript frontend with Tailwind CSS design tokens, shadcn Button primitive, TanStack Query, and Vitest suite | None | Phase 0, task 4: Tooling & Pre-commit hooks |
 
 ## Known Issues / Tech Debt
 - (none yet)
