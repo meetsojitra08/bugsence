@@ -18,8 +18,8 @@ env = environ.Env(
     JWT_ACCESS_MINUTES=(int, 15),
     JWT_REFRESH_DAYS=(int, 7),
     GEMINI_API_KEY=(str, ""),
-    GEMINI_MODEL=(str, "gemini-1.5-flash"),
-    GEMINI_EMBED_MODEL=(str, "text-embedding-004"),
+    GEMINI_MODEL=(str, "gemini-3.5-flash"),
+    GEMINI_EMBED_MODEL=(str, "gemini-embedding-001"),
 )
 
 # Take environment variables from .env file if it exists

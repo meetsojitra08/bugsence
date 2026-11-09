@@ -32,9 +32,9 @@ class GeminiService:
     """Production service wrapper for Google Gemini API with logging, validation and retries."""
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or getattr(settings, "GEMINI_API_KEY", "")
-        self.model = getattr(settings, "GEMINI_MODEL", "gemini-1.5-flash")
-        self.embed_model = getattr(settings, "GEMINI_EMBED_MODEL", "text-embedding-004")
+        self.api_key = api_key if api_key is not None else getattr(settings, "GEMINI_API_KEY", "")
+        self.model = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash")
+        self.embed_model = getattr(settings, "GEMINI_EMBED_MODEL", "gemini-embedding-001")
         self._client: genai.Client | None = None
 
     def _get_client(self) -> genai.Client:
@@ -63,7 +63,7 @@ class GeminiService:
             response_mime_type="application/json",
             system_instruction=TRIAGE_SYSTEM_PROMPT,
             temperature=0.2,
-            http_options=types.HttpOptions(timeout=8000),
+            http_options=types.HttpOptions(timeout=10000),
         )
 
         start_time = time.perf_counter()
@@ -158,6 +158,7 @@ class GeminiService:
             response = client.models.embed_content(
                 model=self.embed_model,
                 contents=clean_text,
+                config=types.EmbedContentConfig(output_dimensionality=768),
             )
             if response.embeddings and len(response.embeddings) > 0:
                 values = list(response.embeddings[0].values)
@@ -211,7 +212,7 @@ class GeminiService:
             response_mime_type="application/json",
             system_instruction=SUMMARY_SYSTEM_PROMPT,
             temperature=0.2,
-            http_options=types.HttpOptions(timeout=8000),
+            http_options=types.HttpOptions(timeout=10000),
         )
 
         start_time = time.perf_counter()
