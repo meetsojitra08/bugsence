@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/apiClient";
+import { isDemoSession } from "@/lib/demo";
 import type {
   BoardData,
   Comment,
@@ -242,10 +243,6 @@ const DEMO_COMMENTS: Record<string, Comment[]> = {
       is_edited: false,
     },
   ],
-};
-
-const isDemoSession = (): boolean => {
-  return localStorage.getItem("bugsense_demo_mode") === "true";
 };
 
 export const issuesApi = {

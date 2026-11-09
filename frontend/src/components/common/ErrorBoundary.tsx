@@ -49,15 +49,13 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h1>
           <p className="mt-2 max-w-md text-xs text-text-muted">
-            BugSense encountered an unexpected runtime error. Don&apos;t worry, your workspace data is
-            safe and preserved on the server.
+            BugSense encountered an unexpected runtime error. Your workspace data is safe and
+            preserved on the server.
           </p>
 
-          {this.state.error && (
-            <div className="mt-4 max-w-lg overflow-x-auto rounded-lg border border-border bg-surface p-3 text-left font-mono text-[11px] text-danger">
-              {this.state.error.message || String(this.state.error)}
-            </div>
-          )}
+          <p className="mt-3 font-mono text-[11px] text-text-muted">
+            Reference: {this.state.error?.name ?? "runtime-error"}
+          </p>
 
           <div className="mt-6 flex items-center gap-3">
             <Button

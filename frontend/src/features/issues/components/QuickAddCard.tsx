@@ -36,7 +36,7 @@ export function QuickAddCard({ status, onQuickAdd }: QuickAddCardProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="flex w-full items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-xs font-medium text-text-muted transition-colors hover:border-border hover:bg-background/60 hover:text-text"
+        className="flex w-full items-center gap-1.5 rounded-md border border-transparent px-2 py-1.5 text-[11px] font-medium text-text-muted transition-colors hover:border-border hover:bg-background/60 hover:text-text"
         data-testid={`quick-add-btn-${status}`}
       >
         <Plus className="h-3.5 w-3.5" />
@@ -48,7 +48,7 @@ export function QuickAddCard({ status, onQuickAdd }: QuickAddCardProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="animate-in zoom-in-95 flex flex-col gap-2 rounded-xl border border-primary/40 bg-surface p-2.5 shadow-sm duration-100"
+      className="animate-in zoom-in-95 flex flex-col gap-2 rounded-md border border-accent/40 bg-surface p-2 shadow-xs duration-100"
       data-testid={`quick-add-form-${status}`}
     >
       <Input

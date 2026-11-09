@@ -22,7 +22,7 @@ import { searchApi, type GlobalSearchResponse } from "@/features/projects/api/se
 export function CommandPalette() {
   const { isCommandPaletteOpen, setCommandPaletteOpen } = useUiStore();
   const { logout, loginAsDemo } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,12 +33,15 @@ export function CommandPalette() {
   });
   const [isSearching, setIsSearching] = useState(false);
 
-  // Keyboard shortcut Cmd/Ctrl+K
+  // Keyboard shortcut Cmd/Ctrl+K opens the palette, Escape closes it.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCommandPaletteOpen(!isCommandPaletteOpen);
+      } else if (e.key === "Escape" && isCommandPaletteOpen) {
+        e.preventDefault();
+        setCommandPaletteOpen(false);
       }
     };
 
@@ -46,7 +49,16 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isCommandPaletteOpen, setCommandPaletteOpen]);
 
-  // Debounced search
+  // Reset the query whenever the palette closes so it always opens clean.
+  useEffect(() => {
+    if (!isCommandPaletteOpen) {
+      setSearchQuery("");
+      setSearchResults({ issues: [], projects: [], people: [] });
+      setIsSearching(false);
+    }
+  }, [isCommandPaletteOpen]);
+
+  // Debounced search with a stale-response guard.
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults({ issues: [], projects: [], people: [] });
@@ -54,19 +66,23 @@ export function CommandPalette() {
       return;
     }
 
+    let ignore = false;
     setIsSearching(true);
     const handler = setTimeout(async () => {
       try {
         const res = await searchApi.search(searchQuery);
-        setSearchResults(res);
+        if (!ignore) setSearchResults(res);
       } catch (err) {
-        console.error("Search failed:", err);
+        if (!ignore) console.error("Search failed:", err);
       } finally {
-        setIsSearching(false);
+        if (!ignore) setIsSearching(false);
       }
     }, 200);
 
-    return () => clearTimeout(handler);
+    return () => {
+      ignore = true;
+      clearTimeout(handler);
+    };
   }, [searchQuery]);
 
   if (!isCommandPaletteOpen) return null;
@@ -84,12 +100,12 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-20 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-sm"
       onClick={() => setCommandPaletteOpen(false)}
       data-testid="command-palette-backdrop"
     >
       <div
-        className="animate-in fade-in-0 zoom-in-95 w-full max-w-lg overflow-hidden rounded-xl border border-border bg-surface-elevated text-text shadow-2xl duration-150"
+        className="animate-in fade-in-0 zoom-in-95 w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-surface text-text shadow-modal duration-150"
         onClick={(e) => e.stopPropagation()}
         data-testid="command-palette-dialog"
       >
@@ -99,7 +115,7 @@ export function CommandPalette() {
               value={searchQuery}
               onValueChange={setSearchQuery}
               placeholder="Type a command or search issues, projects, people..."
-              className="h-11 w-full bg-transparent px-2 text-sm text-text placeholder:text-text-muted focus:outline-none"
+              className="h-12 w-full bg-transparent px-2 text-sm text-text placeholder:text-text-muted focus:outline-none"
               autoFocus
               data-testid="command-palette-input"
             />
@@ -112,7 +128,7 @@ export function CommandPalette() {
             )}
           </div>
 
-          <Command.List className="max-h-80 overflow-y-auto p-2 text-sm">
+          <Command.List className="max-h-80 overflow-y-auto p-1.5 text-sm">
             {searchQuery.trim() && !hasResults && !isSearching && (
               <Command.Empty className="py-6 text-center text-xs text-text-muted">
                 No matching issues, projects, or team members found.
@@ -130,7 +146,7 @@ export function CommandPalette() {
                   <Command.Item
                     key={issue.id}
                     value={`issue-${issue.key}`}
-                    className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                    className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                     onSelect={() =>
                       runAction(() =>
                         navigate(`/p/${issue.project_key}/issues/${issue.number}`)
@@ -139,7 +155,7 @@ export function CommandPalette() {
                     data-testid={`search-item-issue-${issue.key}`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <CheckSquare className="h-4 w-4 flex-shrink-0 text-primary" />
+                      <CheckSquare className="h-4 w-4 flex-shrink-0 text-accent" />
                       <span className="font-mono text-text-muted">{issue.key}</span>
                       <span className="truncate">{issue.title}</span>
                     </div>
@@ -154,19 +170,19 @@ export function CommandPalette() {
             {searchResults.projects.length > 0 && (
               <Command.Group
                 heading="Projects"
-                className="mt-2 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+                className="mt-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted"
                 data-testid="search-results-projects"
               >
                 {searchResults.projects.map((proj) => (
                   <Command.Item
                     key={proj.id}
                     value={`project-${proj.key}`}
-                    className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                    className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                     onSelect={() => runAction(() => navigate(`/p/${proj.key}/issues`))}
                     data-testid={`search-item-project-${proj.key}`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <FolderGit2 className="h-4 w-4 flex-shrink-0 text-primary" />
+                      <FolderGit2 className="h-4 w-4 flex-shrink-0 text-accent" />
                       <span className="font-semibold text-text">{proj.name}</span>
                       <span className="font-mono text-text-muted">[{proj.key}]</span>
                     </div>
@@ -178,14 +194,14 @@ export function CommandPalette() {
             {searchResults.people.length > 0 && (
               <Command.Group
                 heading="People"
-                className="mt-2 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+                className="mt-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted"
                 data-testid="search-results-people"
               >
                 {searchResults.people.map((person) => (
                   <Command.Item
                     key={person.id}
                     value={`person-${person.email}`}
-                    className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                    className="flex cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                     onSelect={() => runAction(() => navigate("/settings/members"))}
                     data-testid={`search-item-person-${person.email}`}
                   >
@@ -202,31 +218,31 @@ export function CommandPalette() {
             {/* Standard Quick Navigation & Actions */}
             <Command.Group
               heading="Navigation"
-              className="mt-2 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+              className="mt-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted"
             >
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => navigate("/dashboard"))}
               >
                 <LayoutDashboard className="h-4 w-4" />
                 <span>Dashboard</span>
               </Command.Item>
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => navigate("/my-issues"))}
               >
                 <CheckSquare className="h-4 w-4" />
                 <span>My Issues</span>
               </Command.Item>
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => navigate("/settings/members"))}
               >
                 <Users className="h-4 w-4" />
                 <span>Team Members</span>
               </Command.Item>
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => navigate("/settings"))}
               >
                 <Settings className="h-4 w-4" />
@@ -236,38 +252,38 @@ export function CommandPalette() {
 
             <Command.Group
               heading="Actions"
-              className="mt-2 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+              className="mt-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted"
             >
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => navigate("/issues"))}
               >
-                <PlusCircle className="h-4 w-4 text-primary" />
+                <PlusCircle className="h-4 w-4 text-accent" />
                 <span>Create New Issue (C)</span>
               </Command.Item>
 
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
-                onSelect={() => runAction(() => setTheme(theme === "dark" ? "light" : "dark"))}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
+                onSelect={() => runAction(() => setTheme(resolvedTheme === "dark" ? "light" : "dark"))}
               >
-                {theme === "dark" ? (
+                {resolvedTheme === "dark" ? (
                   <Sun className="h-4 w-4 text-warning" />
                 ) : (
                   <Moon className="h-4 w-4 text-text-muted" />
                 )}
-                <span>Toggle {theme === "dark" ? "Light" : "Dark"} Mode</span>
+                <span>Toggle {resolvedTheme === "dark" ? "Light" : "Dark"} Mode</span>
               </Command.Item>
 
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text transition-colors hover:bg-surface aria-selected:bg-surface aria-selected:text-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => loginAsDemo())}
               >
-                <Sparkles className="h-4 w-4 text-purple-400" />
+                <Sparkles className="h-4 w-4 text-accent" />
                 <span>Switch to Demo Account</span>
               </Command.Item>
 
               <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-xs text-danger transition-colors hover:bg-danger/10 aria-selected:bg-danger/10"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-danger transition-colors hover:bg-danger/10 aria-selected:bg-danger/10"
                 onSelect={() => runAction(() => logout())}
               >
                 <LogOut className="h-4 w-4" />

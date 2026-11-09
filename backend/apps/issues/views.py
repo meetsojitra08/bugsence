@@ -308,6 +308,8 @@ class IssueRestoreView(APIView):
         user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
         if user_role == RoleChoices.VIEWER:
             raise PermissionDenied("Viewers cannot restore issues.")
+        if user_role == RoleChoices.MEMBER and issue.reporter_id != request.user.id:
+            raise PermissionDenied("Members can only restore issues they reported.")
 
         try:
             restored = services.restore_issue(issue_id=pk, actor=request.user)

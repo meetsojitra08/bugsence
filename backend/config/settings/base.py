@@ -22,8 +22,9 @@ env = environ.Env(
     GEMINI_EMBED_MODEL=(str, "gemini-embedding-001"),
 )
 
-# Take environment variables from .env file if it exists
-environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
+# Take environment variables from .env file if it exists.
+# Real platform variables always win over a stale checked-out .env.
+environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")

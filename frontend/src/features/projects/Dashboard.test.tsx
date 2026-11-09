@@ -181,7 +181,7 @@ describe("Dashboard Modular Components", () => {
     render(<AIInsightCard overview={mockOverview} />);
 
     expect(screen.getByTestId("ai-insight-card")).toBeInTheDocument();
-    expect(screen.getByText("Gemini AI Health Pulse")).toBeInTheDocument();
+    expect(screen.getByText("Workspace Health Pulse")).toBeInTheDocument();
     expect(screen.getByText(/3 issues are currently overdue/i)).toBeInTheDocument();
   });
 });
@@ -256,7 +256,7 @@ describe("DashboardPage Full Integration", () => {
     const btn7d = screen.getByTestId("range-btn-7");
     fireEvent.click(btn7d);
     await waitFor(() => {
-      expect(btn7d).toHaveClass("bg-primary");
+      expect(btn7d).toHaveClass("bg-accent");
     });
   });
 

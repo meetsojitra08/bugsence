@@ -27,7 +27,7 @@ export function calculatePasswordStrength(password: string): {
     case 2:
       return { score: 2, label: "Fair", color: "bg-warning" };
     case 3:
-      return { score: 3, label: "Good", color: "bg-amber-400" };
+      return { score: 3, label: "Good", color: "bg-warning" };
     case 4:
       return { score: 4, label: "Strong", color: "bg-success" };
     default:
@@ -60,7 +60,7 @@ export const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ pa
             "font-medium",
             score <= 1 && "text-danger",
             score === 2 && "text-warning",
-            score === 3 && "text-amber-500",
+            score === 3 && "text-warning",
             score === 4 && "text-success"
           )}
         >

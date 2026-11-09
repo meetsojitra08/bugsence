@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   ExternalLink,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SafeMarkdown } from "../utils/markdown";
+import { hexToRgba } from "@/lib/color";
 import { useIssue, useIssueActivities, useUpdateIssue } from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { IssueTimeline } from "./timeline/IssueTimeline";
@@ -31,6 +32,21 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
   const { data: activities = [] } = useIssueActivities(issue?.id || null);
   const { data: members = [] } = useProjectMembers(projectId);
   const updateMutation = useUpdateIssue(issue?.id, projectId);
+
+  // Lock the page behind the panel and close it with Escape.
+  useEffect(() => {
+    if (!issue) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [issue, onClose]);
 
   if (!issue) return null;
 
@@ -58,17 +74,22 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Issue ${issue.key} detail panel`}
-      className="animate-in slide-in-from-right fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col border-l border-border bg-surface shadow-2xl duration-200"
-      data-testid="issue-detail-panel"
-    >
+    <>
+      <div
+        className="fixed inset-0 z-30 bg-black/40 md:bg-black/20"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Issue ${issue.key} detail panel`}
+        className="animate-in slide-in-from-right fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col border-l border-border bg-surface shadow-modal duration-200"        data-testid="issue-detail-panel"
+      >
       {/* Top action header */}
       <div className="flex h-14 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold text-primary">{issue.key}</span>
+          <span className="font-mono text-xs font-semibold text-accent">{issue.key}</span>
           <span className="text-text-muted">/</span>
           <span className="max-w-[150px] truncate text-xs text-text-muted">
             {issue.project_key}
@@ -86,7 +107,7 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
           </Link>
           <button
             onClick={() => onDelete(issue)}
-            className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-red-400"
+            className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-danger"
             title="Delete issue"
             data-testid="panel-delete-issue-btn"
           >
@@ -179,7 +200,13 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
               <Calendar className="h-3 w-3" /> Due Date
             </span>
             <div className="flex h-7 items-center px-2 text-xs text-text">
-              {current.due_date || "No due date"}
+              {current.due_date
+                ? new Date(`${current.due_date}T00:00:00`).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "No due date"}
             </div>
           </div>
         </div>
@@ -194,7 +221,7 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
                   key={lbl.id}
                   className="rounded px-2 py-0.5 text-xs font-medium"
                   style={{
-                    backgroundColor: `${lbl.color}20`,
+                    backgroundColor: hexToRgba(lbl.color, 0.13),
                     color: lbl.color,
                   }}
                 >
@@ -212,7 +239,7 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
               onClick={() => setActiveTab("details")}
               className={`flex items-center gap-1.5 border-b-2 pb-2.5 text-xs font-medium transition-colors ${
                 activeTab === "details"
-                  ? "border-primary text-primary"
+                  ? "border-accent text-accent"
                   : "border-transparent text-text-muted hover:text-text"
               }`}
               data-testid="tab-details"
@@ -224,7 +251,7 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
               onClick={() => setActiveTab("activity")}
               className={`flex items-center gap-1.5 border-b-2 pb-2.5 text-xs font-medium transition-colors ${
                 activeTab === "activity"
-                  ? "border-primary text-primary"
+                  ? "border-accent text-accent"
                   : "border-transparent text-text-muted hover:text-text"
               }`}
               data-testid="tab-activity"
@@ -267,16 +294,16 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {detail.expected && (
                   <div className="space-y-1">
-                    <span className="text-[11px] font-semibold text-emerald-400">Expected</span>
-                    <p className="text-text-secondary rounded border border-border bg-background/40 p-2 text-xs">
+                    <span className="text-[11px] font-semibold text-success">Expected</span>
+                    <p className="text-text-muted rounded border border-border bg-background/40 p-2 text-xs">
                       {detail.expected}
                     </p>
                   </div>
                 )}
                 {detail.actual && (
                   <div className="space-y-1">
-                    <span className="text-[11px] font-semibold text-red-400">Actual</span>
-                    <p className="text-text-secondary rounded border border-border bg-background/40 p-2 text-xs">
+                    <span className="text-[11px] font-semibold text-danger">Actual</span>
+                    <p className="text-text-muted rounded border border-border bg-background/40 p-2 text-xs">
                       {detail.actual}
                     </p>
                   </div>
@@ -288,7 +315,7 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
             {detail?.environment && (
               <div className="space-y-1">
                 <span className="text-[11px] font-semibold text-text-muted">Environment</span>
-                <p className="text-text-secondary rounded border border-border bg-background/40 p-2 font-mono text-xs">
+                <p className="text-text-muted rounded border border-border bg-background/40 p-2 font-mono text-xs">
                   {detail.environment}
                 </p>
               </div>
@@ -306,6 +333,7 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

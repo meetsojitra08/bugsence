@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FolderPlus, Plus, Sparkles, Users, LayoutGrid, CheckSquare } from "lucide-react";
+import { FolderPlus, Plus, Users, LayoutGrid, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/common/PageHeader";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useProjects } from "@/features/projects/hooks/useProjects";
 import { useProjectStore } from "@/stores/useProjectStore";
-import { ProjectBadge } from "@/features/projects/components/ProjectBadge";
 import { CreateProjectModal } from "@/features/projects/components/CreateProjectModal";
 import {
   useProjectOverview,
@@ -30,12 +30,15 @@ export function DashboardPage() {
   const [days, setDays] = useState<number>(30);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // If URL has project key, locate it, otherwise get active project from store
   const projectFromKey = routeKey ? projects.find((p) => p.key === routeKey) : null;
   const activeProject = projectFromKey || getActiveProject(projects);
 
-  // Analytics queries
-  const { data: overview, isLoading: overviewLoading } = useProjectOverview(activeProject?.id);
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    isError: overviewError,
+    refetch: refetchOverview,
+  } = useProjectOverview(activeProject?.id);
   const { data: trends = [], isLoading: trendsLoading } = useProjectTrends(
     activeProject?.id,
     days
@@ -44,28 +47,27 @@ export function DashboardPage() {
     activeProject?.id
   );
 
-  // Handle first-time empty state when no projects exist
   if (!projectsLoading && projects.length === 0) {
     return (
-      <div className="animate-in fade-in flex min-h-[60vh] flex-col items-center justify-center p-6 text-center duration-300">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
-          <FolderPlus className="h-8 w-8" />
+      <div
+        className="animate-in fade-in flex min-h-[60vh] flex-col items-center justify-center text-center duration-300"
+        data-testid="dashboard-empty"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface text-accent shadow-xs">
+          <FolderPlus className="h-5 w-5" />
         </div>
 
-        <h2 className="mt-5 text-xl font-bold tracking-tight text-text">
-          Welcome to BugSense, {user?.fullName || "Developer"}!
+        <h2 className="mt-5 text-xl font-semibold tracking-tight text-text">
+          Welcome to BugSense, {user?.fullName || "Developer"}
         </h2>
-        <p className="mt-2 max-w-md text-sm text-text-muted">
-          Get started by creating your first project workspace. A project allows you to organize
-          issues, plan sprint boards, and invite team members.
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-text-muted">
+          Create your first workspace to organize issues, plan sprint boards, and invite your team.
         </p>
 
-        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
-          <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            <span>Create Your First Project</span>
-          </Button>
-        </div>
+        <Button onClick={() => setIsCreateOpen(true)} className="mt-6 gap-2">
+          <Plus className="h-4 w-4" />
+          Create Your First Project
+        </Button>
 
         <CreateProjectModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
       </div>
@@ -76,85 +78,77 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
-      {/* Top Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-text">
-            Welcome back, {user?.fullName || "Developer"}
-          </h1>
-          <p className="text-xs text-text-muted">
-            Here is your project health and engineering velocity at a glance.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {projects.length > 1 && (
-            <select
-              value={activeProject?.id || ""}
-              onChange={(e) => {
-                const selected = projects.find((p) => p.id === e.target.value);
-                if (selected) {
-                  setCurrentProjectId(selected.id);
-                  if (routeKey) {
-                    navigate(`/p/${selected.key}/dashboard`);
+      <PageHeader
+        eyebrow="Workspace"
+        title={`Welcome back, ${user?.fullName || "Developer"}`}
+        description="A calm view of project health, throughput, and where attention is needed."
+        actions={
+          <>
+            {projects.length > 1 && (
+              <select
+                value={activeProject?.id || ""}
+                onChange={(event) => {
+                  const selected = projects.find((p) => p.id === event.target.value);
+                  if (selected) {
+                    setCurrentProjectId(selected.id);
+                    navigate(`/p/${selected.key.toLowerCase()}/dashboard`);
                   }
-                }
-              }}
-              className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text focus:outline-hidden"
-              data-testid="project-select"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.key})
-                </option>
-              ))}
-            </select>
-          )}
+                }}
+                className="h-8 rounded-md border border-border bg-surface px-2 text-xs font-medium text-text focus:border-accent focus:outline-none"
+                data-testid="project-select"
+                aria-label="Select project"
+              >
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name} ({project.key})
+                  </option>
+                ))}
+              </select>
+            )}
 
-          {activeProject && (
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 shadow-xs">
-              <ProjectBadge name={activeProject.name} projectKey={activeProject.key} size="sm" />
-              <span className="text-xs font-semibold text-text">{activeProject.name}</span>
-            </div>
-          )}
+            {activeProject && (
+              <span className="hidden text-xs text-text-muted sm:inline">
+                {activeProject.key} · {activeProject.members_count} members
+              </span>
+            )}
+          </>
+        }
+      />
 
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>AI Analytics Active</span>
-          </div>
+      {overviewError ? (
+        <div
+          className="rounded-xl border border-danger/25 bg-danger/5 p-8 text-center"
+          data-testid="dashboard-error-state"
+        >
+          <p className="text-sm font-semibold text-text">Could not load analytics</p>
+          <p className="mt-1 text-xs text-text-muted">
+            The dashboard metrics did not load. Your issues are safe.
+          </p>
+          <Button size="sm" onClick={() => refetchOverview()} className="mt-4">
+            Try again
+          </Button>
         </div>
-      </div>
-
-      {/* Loading Skeletons */}
-      {isLoading ? (
-        <div className="space-y-6" data-testid="dashboard-loading-skeleton">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {[1, 2, 3, 4, 5].map((i) => (
+      ) : isLoading ? (
+        <div className="space-y-5" data-testid="dashboard-loading-skeleton">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((index) => (
               <div
-                key={i}
-                className="h-24 animate-pulse rounded-xl border border-border bg-surface/50 p-4"
+                key={index}
+                className="h-24 animate-pulse rounded-lg border border-border bg-surface/60"
               />
             ))}
           </div>
-          <div className="h-72 animate-pulse rounded-xl border border-border bg-surface/50" />
+          <div className="h-72 animate-pulse rounded-lg border border-border bg-surface/60" />
         </div>
       ) : overview ? (
         <>
-          {/* AI Insight Card */}
           <AIInsightCard overview={overview} />
+          <OnboardingChecklist project={activeProject} totalIssues={overview.total_issues} />
 
-          {/* Onboarding Setup Guide */}
-          <OnboardingChecklist
-            project={activeProject}
-            totalIssues={overview.total_issues}
-          />
-
-          {/* KPI Stat Cards */}
           <DashboardKpis overview={overview} />
 
-          {/* Activity Trends and Status Distribution */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-8">
               <TrendsChart
                 data={trends}
                 days={days}
@@ -162,7 +156,7 @@ export function DashboardPage() {
                 isLoading={trendsLoading}
               />
             </div>
-            <div>
+            <div className="lg:col-span-4">
               <StatusDistributionChart
                 byStatus={overview.by_status}
                 totalIssues={overview.total_issues}
@@ -170,29 +164,35 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Severity/Priority Breakdown & Team Workload */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <SeverityPriorityBreakdown
-              byPriority={overview.by_priority}
-              bySeverity={overview.by_severity}
-              totalIssues={overview.total_issues}
-            />
-            <WorkloadChart workload={workload} isLoading={workloadLoading} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-7">
+              <WorkloadChart workload={workload} isLoading={workloadLoading} />
+            </div>
+            <div className="lg:col-span-5">
+              <SeverityPriorityBreakdown
+                byPriority={overview.by_priority}
+                bySeverity={overview.by_severity}
+                totalIssues={overview.total_issues}
+              />
+            </div>
           </div>
 
-          {/* Quick Launch Card */}
           {activeProject && (
-            <div className="rounded-xl border border-border bg-surface p-5 shadow-xs">
+            <div className="rounded-lg border border-border bg-surface p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-text">{activeProject.name}</span>
-                    <span className="font-mono text-xs text-text-muted">[{activeProject.key}]</span>
-                    <span className="rounded bg-surface-elevated px-2 py-0.5 text-[10px] font-medium capitalize text-text-muted">
+                    <span className="truncate text-sm font-semibold text-text">
+                      {activeProject.name}
+                    </span>
+                    <span className="font-mono text-[11px] text-text-muted">
+                      [{activeProject.key}]
+                    </span>
+                    <span className="rounded border border-border bg-surface-elevated px-1.5 py-0.5 text-[10px] font-medium capitalize text-text-muted">
                       {activeProject.my_role || "member"}
                     </span>
                   </div>
-                  <p className="text-xs text-text-muted">
+                  <p className="line-clamp-1 text-xs text-text-muted">
                     {activeProject.description || "Active project workspace for your team."}
                   </p>
                 </div>
@@ -202,28 +202,28 @@ export function DashboardPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => navigate(`/p/${activeProject.key}/issues`)}
-                    className="flex items-center gap-1.5 text-xs"
+                    className="gap-1.5 text-xs"
                   >
                     <CheckSquare className="h-3.5 w-3.5" />
-                    <span>View Issues</span>
+                    View issues
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => navigate(`/p/${activeProject.key}/board`)}
-                    className="flex items-center gap-1.5 text-xs"
+                    className="gap-1.5 text-xs"
                   >
                     <LayoutGrid className="h-3.5 w-3.5" />
-                    <span>Kanban Board</span>
+                    Board
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => navigate("/settings/members")}
-                    className="flex items-center gap-1.5 text-xs"
+                    className="gap-1.5 text-xs"
                   >
                     <Users className="h-3.5 w-3.5" />
-                    <span>Members ({activeProject.members_count})</span>
+                    {activeProject.members_count} members
                   </Button>
                 </div>
               </div>

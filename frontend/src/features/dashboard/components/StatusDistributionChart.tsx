@@ -59,13 +59,15 @@ export function StatusDistributionChart({
   });
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 shadow-xs" data-testid="status-distribution">
+    <div className="rounded-lg border border-border bg-surface p-5" data-testid="status-distribution">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-text">Status Breakdown</h3>
-          <p className="text-xs text-text-muted">Issue distribution across workflow states</p>
+          <h3 className="text-[14px] font-semibold text-text">Status Breakdown</h3>
+          <p className="text-[12px] text-text-muted">Distribution across workflow states</p>
         </div>
-        <span className="text-xs font-semibold text-text">{totalIssues} total</span>
+        <span className="text-[12px] font-medium tabular-nums text-text-muted">
+          {totalIssues} total
+        </span>
       </div>
 
       {/* Segmented Progress Bar */}
@@ -83,20 +85,19 @@ export function StatusDistributionChart({
       </div>
 
       {/* Breakdown Items List */}
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mt-4 space-y-1.5">
         {items.map((item) => (
           <div
             key={item.key}
-            className="flex items-center justify-between rounded-lg border border-border/60 bg-surface-elevated/40 p-2.5"
+            className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/40 px-2.5 py-1.5"
           >
-            <div className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full ${item.bg}`} />
-              <span className="text-xs font-medium text-text">{item.label}</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${item.bg}`} />
+              <span className="truncate text-[12px] font-medium text-text">{item.label}</span>
             </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-text">{item.count}</span>
-              <span className="ml-1 text-[10px] text-text-muted">({item.percentage}%)</span>
-            </div>
+            <span className="flex-shrink-0 text-[11px] tabular-nums text-text-muted">
+              <span className="font-medium text-text">{item.count}</span> ({item.percentage}%)
+            </span>
           </div>
         ))}
       </div>

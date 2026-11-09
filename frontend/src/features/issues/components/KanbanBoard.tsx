@@ -24,11 +24,12 @@ interface KanbanBoardProps {
 }
 
 const BOARD_COLUMNS: { status: IssueStatus; title: string }[] = [
+  { status: "backlog", title: "Backlog" },
   { status: "todo", title: "To Do" },
   { status: "in_progress", title: "In Progress" },
   { status: "in_review", title: "In Review" },
   { status: "done", title: "Done" },
-  { status: "backlog", title: "Backlog" },
+  { status: "closed", title: "Closed" },
 ];
 
 export function KanbanBoard({
@@ -120,12 +121,12 @@ export function KanbanBoard({
         {[1, 2, 3, 4].map((col) => (
           <div
             key={col}
-            className="h-[480px] w-80 flex-shrink-0 animate-pulse rounded-xl border border-border bg-surface/50 p-4"
+            className="h-[480px] w-[300px] flex-shrink-0 animate-pulse rounded-lg border border-border bg-surface/50 p-3"
           >
-            <div className="h-5 w-24 rounded bg-zinc-800" />
+            <div className="h-5 w-24 rounded bg-surface-elevated" />
             <div className="mt-4 space-y-3">
-              <div className="h-20 rounded-lg bg-zinc-800/60" />
-              <div className="h-20 rounded-lg bg-zinc-800/60" />
+              <div className="h-20 rounded-lg bg-surface-elevated/60" />
+              <div className="h-20 rounded-lg bg-surface-elevated/60" />
             </div>
           </div>
         ))}
@@ -140,10 +141,7 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div
-        className="scrollbar-thin scrollbar-thumb-border flex gap-4 overflow-x-auto pb-6"
-        data-testid="kanban-board"
-      >
+      <div className="flex gap-3 overflow-x-auto pb-6" data-testid="kanban-board">
         {BOARD_COLUMNS.map((col) => (
           <KanbanColumn
             key={col.status}

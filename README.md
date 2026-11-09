@@ -159,7 +159,7 @@ python -m ruff format --check backend
 # Run Backend Pytest Suite (130 tests)
 python -m pytest -c pytest.ini
 
-# Run Frontend Lint, Build & Vitest (87 tests)
+# Run Frontend Lint, Build & Vitest (92 tests)
 cd ../frontend
 npm run lint
 npm run build

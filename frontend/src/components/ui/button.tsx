@@ -4,17 +4,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-danger text-white shadow-sm hover:bg-danger/90",
-        outline: "border border-border bg-transparent shadow-sm hover:bg-surface hover:text-text",
-        secondary: "bg-surface text-text shadow-sm hover:bg-surface/80",
-        ghost: "hover:bg-surface hover:text-text",
-        link: "text-primary underline-offset-4 hover:underline",
-        ai: "bg-ai-gradient text-white shadow hover:opacity-90 transition-opacity",
+        default:
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover",
+        destructive: "bg-danger text-danger-foreground shadow-xs hover:bg-danger/90",
+        outline:
+          "border border-border bg-transparent shadow-xs hover:bg-surface-elevated hover:text-text",
+        secondary: "bg-surface-elevated text-text shadow-xs hover:bg-surface-elevated/80",
+        ghost: "hover:bg-surface-elevated hover:text-text",
+        link: "text-accent underline-offset-4 hover:underline",
+        ai: "border border-accent/30 bg-accent/10 text-accent shadow-xs hover:bg-accent/15",
       },
       size: {
         default: "h-9 px-4 py-2",

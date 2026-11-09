@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
-import { ProjectBadge } from "../components/ProjectBadge";
+import { PageHeader } from "@/components/common/PageHeader";
 import {
   useInviteMember,
   useProjectMembers,
@@ -52,6 +52,7 @@ export function ProjectMembersPage() {
   const currentMembership = members.find((m) => m.user.id === currentUser?.id);
   const myRole = activeProject?.my_role || currentMembership?.role || "viewer";
   const canManageMembers = myRole === "owner" || myRole === "admin";
+  const isOwner = myRole === "owner";
 
   const ownerCount = members.filter((m) => m.role === "owner").length;
 
@@ -72,7 +73,7 @@ export function ProjectMembersPage() {
       setIsInviteOpen(false);
       setInviteEmail("");
       setInviteRole("member");
-      setSuccessMessage(`Invited ${inviteEmail} successfully.`);
+      setSuccessMessage(`${inviteEmail} was added to the project.`);
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -135,7 +136,7 @@ export function ProjectMembersPage() {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <Users className="h-12 w-12 text-text-muted" />
-        <h3 className="text-text-primary mt-4 text-lg font-semibold">No Project Selected</h3>
+        <h3 className="text-text mt-4 text-lg font-semibold">No Project Selected</h3>
         <p className="mt-1 text-sm text-text-muted">
           Select or create a project from the top bar to view team members.
         </p>
@@ -144,63 +145,49 @@ export function ProjectMembersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <ProjectBadge name={activeProject.name} projectKey={activeProject.key} size="lg" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-text-primary text-xl font-bold">{activeProject.name}</h1>
-              <span className="font-mono text-xs font-semibold text-text-muted">
-                [{activeProject.key}]
-              </span>
-            </div>
-            <p className="text-sm text-text-muted">
-              Manage workspace access and member permissions.
-            </p>
-          </div>
-        </div>
-
-        {canManageMembers && (
-          <Button
-            onClick={() => setIsInviteOpen(true)}
-            className="flex items-center gap-2 self-start sm:self-auto"
-          >
-            <UserPlus className="h-4 w-4" />
-            <span>Invite Member</span>
-          </Button>
-        )}
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6" data-testid="project-members-page">
+      <PageHeader
+        eyebrow={`Team · ${activeProject.key}`}
+        title={activeProject.name}
+        description="Manage workspace access and member permissions."
+        actions={
+          canManageMembers ? (
+            <Button onClick={() => setIsInviteOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Invite member
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Notifications */}
       {successMessage && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-600 dark:text-emerald-400">
+        <div className="flex items-center gap-2 rounded-lg border border-success/25 bg-success/10 p-3 text-sm text-success">
           <Check className="h-4 w-4 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
       {actionError && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+        <div className="flex items-center gap-2 rounded-lg border border-danger/25 bg-danger/10 p-3 text-sm text-danger">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{actionError}</span>
         </div>
       )}
 
       {fetchError && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+        <div className="flex items-center gap-2 rounded-lg border border-danger/25 bg-danger/10 p-3 text-sm text-danger">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>Failed to load team members.</span>
         </div>
       )}
 
       {/* Members Card & Table */}
-      <div className="rounded-xl border border-border bg-surface shadow-sm">
+      <div className="rounded-lg border border-border bg-surface">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-text-muted" />
-            <h2 className="text-text-primary text-sm font-semibold">Team Members</h2>
+            <h2 className="text-[13px] font-semibold text-text">Team Members</h2>
             <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-xs text-text-muted">
               {members.length}
             </span>
@@ -213,8 +200,8 @@ export function ProjectMembersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface-elevated/40 text-xs uppercase text-text-muted">
+            <table className="w-full text-left text-[13px]">
+              <thead className="border-b border-border bg-background text-[10px] uppercase tracking-[0.08em] text-text-muted">
                 <tr>
                   <th scope="col" className="px-6 py-3 font-medium">
                     User
@@ -240,16 +227,16 @@ export function ProjectMembersPage() {
                       {/* Name & Avatar */}
                       <td className="whitespace-nowrap px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 font-semibold text-accent">
                             {(member.user.full_name || member.user.email)[0].toUpperCase()}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-text-primary font-medium">
+                              <span className="text-text font-medium">
                                 {member.user.full_name || "Team Member"}
                               </span>
                               {isCurrentUser && (
-                                <span className="py-0.2 rounded bg-surface-elevated px-1.5 text-[10px] text-text-muted">
+                                <span className="py-0.5 rounded bg-surface-elevated px-1.5 text-[10px] text-text-muted">
                                   You
                                 </span>
                               )}
@@ -274,9 +261,9 @@ export function ProjectMembersPage() {
                                 handleRoleChange(member, e.target.value as ProjectRole)
                               }
                               disabled={updateRoleMutation.isPending}
-                              className="text-text-primary appearance-none rounded-lg border border-border bg-surface-elevated px-3 py-1.5 pr-8 text-xs font-medium hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary"
+                              className="text-text appearance-none rounded-md border border-border bg-surface px-2.5 py-1 pr-7 text-[12px] font-medium hover:border-text-muted/40 focus:outline-none focus:ring-2 focus:ring-accent"
                             >
-                              <option value="owner">Owner</option>
+                              {isOwner && <option value="owner">Owner</option>}
                               <option value="admin">Admin</option>
                               <option value="member">Member</option>
                               <option value="viewer">Viewer</option>
@@ -285,7 +272,7 @@ export function ProjectMembersPage() {
                           </div>
                         ) : (
                           <span
-                            className="text-text-primary inline-flex items-center gap-1 rounded-md border border-border/80 bg-surface-elevated px-2.5 py-1 text-xs font-medium capitalize"
+                            className="text-text inline-flex items-center gap-1 rounded-md border border-border/80 bg-surface-elevated px-2.5 py-1 text-xs font-medium capitalize"
                             title={isSoleOwner ? "Sole project owner" : undefined}
                           >
                             <Shield className="h-3 w-3 text-text-muted" />
@@ -302,7 +289,7 @@ export function ProjectMembersPage() {
                             size="sm"
                             aria-label={`Remove member ${member.user.full_name || member.user.email}`}
                             onClick={() => setMemberToRemove(member)}
-                            className="text-text-muted hover:bg-red-500/10 hover:text-red-500"
+                            className="text-text-muted hover:bg-danger/10 hover:text-danger"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -333,7 +320,7 @@ export function ProjectMembersPage() {
       >
         <form onSubmit={handleInvite} className="mt-4 space-y-4">
           {inviteError && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+            <div className="rounded-lg border border-danger/25 bg-danger/10 p-3 text-sm text-danger">
               {inviteError}
             </div>
           )}
@@ -361,12 +348,12 @@ export function ProjectMembersPage() {
               id="invite-role"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as ProjectRole)}
-              className="text-text-primary w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="text-text w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="member">Member (Can create, edit, and comment on issues)</option>
               <option value="admin">Admin (Can manage settings and invite members)</option>
               <option value="viewer">Viewer (Read-only access)</option>
-              <option value="owner">Owner (Full control over project)</option>
+              {isOwner && <option value="owner">Owner (Full control over project)</option>}
             </select>
           </div>
 

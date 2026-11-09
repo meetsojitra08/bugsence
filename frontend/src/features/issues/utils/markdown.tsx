@@ -21,7 +21,7 @@ export function SafeMarkdown({ content }: { content: string }) {
         parts.push(
           <code
             key={`c-${keyIdx++}`}
-            className="rounded bg-zinc-800 px-1 py-0.5 font-mono text-xs text-primary"
+            className="rounded bg-surface-elevated px-1 py-0.5 font-mono text-xs text-accent"
           >
             {codeMatch[1]}
           </code>
@@ -46,7 +46,7 @@ export function SafeMarkdown({ content }: { content: string }) {
       const italicMatch = remaining.match(/^\*([^*]+)\*/);
       if (italicMatch) {
         parts.push(
-          <em key={`i-${keyIdx++}`} className="text-text-secondary italic">
+          <em key={`i-${keyIdx++}`} className="text-text-muted italic">
             {italicMatch[1]}
           </em>
         );
@@ -77,7 +77,7 @@ export function SafeMarkdown({ content }: { content: string }) {
         elements.push(
           <pre
             key={`cb-${idx}`}
-            className="my-2 overflow-x-auto rounded-lg border border-border bg-zinc-950 p-3 font-mono text-xs text-zinc-300"
+            className="my-2 overflow-x-auto rounded-lg border border-border bg-background p-3 font-mono text-xs text-text-muted"
           >
             <code>{codeBlockLines.join("\n")}</code>
           </pre>
@@ -121,20 +121,20 @@ export function SafeMarkdown({ content }: { content: string }) {
       );
     } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       elements.push(
-        <li key={`li-${idx}`} className="text-text-secondary ml-4 list-disc text-xs">
+        <li key={`li-${idx}`} className="text-text-muted ml-4 list-disc text-xs">
           {parseInline(trimmed.slice(2))}
         </li>
       );
     } else if (/^\d+\.\s/.test(trimmed)) {
       const match = trimmed.match(/^\d+\.\s(.*)$/);
       elements.push(
-        <li key={`oli-${idx}`} className="text-text-secondary ml-4 list-decimal text-xs">
+        <li key={`oli-${idx}`} className="text-text-muted ml-4 list-decimal text-xs">
           {parseInline(match ? match[1] : trimmed)}
         </li>
       );
     } else {
       elements.push(
-        <p key={`p-${idx}`} className="text-text-secondary text-xs leading-relaxed">
+        <p key={`p-${idx}`} className="text-text-muted text-xs leading-relaxed">
           {parseInline(line)}
         </p>
       );

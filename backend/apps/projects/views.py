@@ -166,11 +166,16 @@ class ProjectMemberViewSet(viewsets.GenericViewSet):
         serializer = MembershipCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Admins may manage members and viewers, but only an owner may grant ownership.
+        requested_role = serializer.validated_data["role"]
+        if requested_role == RoleChoices.OWNER and user_role != RoleChoices.OWNER:
+            raise PermissionDenied("Only a project owner can grant the owner role.")
+
         try:
             membership = services.add_member(
                 project=project,
                 email=serializer.validated_data["email"],
-                role=serializer.validated_data["role"],
+                role=requested_role,
             )
         except DjangoValidationError as exc:
             raise ValidationError(
@@ -193,11 +198,22 @@ class ProjectMemberViewSet(viewsets.GenericViewSet):
         serializer = MembershipUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        target = Membership.objects.filter(id=pk, project=project).first()
+        if not target:
+            raise NotFound("Member not found in this project.")
+
+        new_role = serializer.validated_data["role"]
+        actor_is_owner = user_role == RoleChoices.OWNER
+        if target.role == RoleChoices.OWNER and not actor_is_owner:
+            raise PermissionDenied("Only a project owner can change another owner's role.")
+        if new_role == RoleChoices.OWNER and not actor_is_owner:
+            raise PermissionDenied("Only a project owner can grant the owner role.")
+
         try:
             updated = services.update_member_role(
                 project=project,
                 membership_id=pk,
-                new_role=serializer.validated_data["role"],
+                new_role=new_role,
             )
         except DjangoValidationError as exc:
             raise ValidationError(
@@ -222,6 +238,8 @@ class ProjectMemberViewSet(viewsets.GenericViewSet):
         is_self_removal = target_membership.user_id == request.user.id
         is_admin_or_owner = user_role in [RoleChoices.ADMIN, RoleChoices.OWNER]
 
+        if target_membership.role == RoleChoices.OWNER and user_role != RoleChoices.OWNER:
+            raise PermissionDenied("Only a project owner can remove another owner.")
         if not (is_self_removal or is_admin_or_owner):
             raise PermissionDenied("You do not have permission to remove this member.")
 
@@ -272,11 +290,21 @@ class DirectMemberDetailView(viewsets.GenericViewSet):
         serializer = MembershipUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        actor_role = selectors.get_user_role_in_project(
+            project_id=project.id,
+            user=request.user,
+        )
+        new_role = serializer.validated_data["role"]
+        if membership.role == RoleChoices.OWNER and actor_role != RoleChoices.OWNER:
+            raise PermissionDenied("Only a project owner can change another owner's role.")
+        if new_role == RoleChoices.OWNER and actor_role != RoleChoices.OWNER:
+            raise PermissionDenied("Only a project owner can grant the owner role.")
+
         try:
             updated = services.update_member_role(
                 project=project,
                 membership_id=membership.id,
-                new_role=serializer.validated_data["role"],
+                new_role=new_role,
             )
         except DjangoValidationError as exc:
             raise ValidationError(
@@ -302,6 +330,8 @@ class DirectMemberDetailView(viewsets.GenericViewSet):
         is_self_removal = membership.user_id == request.user.id
         is_admin_or_owner = user_role in [RoleChoices.ADMIN, RoleChoices.OWNER]
 
+        if membership.role == RoleChoices.OWNER and user_role != RoleChoices.OWNER:
+            raise PermissionDenied("Only a project owner can remove another owner.")
         if not (is_self_removal or is_admin_or_owner):
             raise PermissionDenied("You do not have permission to remove this member.")
 

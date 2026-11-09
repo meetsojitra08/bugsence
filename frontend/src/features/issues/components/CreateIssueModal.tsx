@@ -17,9 +17,10 @@ interface CreateIssueModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
+  projectKey?: string;
 }
 
-export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModalProps) {
+export function CreateIssueModal({ isOpen, onClose, projectId, projectKey }: CreateIssueModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -144,14 +145,15 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
       });
 
       toast.success("Issue created successfully");
-      handleClose();
+      resetForm();
+      onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create issue";
       toast.error(msg);
     }
   };
 
-  const handleClose = () => {
+  const resetForm = () => {
     setTitle("");
     setDescription("");
     setIsPreviewMode(false);
@@ -169,6 +171,16 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
     setEnvironment("");
     setIsDuplicateDismissed(false);
     setPreviousDraft(null);
+  };
+
+  // Closing via Escape or the backdrop keeps the draft so an accidental dismissal
+  // never destroys a half-written report. Cancel and successful submit reset explicitly.
+  const handleClose = () => {
+    onClose();
+  };
+
+  const handleCancel = () => {
+    resetForm();
     onClose();
   };
 
@@ -200,6 +212,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
           <AIDuplicateBanner
             candidates={duplicates}
             onDismiss={() => setIsDuplicateDismissed(true)}
+            projectKey={projectKey}
           />
         )}
 
@@ -207,7 +220,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
         {/* Title */}
         <div className="space-y-1.5">
           <Label htmlFor="issue-title" className="text-xs font-medium text-text">
-            Title <span className="text-red-400">*</span>
+            Title <span className="text-danger">*</span>
           </Label>
           <Input
             id="issue-title"
@@ -231,7 +244,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               id="issue-type"
               value={type}
               onChange={(e) => setType(e.target.value as IssueType)}
-              className="h-8.5 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-primary focus:outline-none"
+              className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
               data-testid="create-issue-type-select"
             >
               <option value="bug">Bug</option>
@@ -249,7 +262,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               id="issue-priority"
               value={priority}
               onChange={(e) => setPriority(e.target.value as IssuePriority)}
-              className="h-8.5 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-primary focus:outline-none"
+              className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
               data-testid="create-issue-priority-select"
             >
               <option value="low">Low</option>
@@ -267,7 +280,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               id="issue-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as IssueStatus)}
-              className="h-8.5 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-primary focus:outline-none"
+              className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
               data-testid="create-issue-status-select"
             >
               <option value="todo">To Do</option>
@@ -275,6 +288,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               <option value="in_review">In Review</option>
               <option value="backlog">Backlog</option>
               <option value="done">Done</option>
+              <option value="closed">Closed</option>
             </select>
           </div>
         </div>
@@ -289,7 +303,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               id="issue-assignee"
               value={assigneeId}
               onChange={(e) => setAssigneeId(e.target.value)}
-              className="h-8.5 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-primary focus:outline-none"
+              className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
               data-testid="create-issue-assignee-select"
             >
               <option value="">Unassigned</option>
@@ -310,7 +324,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="h-8.5 bg-background text-xs"
+              className="h-9 bg-background text-xs"
             />
           </div>
         </div>
@@ -329,9 +343,9 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                     onClick={() => toggleLabel(lbl.id)}
                     className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium transition-all"
                     style={{
-                      borderColor: isSelected ? lbl.color : "var(--color-border)",
-                      backgroundColor: isSelected ? `${lbl.color}25` : "transparent",
-                      color: isSelected ? lbl.color : "var(--color-text-muted)",
+                      borderColor: isSelected ? lbl.color : "hsl(var(--border))",
+                      backgroundColor: isSelected ? `${lbl.color}22` : "transparent",
+                      color: isSelected ? lbl.color : "hsl(var(--text-muted))",
                     }}
                   >
                     <span
@@ -357,7 +371,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                 type="button"
                 onClick={() => setIsPreviewMode(false)}
                 className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${
-                  !isPreviewMode ? "bg-primary/10 text-primary" : "text-text-muted hover:text-text"
+                  !isPreviewMode ? "bg-accent/10 text-accent" : "text-text-muted hover:text-text"
                 }`}
               >
                 <Edit3 className="h-3 w-3" />
@@ -367,7 +381,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                 type="button"
                 onClick={() => setIsPreviewMode(true)}
                 className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium ${
-                  isPreviewMode ? "bg-primary/10 text-primary" : "text-text-muted hover:text-text"
+                  isPreviewMode ? "bg-accent/10 text-accent" : "text-text-muted hover:text-text"
                 }`}
               >
                 <Eye className="h-3 w-3" />
@@ -383,7 +397,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detailed description, context, or expected outcome..."
               rows={4}
-              className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-text placeholder:text-text-muted/60 focus:border-accent focus:outline-none"
               data-testid="create-issue-description-input"
             />
           ) : (
@@ -402,7 +416,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
           <button
             type="button"
             onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            className="flex items-center gap-1 text-xs font-medium text-accent hover:underline"
           >
             {showDetails ? (
               <ChevronUp className="h-3.5 w-3.5" />
@@ -429,7 +443,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                     onChange={(e) => setStepsToReproduce(e.target.value)}
                     placeholder="1. Go to...\n2. Click..."
                     rows={2}
-                    className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-primary focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
                   />
                 </div>
 
@@ -445,7 +459,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                     value={environment}
                     onChange={(e) => setEnvironment(e.target.value)}
                     placeholder="OS, browser version, device..."
-                    className="h-8.5 bg-background text-xs"
+                    className="h-9 bg-background text-xs"
                   />
                 </div>
               </div>
@@ -461,7 +475,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                     onChange={(e) => setExpected(e.target.value)}
                     placeholder="What should happen?"
                     rows={2}
-                    className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-primary focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
                   />
                 </div>
 
@@ -475,7 +489,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
                     onChange={(e) => setActual(e.target.value)}
                     placeholder="What actually happens?"
                     rows={2}
-                    className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-primary focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
                   />
                 </div>
               </div>
@@ -485,7 +499,7 @@ export function CreateIssueModal({ isOpen, onClose, projectId }: CreateIssueModa
 
         {/* Actions */}
         <div className="flex justify-end gap-2.5 border-t border-border pt-4">
-          <Button type="button" variant="outline" size="sm" onClick={handleClose}>
+          <Button type="button" variant="outline" size="sm" onClick={handleCancel}>
             Cancel
           </Button>
           <Button

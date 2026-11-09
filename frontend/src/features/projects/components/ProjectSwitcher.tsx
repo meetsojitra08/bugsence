@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { ProjectBadge } from "./ProjectBadge";
 import { CreateProjectModal } from "./CreateProjectModal";
@@ -16,47 +17,51 @@ export function ProjectSwitcher({ collapsed = false }: ProjectSwitcherProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: projects = [], isLoading } = useProjects();
-  const { currentProjectId, setCurrentProjectId, getActiveProject } = useProjectStore();
+  const { setCurrentProjectId, getActiveProject } = useProjectStore();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const activeProject = getActiveProject(projects);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // Global shortcut Cmd+P / Ctrl+P to toggle project switcher
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "p") {
-        e.preventDefault();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey && event.key.toLowerCase() === "p") {
+        event.preventDefault();
         setIsOpen((prev) => !prev);
+      } else if (event.key === "Escape" && isOpen) {
+        setIsOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isOpen]);
 
   const handleSelect = (id: string) => {
+    const project = projects.find((item) => item.id === id);
     setCurrentProjectId(id);
     setIsOpen(false);
+
+    if (project && location.pathname.startsWith("/p/")) {
+      const suffix = location.pathname.replace(/^\/p\/[^/]+\/?/, "");
+      navigate(`/p/${project.key.toLowerCase()}/${suffix}`);
+    }
   };
 
   if (isLoading && !activeProject) {
     return (
-      <div className="flex h-10 animate-pulse items-center gap-2 rounded-lg border border-border/50 bg-surface/50 px-2.5">
-        <div className="h-6 w-6 rounded-md bg-surface-elevated" />
-        {!collapsed && <div className="h-4 w-24 rounded bg-surface-elevated" />}
+      <div className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2">
+        <div className="h-4 w-4 animate-pulse rounded bg-surface-elevated" />
+        <div className="h-3 w-20 animate-pulse rounded bg-surface-elevated" />
       </div>
     );
   }
@@ -70,7 +75,7 @@ export function ProjectSwitcher({ collapsed = false }: ProjectSwitcherProps) {
         aria-haspopup="listbox"
         aria-label="Switch project"
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-lg border border-border/60 bg-surface px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          "flex h-8 w-full items-center gap-2 rounded-md border border-border bg-surface px-2 text-left transition-colors hover:bg-surface-elevated",
           collapsed && "justify-center px-1.5"
         )}
       >
@@ -79,72 +84,72 @@ export function ProjectSwitcher({ collapsed = false }: ProjectSwitcherProps) {
             <ProjectBadge name={activeProject.name} projectKey={activeProject.key} size="sm" />
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="text-text-primary truncate text-xs font-semibold">
+                <p className="truncate text-[12px] font-medium leading-tight text-text">
                   {activeProject.name}
                 </p>
-                <p className="font-mono text-[10px] text-text-muted">{activeProject.key}</p>
+                <p className="truncate font-mono text-[10px] leading-tight text-text-muted">
+                  {activeProject.key}
+                </p>
               </div>
             )}
           </>
         ) : (
           <>
-            <div className="flex h-6 w-6 items-center justify-center rounded-md border border-dashed border-border text-xs text-text-muted">
+            <div className="flex h-5 w-5 items-center justify-center rounded border border-dashed border-border text-[10px] text-text-muted">
               P
             </div>
-            {!collapsed && <span className="text-xs text-text-muted">Select project</span>}
+            {!collapsed && <span className="text-[12px] text-text-muted">Select project</span>}
           </>
         )}
-
         {!collapsed && (
           <ChevronDown
             className={cn(
-              "h-4 w-4 shrink-0 text-text-muted transition-transform duration-200",
+              "h-3.5 w-3.5 shrink-0 text-text-muted transition-transform duration-150",
               isOpen && "rotate-180"
             )}
           />
         )}
       </button>
 
-      {/* Dropdown Menu */}
       {isOpen && (
         <div
           role="listbox"
           aria-label="Available projects"
-          className="animate-in fade-in zoom-in-95 absolute left-0 top-full z-50 mt-1.5 w-64 rounded-xl border border-border bg-surface p-1.5 shadow-xl duration-150"
+          className="animate-in fade-in zoom-in-95 absolute left-0 top-full z-50 mt-1.5 w-64 rounded-lg border border-border bg-surface p-1 shadow-popover duration-150"
         >
-          <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+          <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
             Projects
           </div>
 
           <div className="max-h-56 space-y-0.5 overflow-y-auto">
             {projects.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-text-muted">
-                No projects found.
+                No projects yet.
               </div>
             ) : (
-              projects.map((proj) => {
-                const isSelected = proj.id === (activeProject?.id || currentProjectId);
+              projects.map((project) => {
+                const isSelected = project.id === activeProject?.id;
                 return (
                   <button
-                    key={proj.id}
+                    key={project.id}
                     type="button"
                     role="option"
                     aria-selected={isSelected}
-                    onClick={() => handleSelect(proj.id)}
+                    onClick={() => handleSelect(project.id)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-colors hover:bg-surface-elevated",
-                      isSelected && "text-text-primary bg-surface-elevated font-medium"
+                      "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface-elevated",
+                      isSelected && "bg-surface-elevated"
                     )}
                   >
-                    <ProjectBadge name={proj.name} projectKey={proj.key} size="sm" />
+                    <ProjectBadge name={project.name} projectKey={project.key} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-text-primary truncate text-xs">{proj.name}</p>
-                      <p className="font-mono text-[10px] text-text-muted">
-                        {proj.key} · {proj.members_count}{" "}
-                        {proj.members_count === 1 ? "member" : "members"}
+                      <p className="truncate text-[12px] font-medium text-text">{project.name}</p>
+                      <p className="truncate font-mono text-[10px] text-text-muted">
+                        {project.key} · {project.members_count}{" "}
+                        {project.members_count === 1 ? "member" : "members"}
                       </p>
                     </div>
-                    {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                    {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
                   </button>
                 );
               })
@@ -158,16 +163,15 @@ export function ProjectSwitcher({ collapsed = false }: ProjectSwitcherProps) {
                 setIsOpen(false);
                 setIsCreateOpen(true);
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[12px] font-medium text-accent transition-colors hover:bg-accent/10"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               <span>Create New Project</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Creation Modal */}
       <CreateProjectModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
     </div>
   );

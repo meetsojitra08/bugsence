@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Sparkles, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,14 +23,15 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
-  const { register: registerUser, loginAsDemo } = useAuth();
+  const { register: registerUser, loginAsDemo, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
 
-  const destination = (location.state as { from?: { pathname?: string } })?.from?.pathname || "/";
+  const destination =
+    (location.state as { from?: { pathname?: string } })?.from?.pathname || "/dashboard";
 
   const {
     register,
@@ -86,6 +87,7 @@ export function RegisterPage() {
       title="Create your account"
       subtitle="Start tracking bugs with Linear speed and Gemini intelligence."
     >
+      {!isLoading && isAuthenticated && <Navigate to={destination} replace />}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         {/* Form Error Alert */}
         {formError && (
@@ -172,7 +174,7 @@ export function RegisterPage() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-border" />
           </div>
-          <span className="relative bg-background px-2 text-[11px] uppercase tracking-wider text-text-muted">
+          <span className="relative bg-surface px-2 text-[11px] uppercase tracking-wider text-text-muted">
             Or
           </span>
         </div>
@@ -196,7 +198,7 @@ export function RegisterPage() {
         {/* Link to Login */}
         <div className="pt-2 text-center text-xs text-text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-primary hover:underline">
+          <Link to="/login" className="font-medium text-accent hover:underline">
             Log in
           </Link>
         </div>

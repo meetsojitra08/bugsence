@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Keyboard, X } from "lucide-react";
 
 const SHORTCUT_GROUPS = [
@@ -25,6 +26,12 @@ const SHORTCUT_GROUPS = [
 
 export function KeyboardShortcutsModal() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
 
   useEffect(() => {
     let lastKey = "";
@@ -57,13 +64,17 @@ export function KeyboardShortcutsModal() {
       if (lastKey.toLowerCase() === "g" && now - lastKeyTime < 1000) {
         const k = e.key.toLowerCase();
         if (k === "d") {
-          window.location.href = "/dashboard";
+          navigate("/dashboard");
+          setIsOpen(false);
         } else if (k === "i") {
-          window.location.href = "/issues";
+          navigate("/issues");
+          setIsOpen(false);
         } else if (k === "b") {
-          window.location.href = "/board";
+          navigate("/board");
+          setIsOpen(false);
         } else if (k === "m") {
-          window.location.href = "/settings/members";
+          navigate("/settings/members");
+          setIsOpen(false);
         }
       }
       lastKey = e.key;
@@ -72,47 +83,54 @@ export function KeyboardShortcutsModal() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, navigate]);
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={() => setIsOpen(false)}
       data-testid="shortcuts-modal-backdrop"
     >
       <div
-        className="animate-in fade-in-0 zoom-in-95 w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface-elevated text-text shadow-2xl duration-150"
+        className="animate-in fade-in-0 zoom-in-95 w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface-elevated text-text shadow-modal duration-150"
         onClick={(e) => e.stopPropagation()}
         data-testid="shortcuts-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent">
               <Keyboard className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-text">Keyboard Shortcuts</h2>
+              <h2 id="shortcuts-title" className="text-sm font-bold text-text">
+                Keyboard Shortcuts
+              </h2>
               <p className="text-[11px] text-text-muted">
                 Navigate and file issues at lightning speed
               </p>
             </div>
           </div>
           <button
+            ref={closeRef}
             type="button"
             onClick={() => setIsOpen(false)}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-surface hover:text-text"
+            className="rounded-lg p-1.5 text-text-muted hover:bg-surface hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            aria-label="Close keyboard shortcuts"
             data-testid="close-shortcuts-modal"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto p-5 space-y-6">
+        <div className="max-h-[70vh] space-y-6 overflow-y-auto p-5">
           {SHORTCUT_GROUPS.map((group) => (
             <div key={group.title} className="space-y-2.5">
-              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {group.title}
               </h3>
               <div className="divide-y divide-border/50 rounded-xl border border-border/80 bg-surface/40">
@@ -121,7 +139,7 @@ export function KeyboardShortcutsModal() {
                     key={idx}
                     className="flex items-center justify-between px-3.5 py-2.5 text-xs"
                   >
-                    <span className="text-text-muted font-medium">{s.description}</span>
+                    <span className="font-medium text-text-muted">{s.description}</span>
                     <div className="flex items-center gap-1">
                       {s.keys.map((k, kIdx) => (
                         <kbd

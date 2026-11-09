@@ -24,7 +24,7 @@ class AIServiceUnavailable(APIException):
 
 class AITimeoutError(APIException):
     status_code = 504
-    default_detail = "AI request timed out after 8 seconds."
+    default_detail = "AI request timed out. Please retry."
     default_code = "ai_timeout"
 
 
@@ -116,9 +116,7 @@ class GeminiService:
         except (errors.ClientError, errors.ServerError, errors.APIError) as api_err:
             error_msg = f"Gemini API error: {api_err}"
             logger.error("Gemini triage API failure: %s", api_err)
-            raise AIServiceUnavailable(
-                f"AI service temporarily unavailable: {api_err}"
-            ) from api_err
+            raise AIServiceUnavailable("AI service temporarily unavailable.") from api_err
         except TimeoutError as t_err:
             error_msg = "Request timed out"
             logger.error("Gemini triage timeout: %s", t_err)
@@ -126,7 +124,7 @@ class GeminiService:
         except Exception as exc:
             error_msg = str(exc)
             logger.error("Gemini triage unexpected error: %s", exc)
-            raise AIServiceUnavailable(f"Failed to triage bug report: {exc}") from exc
+            raise AIServiceUnavailable("Failed to triage the bug report.") from exc
         finally:
             latency_ms = int((time.perf_counter() - start_time) * 1000)
             self._log_request(
@@ -244,9 +242,7 @@ class GeminiService:
         except (errors.ClientError, errors.ServerError, errors.APIError) as api_err:
             error_msg = f"Gemini API error: {api_err}"
             logger.error("Gemini summarize API error: %s", api_err)
-            raise AIServiceUnavailable(
-                f"AI service temporarily unavailable: {api_err}"
-            ) from api_err
+            raise AIServiceUnavailable("AI service temporarily unavailable.") from api_err
         except TimeoutError as t_err:
             error_msg = "Request timed out"
             logger.error("Gemini summarize timeout: %s", t_err)
@@ -254,7 +250,7 @@ class GeminiService:
         except Exception as exc:
             error_msg = str(exc)
             logger.error("Gemini summarize unexpected error: %s", exc)
-            raise AIServiceUnavailable(f"Failed to summarize issue: {exc}") from exc
+            raise AIServiceUnavailable("Failed to summarize the issue.") from exc
         finally:
             latency_ms = int((time.perf_counter() - start_time) * 1000)
             self._log_request(

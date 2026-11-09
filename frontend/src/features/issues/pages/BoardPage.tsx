@@ -15,6 +15,7 @@ import { IssueFilterBar } from "../components/IssueFilterBar";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { CreateIssueModal } from "../components/CreateIssueModal";
 import { IssueDetailPanel } from "../components/IssueDetailPanel";
+import { PageHeader } from "@/components/common/PageHeader";
 import type { IssueListItem, IssueStatus, MoveIssuePayload } from "../types";
 
 export function BoardPage() {
@@ -117,37 +118,35 @@ export function BoardPage() {
   };
 
   return (
-    <div className="space-y-4" data-testid="board-page">
-      {/* Header and View Switcher */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-text">Kanban Board</h1>
-          <p className="text-xs text-text-muted">
-            {activeProject
-              ? `Interactive workflow board for ${activeProject.name}`
-              : "Select a project to view the kanban board"}
-          </p>
-        </div>
-
-        {/* View Switcher Pills */}
-        <div className="flex items-center rounded-lg border border-border bg-surface p-1 text-xs">
-          <Link
-            to={activeProject ? `/p/${activeProject.key.toLowerCase()}/issues` : "/issues"}
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-text-muted transition-colors hover:text-text"
-            data-testid="switch-to-list-view"
-          >
-            <List className="h-3.5 w-3.5" />
-            <span>List</span>
-          </Link>
-          <div
-            className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 font-semibold text-primary"
-            data-testid="board-view-active"
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            <span>Board</span>
+    <div className="space-y-5" data-testid="board-page">
+      <PageHeader
+        eyebrow="Workspace"
+        title="Kanban Board"
+        description={
+          activeProject
+            ? `Drag issues through the workflow for ${activeProject.name}.`
+            : "Select a project to view the kanban board."
+        }
+        actions={
+          <div className="flex items-center rounded-md border border-border bg-surface p-0.5 text-[12px]">
+            <Link
+              to={activeProject ? `/p/${activeProject.key.toLowerCase()}/issues` : "/issues"}
+              className="flex items-center gap-1.5 rounded px-2.5 py-1 text-text-muted transition-colors hover:text-text"
+              data-testid="switch-to-list-view"
+            >
+              <List className="h-3.5 w-3.5" />
+              <span>List</span>
+            </Link>
+            <div
+              className="flex items-center gap-1.5 rounded bg-surface-elevated px-2.5 py-1 font-medium text-text"
+              data-testid="board-view-active"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>Board</span>
+            </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {activeProject ? (
         <>
@@ -174,6 +173,7 @@ export function BoardPage() {
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
             projectId={activeProject.id}
+            projectKey={activeProject.key}
           />
 
           {/* Right-side Detail Panel */}

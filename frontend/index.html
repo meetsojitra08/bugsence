@@ -5,10 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BugSense AI - Intelligent Issue Tracking &amp; Triage</title>
-    <meta name="description" content="AI-native bug tracking and issue management with Google Gemini 2.5 Flash triage and PostgreSQL pgvector duplicate detection." />
-    <meta name="theme-color" content="#18181b" />
+    <meta
+      name="description"
+      content="AI-native bug tracking and issue management with structured Gemini triage and PostgreSQL pgvector duplicate detection."
+    />
+    <meta name="theme-color" content="#000000" />
     <meta property="og:title" content="BugSense - AI-Native Issue Tracking" />
-    <meta property="og:description" content="Zero-latency issue filing with Gemini structured triage, automatic pgvector duplicate detection, fluid drag-and-drop Kanban, and real-time team analytics." />
+    <meta
+      property="og:description"
+      content="Zero-latency issue filing with structured AI triage, automatic duplicate detection, a fluid drag-and-drop Kanban, and real-time team analytics."
+    />
     <meta property="og:type" content="website" />
     <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -17,6 +23,26 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Apply the stored theme before first paint to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var stored = localStorage.getItem("bugsense-ui-theme");
+          var mode = stored === "light" || stored === "dark" || stored === "system" ? stored : "dark";
+          var dark =
+            mode === "system"
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+              : mode === "dark";
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.classList.toggle("light", !dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#000000" : "#F7F5F2");
+        } catch (error) {
+          /* localStorage may be unavailable; the dark default still applies. */
+        }
+      })();
+    </script>
   </head>
   <body class="bg-background text-text">
     <div id="root"></div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Sparkles, LogIn } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,14 +21,15 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
-  const { login, loginAsDemo } = useAuth();
+  const { login, loginAsDemo, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
 
-  const destination = (location.state as { from?: { pathname?: string } })?.from?.pathname || "/";
+  const destination =
+    (location.state as { from?: { pathname?: string } })?.from?.pathname || "/dashboard";
 
   const {
     register,
@@ -76,6 +77,7 @@ export function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to your account or jump straight in with demo mode."
     >
+      {!isLoading && isAuthenticated && <Navigate to={destination} replace />}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         {/* Generic Form Error Alert */}
         {formError && (
@@ -105,9 +107,6 @@ export function LoginPage() {
         <div className="space-y-1.5 text-left">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
-            <span className="cursor-pointer text-[11px] text-text-muted hover:text-text">
-              Forgot password?
-            </span>
           </div>
           <div className="relative">
             <Input
@@ -150,7 +149,7 @@ export function LoginPage() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-border" />
           </div>
-          <span className="relative bg-background px-2 text-[11px] uppercase tracking-wider text-text-muted">
+          <span className="relative bg-surface px-2 text-[11px] uppercase tracking-wider text-text-muted">
             Or
           </span>
         </div>
@@ -174,7 +173,7 @@ export function LoginPage() {
         {/* Link to Register */}
         <div className="pt-2 text-center text-xs text-text-muted">
           Don&apos;t have an account?{" "}
-          <Link to="/register" className="font-medium text-primary hover:underline">
+          <Link to="/register" className="font-medium text-accent hover:underline">
             Sign up
           </Link>
         </div>

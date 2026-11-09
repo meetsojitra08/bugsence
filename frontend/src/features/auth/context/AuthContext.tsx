@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useEffect, useState } from "react";
 import { authApi } from "../api/authApi";
 import type { LoginPayload, RegisterPayload, User } from "../types";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/apiClient";
+import { disableDemoSession, enableDemoSession, isDemoSession } from "@/lib/demo";
 
 export interface AuthContextType {
   user: User | null;
@@ -38,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (token.startsWith("demo_")) {
+      // Any demo token implies a demo session, even if the flag was lost on reload.
+      enableDemoSession();
       setUser(DEMO_USER);
       setIsLoading(false);
       return;
@@ -69,18 +72,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchCurrentUser]);
 
   const login = async (payload: LoginPayload) => {
+    disableDemoSession();
     const response = await authApi.login(payload);
     setUser(response.user);
   };
 
   const register = async (payload: RegisterPayload) => {
+    disableDemoSession();
     const response = await authApi.register(payload);
     setUser(response.user);
   };
 
   const logout = async () => {
     const refresh = getRefreshToken();
-    if (refresh && !refresh.startsWith("demo_")) {
+    const demo = isDemoSession();
+    if (refresh && !refresh.startsWith("demo_") && !demo) {
       try {
         await authApi.logout(refresh);
       } catch {
@@ -88,11 +94,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     clearTokens();
+    disableDemoSession();
     setUser(null);
   };
 
   const loginAsDemo = async () => {
     setTokens("demo_access_token", "demo_refresh_token");
+    enableDemoSession();
     setUser(DEMO_USER);
   };
 

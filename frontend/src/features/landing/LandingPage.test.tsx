@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LandingPage } from "./LandingPage";
@@ -38,67 +38,104 @@ describe("LandingPage Component", () => {
     );
   };
 
-  it("renders hero section with headline, subhead and CTA buttons", () => {
+  it("renders the hero headline, subhead and calls to action", () => {
     renderLanding();
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      /AI-Native Issue Tracking Built for Fast Engineering Teams/i
-    );
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(/paste the mess/i);
+    expect(heading).toHaveTextContent(/ship the fix/i);
     expect(screen.getByTestId("hero-cta-demo")).toBeInTheDocument();
-    expect(screen.getByText(/Create Free Account/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Create free account/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/4 teammates · 2 projects · 40\+ issues/i)).toBeInTheDocument();
   });
 
-  it("renders core feature grid cards", () => {
+  it("renders the core feature grid", () => {
     renderLanding();
 
-    expect(screen.getByText("AI Triage & Auto-Fill")).toBeInTheDocument();
-    expect(screen.getByText("pgvector Duplicate Detection")).toBeInTheDocument();
-    expect(screen.getByText("60 FPS Drag-and-Drop Board")).toBeInTheDocument();
-    expect(screen.getByText("Executive Velocity Analytics")).toBeInTheDocument();
+    expect(screen.getByText("A triage pass that fills the form")).toBeInTheDocument();
+    expect(screen.getByText("Duplicates, caught before filing")).toBeInTheDocument();
+    expect(screen.getByText("A board that keeps up")).toBeInTheDocument();
+    expect(screen.getByText("Analytics without the query tax")).toBeInTheDocument();
   });
 
-  it("interacts with live AI triage simulator presets", async () => {
+  it("previews structured triage output and labels the example honestly", async () => {
     renderLanding();
 
     expect(screen.getByTestId("ai-simulator")).toBeInTheDocument();
+    expect(screen.getByText(/Illustrative preview/i)).toBeInTheDocument();
 
-    // Select second preset: Memory Leak in WS
-    const preset1 = screen.getByTestId("preset-btn-1");
-    fireEvent.click(preset1);
+    fireEvent.click(screen.getByTestId("preset-btn-1"));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("simulated-title")).toHaveTextContent(
-        /Clean up WebSocket event listeners on notification bell unmount/i
-      );
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("simulated-title")).toHaveTextContent(
+          /Clean up WebSocket event listeners on notification bell unmount/i
+        );
+      },
+      { timeout: 4000 }
+    );
 
-    // Click run simulation
-    const runBtn = screen.getByTestId("run-ai-simulation-btn");
-    fireEvent.click(runBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("simulated-title")).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByTestId("run-ai-simulation-btn"));
+    expect(screen.getByTestId("simulated-title")).toBeInTheDocument();
   });
 
-  it("toggles FAQ accordion items", () => {
+  it("switches the product tour with pointer and keyboard", () => {
+    renderLanding();
+
+    expect(screen.getByTestId("tour-panel-dashboard")).toBeInTheDocument();
+    expect(screen.getByTestId("tour-tab-dashboard")).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByTestId("tour-tab-board"));
+    expect(screen.getByTestId("tour-panel-board")).toBeInTheDocument();
+    expect(screen.queryByTestId("tour-panel-dashboard")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByTestId("tour-tab-board"), { key: "ArrowRight" });
+    expect(screen.getByTestId("tour-tab-issue")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("tour-panel-issue")).toBeInTheDocument();
+  });
+
+  it("toggles FAQ disclosure state and hides the panel from assistive tech when closed", () => {
     renderLanding();
 
     expect(screen.getByTestId("faq-accordion")).toBeInTheDocument();
     const faqToggle1 = screen.getByTestId("faq-toggle-1");
+    const panel = document.getElementById("faq-panel-1");
 
-    // Click to open FAQ #1
+    expect(faqToggle1).toHaveAttribute("aria-expanded", "false");
+    expect(panel).toHaveAttribute("aria-hidden", "true");
+
     fireEvent.click(faqToggle1);
-    expect(
-      screen.getByText(/Click the 'Try Live Demo' button anywhere on this page/i)
-    ).toBeInTheDocument();
+
+    expect(faqToggle1).toHaveAttribute("aria-expanded", "true");
+    expect(panel).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByText(/Not for the demo/i)).toBeInTheDocument();
+
+    fireEvent.click(faqToggle1);
+    expect(faqToggle1).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("triggers loginAsDemo when clicking demo CTA", async () => {
+  it("opens the mobile navigation menu", () => {
     renderLanding();
 
-    const demoBtn = screen.getByTestId("hero-cta-demo");
-    fireEvent.click(demoBtn);
+    fireEvent.click(screen.getByRole("button", { name: /open menu/i }));
+
+    const mobileNav = screen.getByRole("navigation", { name: /mobile navigation/i });
+    expect(within(mobileNav).getByText("Workflow")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /close menu/i })).toBeInTheDocument();
+  });
+
+  it("shows an honest scope split", () => {
+    renderLanding();
+
+    expect(screen.getByText("In this build")).toBeInTheDocument();
+    expect(screen.getByText("Deliberately next")).toBeInTheDocument();
+    expect(screen.getByText(/No roadmap theatre/i)).toBeInTheDocument();
+  });
+
+  it("triggers loginAsDemo when clicking the hero demo CTA", () => {
+    renderLanding();
+
+    fireEvent.click(screen.getByTestId("hero-cta-demo"));
 
     expect(mockLoginAsDemo).toHaveBeenCalled();
   });

@@ -1,9 +1,6 @@
 import { apiRequest } from "@/lib/apiClient";
+import { isDemoSession } from "@/lib/demo";
 import type { NotificationItem, NotificationUnreadCountResponse } from "../types";
-
-const isDemoSession = (): boolean => {
-  return localStorage.getItem("bugsense_demo_mode") === "true";
-};
 
 let DEMO_NOTIFICATIONS: NotificationItem[] = [
   {
@@ -91,9 +88,13 @@ export const notificationsApi = {
       params.unread = "true";
     }
 
-    return apiRequest<NotificationItem[]>("/notifications/", {
-      params,
-    });
+    // The API paginates this endpoint; tolerate both shapes so a paginator change
+    // can never crash the notification bell again.
+    const data = await apiRequest<
+      NotificationItem[] | { results: NotificationItem[] }
+    >("/notifications/", { params });
+
+    return Array.isArray(data) ? data : (data.results ?? []);
   },
 
   async getUnreadCount(): Promise<number> {
@@ -122,7 +123,7 @@ export const notificationsApi = {
     });
   },
 
-  async markAllAsRead(): Promise<{ marked_read: number }> {
+  async markAllAsRead(): Promise<{ marked_read?: number; marked_read_count?: number }> {
     if (isDemoSession()) {
       const unreadCount = DEMO_NOTIFICATIONS.filter((n) => !n.is_read).length;
       DEMO_NOTIFICATIONS = DEMO_NOTIFICATIONS.map((n) => ({

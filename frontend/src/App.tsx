@@ -12,6 +12,7 @@ import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ProjectMembersPage } from "@/features/projects/pages/ProjectMembersPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { IssuesPage } from "@/features/issues/pages/IssuesPage";
 import { IssueDetailPage } from "@/features/issues/pages/IssueDetailPage";
 import { BoardPage } from "@/features/issues/pages/BoardPage";
@@ -50,7 +51,7 @@ export function App() {
                   <Route path="projects" element={<Navigate to="/settings/members" replace />} />
                   <Route path="settings/members" element={<ProjectMembersPage />} />
                   <Route path="projects/members" element={<ProjectMembersPage />} />
-                  <Route path="settings" element={<ProjectMembersPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                 </Route>
 
                 {/* Catch-all 404 Fallback */}

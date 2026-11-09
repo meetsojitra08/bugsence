@@ -38,7 +38,7 @@ export function ActivityItem({ item }: ActivityItemProps) {
             changed status from{" "}
             <span className="font-medium text-text">{formatStatusLabel(item.old_value)}</span>
             {" to "}
-            <span className="font-semibold text-primary">{formatStatusLabel(item.new_value)}</span>
+            <span className="font-semibold text-accent">{formatStatusLabel(item.new_value)}</span>
           </span>
         );
       case "priority_changed":
@@ -47,7 +47,7 @@ export function ActivityItem({ item }: ActivityItemProps) {
             changed priority from{" "}
             <span className="font-medium text-text">{item.old_value || "none"}</span>
             {" to "}
-            <span className="font-semibold text-amber-400">{item.new_value}</span>
+            <span className="font-semibold text-warning">{item.new_value}</span>
           </span>
         );
       case "assigned":
@@ -58,12 +58,12 @@ export function ActivityItem({ item }: ActivityItemProps) {
           </span>
         );
       case "restored":
-        return <span className="font-medium text-emerald-400">restored this issue</span>;
+        return <span className="font-medium text-success">restored this issue</span>;
       default:
         return (
           <span className="text-text-muted">
             {item.verb}{" "}
-            {item.field && <span className="font-mono text-[11px] text-primary">{item.field}</span>}
+            {item.field && <span className="font-mono text-[11px] text-accent">{item.field}</span>}
             {item.new_value && (
               <>
                 <ArrowRight className="mx-1 inline h-3 w-3" />
@@ -78,11 +78,11 @@ export function ActivityItem({ item }: ActivityItemProps) {
   const getIcon = () => {
     switch (item.verb) {
       case "created":
-        return <GitCommit className="h-3.5 w-3.5 text-blue-400" />;
+        return <GitCommit className="h-3.5 w-3.5 text-info" />;
       case "status_changed":
-        return <CheckCircle2 className="h-3.5 w-3.5 text-primary" />;
+        return <CheckCircle2 className="h-3.5 w-3.5 text-accent" />;
       case "assigned":
-        return <UserCheck className="h-3.5 w-3.5 text-purple-400" />;
+        return <UserCheck className="h-3.5 w-3.5 text-accent" />;
       default:
         return <AlertCircle className="h-3.5 w-3.5 text-text-muted" />;
     }

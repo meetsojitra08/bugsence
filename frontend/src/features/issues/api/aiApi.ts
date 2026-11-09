@@ -1,9 +1,6 @@
 import { apiRequest } from "@/lib/apiClient";
+import { isDemoSession } from "@/lib/demo";
 import type { AIDuplicateCandidate, AISummaryResult, AITriageResult } from "../types";
-
-const isDemoSession = (): boolean => {
-  return localStorage.getItem("bugsense_demo_mode") === "true";
-};
 
 const getDemoTriageResult = (rawText: string): AITriageResult => {
   const lower = rawText.toLowerCase();

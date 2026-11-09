@@ -59,13 +59,13 @@ export function AITriageCard({
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-b from-primary/10 via-surface to-surface p-3.5 shadow-sm transition-all"
+      className="overflow-hidden rounded-xl border border-accent/25 bg-gradient-to-b from-accent/10 via-surface to-surface p-3.5 shadow-sm transition-all"
       data-testid="ai-triage-card"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/20 text-primary">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/20 text-accent">
             <Sparkles className="h-3.5 w-3.5" />
           </div>
           <div>
@@ -79,7 +79,7 @@ export function AITriageCard({
         <div className="flex items-center gap-1.5">
           {appliedResult && (
             <span
-              className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400"
+              className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success"
               data-testid="ai-confidence-chip"
             >
               <Sparkles className="h-2.5 w-2.5" />
@@ -118,8 +118,8 @@ export function AITriageCard({
             placeholder="Paste raw error message, traceback, or customer complaint here..."
             rows={3}
             disabled={triageMutation.isPending}
-            className={`w-full rounded-lg border border-border bg-background/80 p-2 text-xs text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none ${
-              triageMutation.isPending ? "animate-pulse bg-primary/5" : ""
+            className={`w-full rounded-lg border border-border bg-background/80 p-2 text-xs text-text placeholder:text-text-muted/60 focus:border-accent focus:outline-none ${
+              triageMutation.isPending ? "animate-pulse bg-accent/5" : ""
             }`}
             data-testid="ai-triage-raw-input"
           />
@@ -154,7 +154,7 @@ export function AITriageCard({
           {/* Failure message with retry */}
           {triageMutation.isError && (
             <div
-              className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-xs text-red-400"
+              className="flex items-center justify-between rounded-lg border border-danger/25 bg-danger/10 p-2 text-xs text-danger"
               data-testid="ai-triage-error"
             >
               <div className="flex items-center gap-1.5">
@@ -169,7 +169,7 @@ export function AITriageCard({
                 <button
                   type="button"
                   onClick={handleAutoFill}
-                  className="font-medium underline hover:text-red-300"
+                  className="font-medium underline hover:text-danger"
                 >
                   Retry
                 </button>
@@ -180,10 +180,10 @@ export function AITriageCard({
           {/* Possible root cause hint card */}
           {appliedResult?.possible_root_cause && (
             <div
-              className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-text"
+              className="rounded-lg border border-warning/25 bg-warning/10 p-2 text-xs text-text"
               data-testid="ai-root-cause-hint"
             >
-              <div className="flex items-center justify-between font-medium text-amber-400">
+              <div className="flex items-center justify-between font-medium text-warning">
                 <div className="flex items-center gap-1.5">
                   <Lightbulb className="h-3.5 w-3.5" />
                   <span>Possible Root Cause (AI Hint)</span>

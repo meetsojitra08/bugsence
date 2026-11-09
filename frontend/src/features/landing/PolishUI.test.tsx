@@ -28,9 +28,9 @@ describe("Product Polish UI Components", () => {
       );
 
       expect(screen.getByTestId("not-found-page")).toBeInTheDocument();
-      expect(screen.getByText("Issue Not Found")).toBeInTheDocument();
+      expect(screen.getByText("Page Not Found")).toBeInTheDocument();
       expect(screen.getByText("Return to Dashboard")).toBeInTheDocument();
-      expect(screen.getByText(/Search Everything/i)).toBeInTheDocument();
+      expect(screen.getByText(/Browse Issues/i)).toBeInTheDocument();
     });
   });
 
@@ -47,7 +47,7 @@ describe("Product Polish UI Components", () => {
 
       expect(screen.getByTestId("error-boundary-fallback")).toBeInTheDocument();
       expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-      expect(screen.getByText("Deliberate test explosion")).toBeInTheDocument();
+      expect(screen.getByText(/Reference:/i)).toBeInTheDocument();
       expect(screen.getByText("Reload Page")).toBeInTheDocument();
 
       consoleSpy.mockRestore();
@@ -66,7 +66,11 @@ describe("Product Polish UI Components", () => {
 
   describe("KeyboardShortcutsModal", () => {
     it("opens on '?' keypress and displays shortcut groups", () => {
-      render(<KeyboardShortcutsModal />);
+      render(
+        <BrowserRouter>
+          <KeyboardShortcutsModal />
+        </BrowserRouter>
+      );
 
       expect(screen.queryByTestId("shortcuts-modal-dialog")).not.toBeInTheDocument();
 

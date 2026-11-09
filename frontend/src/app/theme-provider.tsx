@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
 export type Theme = "dark" | "light" | "system";
 
@@ -10,16 +10,27 @@ export interface ThemeProviderProps {
 
 export interface ThemeProviderState {
   theme: Theme;
+  resolvedTheme: "dark" | "light";
   setTheme: (theme: Theme) => void;
 }
 
 const initialState: ThemeProviderState = {
   theme: "system",
+  resolvedTheme: "dark",
   setTheme: () => null,
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+
+function normalizeTheme(value: string | null, fallback: Theme): Theme {
+  return value === "light" || value === "dark" || value === "system" ? value : fallback;
+}
+
+function getSystemTheme(): "dark" | "light" {
+  if (typeof window === "undefined" || !window.matchMedia) return "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 export function ThemeProvider({
   children,
@@ -27,34 +38,46 @@ export function ThemeProvider({
   storageKey = "bugsense-ui-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+  const [theme, setThemeState] = useState<Theme>(() =>
+    normalizeTheme(localStorage.getItem(storageKey), defaultTheme)
   );
+  const [systemTheme, setSystemTheme] = useState<"dark" | "light">(getSystemTheme);
+
+  const resolvedTheme: "dark" | "light" = theme === "system" ? systemTheme : theme;
+
+  // Keep the resolved icon in sync while the user follows their OS preference.
+  useEffect(() => {
+    if (theme !== "system" || !window.matchMedia) return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setSystemTheme(media.matches ? "dark" : "light");
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [theme]);
 
   useEffect(() => {
     const root = window.document.documentElement;
+    const meta = document.querySelector('meta[name="theme-color"]');
 
     root.classList.remove("light", "dark");
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      return;
+    root.classList.add(resolvedTheme);
+    root.style.colorScheme = resolvedTheme;
+    if (meta) {
+      meta.setAttribute("content", resolvedTheme === "dark" ? "#000000" : "#F7F5F2");
     }
+  }, [resolvedTheme]);
 
-    root.classList.add(theme);
-  }, [theme]);
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+  const setTheme = useCallback(
+    (next: Theme) => {
+      localStorage.setItem(storageKey, next);
+      setThemeState(next);
     },
-  };
+    [storageKey]
+  );
+
+  const value = useMemo(
+    () => ({ theme, resolvedTheme, setTheme }),
+    [theme, resolvedTheme, setTheme]
+  );
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>

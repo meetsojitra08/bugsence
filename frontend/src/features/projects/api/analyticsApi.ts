@@ -1,25 +1,52 @@
 import { apiRequest } from "@/lib/apiClient";
+import { isDemoSession } from "@/lib/demo";
 import type {
   ProjectAnalyticsOverview,
   ProjectAnalyticsTrendPoint,
   ProjectAnalyticsWorkloadItem,
 } from "../types";
 
-const isDemoSession = (): boolean => {
-  return localStorage.getItem("bugsense_demo_mode") === "true";
-};
+function distribute(total: number, days: number, phase: number): number[] {
+  if (days <= 0) return [];
+  const weights = Array.from({ length: days }, (_, index) => {
+    const wave = 0.55 + 0.45 * Math.sin((index + phase) / 2.7);
+    const bump = index % 9 === 0 ? 0.4 : 0;
+    return wave + bump;
+  });
+  const sum = weights.reduce((acc, value) => acc + value, 0) || 1;
+  const raw = weights.map((weight) => (total * weight) / sum);
+  const values = raw.map((value) => Math.floor(value));
+  let remainder = total - values.reduce((acc, value) => acc + value, 0);
+
+  const order = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  let cursor = 0;
+  while (remainder > 0 && order.length > 0) {
+    values[order[cursor % order.length].index] += 1;
+    remainder -= 1;
+    cursor += 1;
+  }
+  return values;
+}
 
 const getDemoTrends = (days: number): ProjectAnalyticsTrendPoint[] => {
+  const [createdTotal, resolvedTotal] = days === 7 ? [7, 2] : [24, 10];
+
+  const created = distribute(createdTotal, days, 1.4);
+  const resolved = distribute(resolvedTotal, days, 3.1);
+
   const result: ProjectAnalyticsTrendPoint[] = [];
   const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    const index = days - 1 - i;
     result.push({
-      date: dateStr,
-      created: (i * 3 + 2) % 5,
-      resolved: (i * 2 + 1) % 4,
+      date: date.toISOString().split("T")[0],
+      created: created[index] ?? 0,
+      resolved: resolved[index] ?? 0,
     });
   }
   return result;
@@ -61,8 +88,8 @@ const DEMO_WORKLOAD: ProjectAnalyticsWorkloadItem[] = [
       full_name: "Demo Recruiter",
       avatar_url: undefined,
     },
-    count: 6,
-    by_priority: { urgent: 2, high: 2, medium: 2, low: 0 },
+    count: 5,
+    by_priority: { urgent: 2, high: 1, medium: 2, low: 0 },
   },
   {
     user: {
@@ -71,8 +98,8 @@ const DEMO_WORKLOAD: ProjectAnalyticsWorkloadItem[] = [
       full_name: "Sarah Chen",
       avatar_url: undefined,
     },
-    count: 5,
-    by_priority: { urgent: 1, high: 2, medium: 1, low: 1 },
+    count: 4,
+    by_priority: { urgent: 1, high: 1, medium: 1, low: 1 },
   },
   {
     user: {
@@ -82,7 +109,7 @@ const DEMO_WORKLOAD: ProjectAnalyticsWorkloadItem[] = [
       avatar_url: undefined,
     },
     count: 3,
-    by_priority: { urgent: 0, high: 2, medium: 1, low: 0 },
+    by_priority: { urgent: 0, high: 1, medium: 2, low: 0 },
   },
   {
     user: null,

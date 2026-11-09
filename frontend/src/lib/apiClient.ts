@@ -1,7 +1,10 @@
+import { disableDemoSession } from "@/lib/demo";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 const ACCESS_TOKEN_KEY = "bugsense_access_token";
 const REFRESH_TOKEN_KEY = "bugsense_refresh_token";
+const REQUEST_TIMEOUT_MS = 20_000;
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -19,6 +22,7 @@ export function setTokens(access: string, refresh: string): void {
 export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  disableDemoSession();
 }
 
 export class ApiError extends Error {
@@ -39,18 +43,33 @@ export class ApiError extends Error {
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
   skipAuth?: boolean;
+  /** Internal: prevents an infinite refresh loop when the new token is also rejected. */
+  retriedAfterRefresh?: boolean;
 }
+
+type RefreshSubscriber = (token: string | null) => void;
 
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+let refreshSubscribers: RefreshSubscriber[] = [];
 
-function onTokenRefreshed(token: string) {
-  refreshSubscribers.forEach((callback) => callback(token));
+function onTokenRefreshed(token: string | null) {
+  const subscribers = refreshSubscribers;
   refreshSubscribers = [];
+  subscribers.forEach((callback) => callback(token));
 }
 
-function addRefreshSubscriber(callback: (token: string) => void) {
+function addRefreshSubscriber(callback: RefreshSubscriber) {
   refreshSubscribers.push(callback);
+}
+
+async function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: init.signal ?? controller.signal });
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -61,7 +80,7 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh/`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/refresh/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh }),
@@ -77,6 +96,7 @@ async function refreshAccessToken(): Promise<string | null> {
       setTokens(data.access, data.refresh || refresh);
       return data.access;
     }
+    clearTokens();
     return null;
   } catch {
     clearTokens();
@@ -85,7 +105,13 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { params, headers, skipAuth = false, ...customConfig } = options;
+  const {
+    params,
+    headers,
+    skipAuth = false,
+    retriedAfterRefresh = false,
+    ...customConfig
+  } = options;
 
   let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
@@ -103,9 +129,12 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   }
 
   const defaultHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
     Accept: "application/json",
   };
+
+  if (customConfig.body) {
+    defaultHeaders["Content-Type"] = "application/json";
+  }
 
   if (!skipAuth) {
     const token = getAccessToken();
@@ -114,39 +143,58 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
     }
   }
 
-  const response = await fetch(url, {
-    ...customConfig,
-    headers: {
-      ...defaultHeaders,
-      ...headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(url, {
+      ...customConfig,
+      headers: {
+        ...defaultHeaders,
+        ...headers,
+      },
+    });
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "AbortError";
+    throw new ApiError(
+      0,
+      timedOut ? "request_timeout" : "network_error",
+      timedOut
+        ? "The request timed out. Check your connection and try again."
+        : "Unable to reach the server. Check your connection and try again.",
+      null
+    );
+  }
 
   if (response.status === 204) {
     return {} as T;
   }
 
   // Handle silent token refresh on 401
-  if (response.status === 401 && !skipAuth && !endpoint.includes("/auth/")) {
+  if (response.status === 401 && !skipAuth && !endpoint.includes("/auth/") && !retriedAfterRefresh) {
     if (!isRefreshing) {
       isRefreshing = true;
-      const newToken = await refreshAccessToken();
-      isRefreshing = false;
+      let newToken: string | null = null;
+      try {
+        newToken = await refreshAccessToken();
+      } finally {
+        isRefreshing = false;
+      }
 
       if (newToken) {
         onTokenRefreshed(newToken);
-        return apiRequest<T>(endpoint, options);
-      } else {
-        window.dispatchEvent(new Event("bugsense-auth-expired"));
+        return apiRequest<T>(endpoint, { ...options, retriedAfterRefresh: true });
       }
+
+      // Wake every queued request with a failure so none of them hangs forever.
+      onTokenRefreshed(null);
+      window.dispatchEvent(new Event("bugsense-auth-expired"));
     } else {
-      // Queue requests until refresh completes
+      // Queue requests until the in-flight refresh completes.
       return new Promise<T>((resolve, reject) => {
         addRefreshSubscriber((newToken) => {
           if (!newToken) {
-            reject(new ApiError(401, "unauthorized", "Session expired", null));
+            reject(new ApiError(401, "unauthorized", "Session expired. Please sign in again.", null));
           } else {
-            resolve(apiRequest<T>(endpoint, options));
+            resolve(apiRequest<T>(endpoint, { ...options, retriedAfterRefresh: true }));
           }
         });
       });

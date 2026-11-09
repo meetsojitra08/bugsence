@@ -24,9 +24,18 @@ export function NotificationBell() {
   const navigate = useNavigate();
 
   const { data: unreadCount = 0 } = useNotificationUnreadCount();
-  const { data: notifications = [], isLoading } = useNotifications(unreadOnly);
+  const {
+    data: notifications = [],
+    isLoading,
+    isError,
+  } = useNotifications(unreadOnly);
   const markReadMutation = useMarkNotificationRead();
   const markAllMutation = useMarkAllNotificationsRead();
+
+  // The endpoint is paginated; tolerate either shape defensively.
+  const items: NotificationItem[] = Array.isArray(notifications)
+    ? notifications
+    : ((notifications as unknown as { results?: NotificationItem[] })?.results ?? []);
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -43,6 +52,16 @@ export function NotificationBell() {
     };
   }, [isOpen]);
 
+  // Close popover with Escape.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
   const handleNotificationClick = (item: NotificationItem) => {
     if (!item.is_read) {
       markReadMutation.mutate(item.id);
@@ -56,14 +75,16 @@ export function NotificationBell() {
   const getKindIcon = (kind: NotificationKind) => {
     switch (kind) {
       case "assigned":
-        return <UserCheck className="h-3.5 w-3.5 text-primary" />;
+        return <UserCheck className="h-3.5 w-3.5 text-accent" />;
+      case "mention":
       case "mentioned":
         return <AtSign className="h-3.5 w-3.5 text-warning" />;
       case "status_changed":
         return <ArrowRightCircle className="h-3.5 w-3.5 text-success" />;
+      case "comment":
       case "comment_created":
       default:
-        return <MessageSquare className="h-3.5 w-3.5 text-primary" />;
+        return <MessageSquare className="h-3.5 w-3.5 text-accent" />;
     }
   };
 
@@ -93,12 +114,14 @@ export function NotificationBell() {
         className="relative flex h-8 w-8 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-elevated hover:text-text"
         title="Notifications"
         aria-label="Notifications"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
         data-testid="notification-bell-button"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white shadow-xs"
+            className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-foreground shadow-xs"
             data-testid="notification-unread-badge"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
@@ -109,15 +132,17 @@ export function NotificationBell() {
       {/* Popover */}
       {isOpen && (
         <div
-          className="animate-in fade-in zoom-in-95 absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-border bg-surface-elevated text-text shadow-2xl duration-150 z-50 overflow-hidden"
+          className="animate-in fade-in zoom-in-95 absolute right-0 z-50 mt-2 w-[360px] overflow-hidden rounded-lg border border-border bg-surface text-text shadow-popover duration-150"
           data-testid="notification-popover"
+          role="dialog"
+          aria-label="Notifications"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-surface/50">
+          <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-text">Notifications</span>
+              <span className="text-[13px] font-semibold text-text">Notifications</span>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
                   {unreadCount} new
                 </span>
               )}
@@ -128,7 +153,7 @@ export function NotificationBell() {
                 <button
                   type="button"
                   onClick={() => markAllMutation.mutate()}
-                  className="flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-primary transition-colors"
+                  className="flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-accent transition-colors"
                   data-testid="mark-all-read-btn"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
@@ -139,13 +164,13 @@ export function NotificationBell() {
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex border-b border-border bg-surface/20 px-3 py-1.5 gap-2 text-xs">
+          <div className="flex gap-1 border-b border-border px-3 py-2 text-[11px]">
             <button
               type="button"
               onClick={() => setUnreadOnly(false)}
               className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
                 !unreadOnly
-                  ? "bg-primary text-white shadow-xs"
+                  ? "bg-primary text-primary-foreground shadow-xs"
                   : "text-text-muted hover:text-text"
               }`}
               data-testid="tab-all-notifications"
@@ -157,7 +182,7 @@ export function NotificationBell() {
               onClick={() => setUnreadOnly(true)}
               className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
                 unreadOnly
-                  ? "bg-primary text-white shadow-xs"
+                  ? "bg-primary text-primary-foreground shadow-xs"
                   : "text-text-muted hover:text-text"
               }`}
               data-testid="tab-unread-notifications"
@@ -172,19 +197,26 @@ export function NotificationBell() {
               <div className="p-6 text-center text-xs text-text-muted">
                 Loading notifications...
               </div>
-            ) : notifications.length === 0 ? (
+            ) : isError ? (
+              <div className="p-6 text-center text-xs text-danger">
+                Could not load notifications. Try again in a moment.
+              </div>
+            ) : items.length === 0 ? (
               <div className="p-8 text-center text-xs text-text-muted">
                 <Check className="mx-auto mb-2 h-6 w-6 text-success/60" />
-                <p className="font-medium text-text">All caught up!</p>
+                <p className="font-medium text-text">
+                  {unreadOnly ? "Nothing unread" : "All caught up!"}
+                </p>
                 <p className="mt-1">No notifications to display.</p>
               </div>
             ) : (
-              notifications.map((item) => (
-                <div
+              items.map((item) => (
+                <button
                   key={item.id}
+                  type="button"
                   onClick={() => handleNotificationClick(item)}
-                  className={`flex cursor-pointer items-start gap-3 p-3.5 transition-colors hover:bg-surface/80 ${
-                    !item.is_read ? "bg-primary/5" : ""
+                  className={`flex w-full cursor-pointer items-start gap-3 p-3 text-left transition-colors hover:bg-surface-elevated/60 ${
+                    !item.is_read ? "bg-accent/5" : ""
                   }`}
                   data-testid={`notification-item-${item.id}`}
                 >
@@ -209,7 +241,7 @@ export function NotificationBell() {
                     </p>
 
                     {item.issue && (
-                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-mono text-primary">
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-mono text-accent">
                         <span>{item.issue.key}</span>
                       </div>
                     )}
@@ -222,7 +254,7 @@ export function NotificationBell() {
                       data-testid={`unread-dot-${item.id}`}
                     />
                   )}
-                </div>
+                </button>
               ))
             )}
           </div>

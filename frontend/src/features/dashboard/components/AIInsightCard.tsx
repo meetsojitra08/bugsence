@@ -6,7 +6,6 @@ interface AIInsightCardProps {
 }
 
 export function AIInsightCard({ overview }: AIInsightCardProps) {
-  // Generate a dynamic, context-aware project health insight
   const generateInsight = (): string => {
     if (overview.total_issues === 0) {
       return "No issues recorded yet. Create and assign tasks to begin tracking sprint metrics.";
@@ -31,20 +30,20 @@ export function AIInsightCard({ overview }: AIInsightCardProps) {
 
   return (
     <div
-      className="flex items-start gap-3 rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-500/10 via-surface to-surface p-4 shadow-xs"
+      className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4"
       data-testid="ai-insight-card"
     >
-      <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400">
-        <Sparkles className="h-4 w-4" />
+      <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-accent/20 bg-accent/10 text-accent">
+        <Sparkles className="h-3.5 w-3.5" />
       </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-purple-400">Gemini AI Health Pulse</span>
-          <span className="rounded bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[12px] font-semibold text-text">Workspace Health Pulse</span>
+          <span className="rounded border border-border bg-surface-elevated px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
             Automated
           </span>
         </div>
-        <p className="mt-1 text-xs text-text-muted">{generateInsight()}</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-text-muted">{generateInsight()}</p>
       </div>
     </div>
   );

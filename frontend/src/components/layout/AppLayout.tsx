@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { CommandPalette } from "./CommandPalette";
@@ -7,43 +7,58 @@ import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsMod
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileMenuOpen]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-text">
-      {/* Desktop Sidebar */}
-      <div className="hidden flex-shrink-0 md:flex">
-        <Sidebar />
-      </div>
+    <div className="flex min-h-screen w-full flex-col bg-background text-text">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:text-text focus:shadow-modal"
+      >
+        Skip to content
+      </a>
 
-      {/* Mobile Drawer Backdrop */}
+      <Topbar onMobileMenuToggle={() => setMobileMenuOpen(true)} />
+
       {mobileMenuOpen && (
-        <div
-          className="backdrop-blur-xs fixed inset-0 z-40 bg-black/60 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="animate-in slide-in-from-left fixed inset-y-0 left-0 z-50 flex w-[260px] duration-200 lg:hidden">
+            <Sidebar />
+          </div>
+        </>
       )}
 
-      {/* Mobile Drawer */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 flex w-60 transition-transform duration-200 ease-in-out md:hidden ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar />
-      </div>
+      <main id="main-content" className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+        <div className="mx-auto max-w-[1360px]">
+          <Outlet />
+        </div>
+      </main>
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar onMobileMenuToggle={() => setMobileMenuOpen(true)} />
-
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-[1400px]">
-            <Outlet />
-          </div>
-        </main>
-      </div>
-
-      {/* Global Command Menu & Shortcuts */}
       <CommandPalette />
       <KeyboardShortcutsModal />
     </div>

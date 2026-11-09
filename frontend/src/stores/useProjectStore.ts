@@ -28,7 +28,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const match = projects.find((p) => p.id === currentId);
       if (match) return match;
     }
-    // Fall back to first non-archived or first project
+    // Fall back to first non-archived or first project and remember the choice.
     const fallback = projects.find((p) => !p.archived) || projects[0];
     if (fallback && fallback.id !== currentId) {
       get().setCurrentProjectId(fallback.id);

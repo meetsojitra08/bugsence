@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/apiClient";
+import { isDemoSession } from "@/lib/demo";
 import type {
   CreateProjectPayload,
   InviteMemberPayload,
@@ -90,10 +91,6 @@ const DEMO_MEMBERS: Record<string, ProjectMembership[]> = {
       created_at: new Date().toISOString(),
     },
   ],
-};
-
-const isDemoSession = (): boolean => {
-  return localStorage.getItem("bugsense_demo_mode") === "true";
 };
 
 export const projectsApi = {

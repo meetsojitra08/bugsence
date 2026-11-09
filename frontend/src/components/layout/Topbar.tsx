@@ -1,109 +1,116 @@
-import { useLocation } from "react-router-dom";
-import { Search, Sparkles, Sun, Moon, LogOut, Menu } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { Bug, Search, Sun, Moon, LogOut, Menu } from "lucide-react";
 import { useUiStore } from "@/stores/useUiStore";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { ProjectSwitcher } from "@/features/projects/components/ProjectSwitcher";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { cn } from "@/lib/utils";
 
 interface TopbarProps {
   onMobileMenuToggle?: () => void;
 }
 
+const NAV_ITEMS = [
+  { label: "Dashboard", href: "/dashboard", end: false },
+  { label: "Issues", href: "/issues", end: false },
+  { label: "Board", href: "/board", end: false },
+  { label: "Team", href: "/settings/members", end: false, ariaLabel: "Team Members" },
+  { label: "Settings", href: "/settings", end: true },
+];
+
 export function Topbar({ onMobileMenuToggle }: TopbarProps) {
   const { toggleCommandPalette } = useUiStore();
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
-  const location = useLocation();
-
-  const getPageTitle = (pathname: string) => {
-    switch (pathname) {
-      case "/dashboard":
-        return "Dashboard";
-      case "/my-issues":
-        return "My Issues";
-      case "/settings/members":
-      case "/projects/members":
-        return "Team Members";
-      case "/settings":
-        return "Settings";
-      default:
-        return "Overview";
-    }
-  };
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <header
-      className="flex h-14 w-full items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md"
+      className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md"
       data-testid="app-topbar"
     >
-      {/* Left: Mobile hamburger & Project Switcher & Breadcrumb */}
-      <div className="flex items-center gap-2.5">
+      <div className="mx-auto flex h-16 max-w-[1360px] items-center gap-2 px-4 sm:px-6 lg:px-10">
         {onMobileMenuToggle && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onMobileMenuToggle}
-            className="h-8 w-8 text-text-muted md:hidden"
+            className="h-8 w-8 text-text-muted lg:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-4 w-4" />
           </Button>
         )}
 
-        <div className="w-48 sm:w-56">
-          <ProjectSwitcher />
-        </div>
+        <NavLink to="/dashboard" className="flex items-center gap-2.5">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-xs">
+            <Bug className="h-4 w-4" />
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight">BugSense</span>
+        </NavLink>
 
-        <div className="hidden h-4 w-px bg-border sm:block" />
+        <nav className="ml-6 hidden h-16 items-stretch lg:flex" aria-label="Main navigation">
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              end={item.end}
+              aria-label={item.ariaLabel}
+              className={({ isActive }) =>
+                cn(
+                  "relative flex items-center px-3 text-[13px] font-medium transition-colors",
+                  isActive ? "text-text" : "text-text-muted hover:text-text"
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {item.label}
+                  {isActive && (
+                    <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-accent" />
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
 
-        <span className="text-text-primary hidden text-xs font-semibold sm:inline">
-          {getPageTitle(location.pathname)}
-        </span>
-      </div>
+        <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+          <div className="hidden w-40 md:block xl:w-48">
+            <ProjectSwitcher />
+          </div>
 
-      {/* Right Controls */}
-      <div className="flex items-center gap-2">
-        {/* Command Palette Trigger */}
-        <button
-          onClick={toggleCommandPalette}
-          className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2.5 text-xs text-text-muted transition-colors hover:bg-surface-elevated hover:text-text"
-          title="Search or execute actions (⌘K)"
-          aria-label="Search or execute actions"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Search...</span>
-          <kbd className="hidden items-center rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-text-muted sm:inline-flex">
-            ⌘K
-          </kbd>
-        </button>
+          <button
+            onClick={toggleCommandPalette}
+            className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface px-2 text-[12px] text-text-muted transition-colors hover:bg-surface-elevated hover:text-text"
+            title="Search or execute actions (⌘K)"
+            aria-label="Search or execute actions"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">Search</span>
+            <kbd className="hidden items-center rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px] sm:inline-flex">
+              ⌘K
+            </kbd>
+          </button>
 
-        {/* Notifications Popover */}
-        <NotificationBell />
+          <NotificationBell />
 
-        {/* AI Quick Indicator */}
-        <div className="hidden items-center gap-1.5 rounded-md border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400 sm:flex">
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Gemini AI</span>
-        </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="h-8 w-8 text-text-muted hover:text-text"
+            title={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+            aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
 
-        {/* Theme Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="h-8 w-8 text-text-muted hover:text-text"
-          title="Toggle theme"
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
+          <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
 
-        {/* User Dropdown / Sign out */}
-        <div className="flex items-center gap-2 border-l border-border pl-1">
           <div
-            className="shadow-xs flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white"
+            className="hidden h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-[10px] font-semibold text-accent ring-1 ring-accent/30 sm:flex"
             title={user?.email}
           >
             {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : "ME"}
@@ -114,8 +121,8 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
             size="icon"
             onClick={() => logout()}
             className="h-8 w-8 text-text-muted hover:bg-danger/10 hover:text-danger"
-            title="Log Out"
-            aria-label="Log Out"
+            title="Log out"
+            aria-label="Log out"
           >
             <LogOut className="h-3.5 w-3.5" />
           </Button>

@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/apiClient";
+import { isDemoSession } from "@/lib/demo";
 
 export interface SearchIssueResult {
   id: string;
@@ -29,10 +30,6 @@ export interface GlobalSearchResponse {
   projects: SearchProjectResult[];
   people: SearchPersonResult[];
 }
-
-const isDemoSession = (): boolean => {
-  return localStorage.getItem("bugsense_demo_mode") === "true";
-};
 
 const DEMO_SEARCH_DATA: GlobalSearchResponse = {
   issues: [

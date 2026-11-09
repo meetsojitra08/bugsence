@@ -39,12 +39,12 @@ export function TrendsChart({ data, days, onDaysChange, isLoading }: TrendsChart
   };
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 shadow-xs" data-testid="trends-chart">
+    <div className="rounded-lg border border-border bg-surface p-5" data-testid="trends-chart">
       {/* Header with range toggles */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-text">Issue Activity Trends</h3>
-          <p className="text-xs text-text-muted">
+          <h3 className="text-[14px] font-semibold text-text">Issue Activity Trends</h3>
+          <p className="text-[12px] text-text-muted">
             Created vs resolved issues over the selected time horizon
           </p>
         </div>
@@ -53,12 +53,12 @@ export function TrendsChart({ data, days, onDaysChange, isLoading }: TrendsChart
           {/* Summary counters */}
           <div className="hidden items-center gap-3 text-xs md:flex">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-primary" />
+              <span className="h-2 w-2 rounded-full bg-accent" />
               <span className="text-text-muted">Created:</span>
               <span className="font-semibold text-text">{totalCreated}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-success" />
+              <span className="h-2 w-2 rounded-full bg-text-muted" />
               <span className="text-text-muted">Resolved:</span>
               <span className="font-semibold text-text">{totalResolved}</span>
             </span>
@@ -73,7 +73,7 @@ export function TrendsChart({ data, days, onDaysChange, isLoading }: TrendsChart
                 onClick={() => onDaysChange(option)}
                 className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                   days === option
-                    ? "bg-primary text-white shadow-xs"
+                    ? "bg-accent text-accent-foreground shadow-xs"
                     : "text-text-muted hover:text-text"
                 }`}
                 data-testid={`range-btn-${option}`}
@@ -100,12 +100,12 @@ export function TrendsChart({ data, days, onDaysChange, isLoading }: TrendsChart
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="createdGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="resolvedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="hsl(var(--text-muted))" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="hsl(var(--text-muted))" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.5} />
@@ -131,15 +131,17 @@ export function TrendsChart({ data, days, onDaysChange, isLoading }: TrendsChart
                   borderColor: "hsl(var(--border))",
                   borderRadius: "8px",
                   fontSize: "12px",
-                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  color: "hsl(var(--text))",
+                  boxShadow: "0 8px 30px rgb(8 9 10 / 0.12)",
                 }}
+                labelStyle={{ color: "hsl(var(--text-muted))" }}
                 labelFormatter={(label) => formatDate(String(label))}
               />
               <Area
                 type="monotone"
                 dataKey="created"
                 name="Created"
-                stroke="hsl(var(--primary))"
+                stroke="hsl(var(--accent))"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#createdGrad)"
@@ -148,7 +150,7 @@ export function TrendsChart({ data, days, onDaysChange, isLoading }: TrendsChart
                 type="monotone"
                 dataKey="resolved"
                 name="Resolved"
-                stroke="hsl(var(--success))"
+                stroke="hsl(var(--text-muted))"
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#resolvedGrad)"

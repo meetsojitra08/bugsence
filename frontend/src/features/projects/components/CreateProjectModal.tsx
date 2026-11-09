@@ -82,7 +82,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     >
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         {error && (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+          <div className="rounded-lg border border-danger/25 bg-danger/10 p-3 text-sm text-danger">
             {error}
           </div>
         )}

@@ -142,7 +142,7 @@ export function CommentComposer({
 
   return (
     <div
-      className="relative rounded-xl border border-border bg-surface p-3 shadow-sm transition-all focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20"
+      className="relative rounded-xl border border-border bg-surface p-3 shadow-sm transition-all focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/20"
       data-testid="comment-composer"
     >
       {/* Tabs */}
@@ -200,7 +200,7 @@ export function CommentComposer({
           {/* Autocomplete mention dropdown */}
           {mentionQuery !== null && matchingMembers.length > 0 && (
             <div
-              className="bg-popover absolute bottom-full left-0 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border p-1 shadow-lg"
+              className="bg-surface-elevated absolute bottom-full left-0 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border p-1 shadow-lg"
               data-testid="mention-autocomplete-menu"
             >
               <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
@@ -215,11 +215,11 @@ export function CommentComposer({
                     insertMention(member);
                   }}
                   className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
-                    idx === mentionIndex ? "bg-primary text-white" : "text-text hover:bg-background"
+                    idx === mentionIndex ? "bg-primary text-primary-foreground" : "text-text hover:bg-background"
                   }`}
                   data-testid={`mention-option-${member.user.email}`}
                 >
-                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-[9px] font-bold">
+                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent/15 text-[9px] font-bold text-accent">
                     {(member.user.full_name || member.user.email).slice(0, 2).toUpperCase()}
                   </div>
                   <div className="truncate">
@@ -256,7 +256,7 @@ export function CommentComposer({
           type="button"
           onClick={handleSubmit}
           disabled={!text.trim() || isSubmitting}
-          className="shadow-xs hover:bg-primary-hover inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors disabled:pointer-events-none disabled:opacity-50"
+          className="shadow-xs hover:bg-primary-hover inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors disabled:pointer-events-none disabled:opacity-50"
           data-testid="submit-comment-btn"
         >
           <Send className="h-3 w-3" />

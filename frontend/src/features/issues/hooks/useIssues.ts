@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { issuesApi } from "../api/issuesApi";
@@ -38,6 +38,7 @@ export function useIssues(projectId: string | null, filters?: IssueFilters) {
         ? issuesApi.list(projectId, filters)
         : Promise.reject(new Error("No active project ID")),
     enabled: Boolean(projectId),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -70,6 +71,7 @@ export function useCreateIssue(projectId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -92,6 +94,7 @@ export function useUpdateIssue(issueId?: string, projectId?: string) {
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ["issues", "list", projectId] });
       }
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -106,6 +109,7 @@ export function useDeleteIssue(projectId?: string) {
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ["issues", "list", projectId] });
       }
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -120,6 +124,7 @@ export function useRestoreIssue(projectId?: string) {
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: ["issues", "list", projectId] });
       }
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -266,6 +271,7 @@ export function useMoveIssue(projectId: string | null) {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 }
@@ -293,6 +299,9 @@ export function useIssueUrlFilters() {
     const orderingParam = searchParams.get("ordering");
     if (orderingParam) res.ordering = orderingParam;
 
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    if (Number.isFinite(pageParam) && pageParam > 1) res.page = pageParam;
+
     return res;
   }, [searchParams]);
 
@@ -305,6 +314,23 @@ export function useIssueUrlFilters() {
         } else {
           next.set(key, String(value));
         }
+        // Any filter change starts a new result set.
+        if (key !== "page") next.delete("page");
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
+  const setPage = useCallback(
+    (page: number) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (page <= 1) {
+          next.delete("page");
+        } else {
+          next.set("page", String(page));
+        }
         return next;
       });
     },
@@ -314,7 +340,7 @@ export function useIssueUrlFilters() {
   const clearFilters = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      ["status", "priority", "assignee", "label", "search", "ordering"].forEach((k) =>
+      ["status", "priority", "assignee", "label", "search", "ordering", "page"].forEach((k) =>
         next.delete(k)
       );
       return next;
@@ -334,6 +360,7 @@ export function useIssueUrlFilters() {
   return {
     filters,
     setFilter,
+    setPage,
     clearFilters,
     activeFilterCount,
   };

@@ -79,7 +79,7 @@ export function IssueTimeline({ issueId, projectId, projectKey, issueNumber }: I
             <div className="h-6 w-1/2 rounded bg-surface/50" />
           </div>
         ) : isError ? (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">
+          <div className="flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/10 p-3 text-xs text-danger">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>Failed to load timeline activity and comments.</span>
           </div>

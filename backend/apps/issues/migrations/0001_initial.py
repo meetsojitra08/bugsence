@@ -7,6 +7,12 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def create_vector_extension(apps, schema_editor):
+    """Install pgvector before the issues table declares a vector column."""
+    if schema_editor.connection.vendor == "postgresql":
+        schema_editor.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
+
 class Migration(migrations.Migration):
 
     initial = True
@@ -17,6 +23,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(create_vector_extension, migrations.RunPython.noop),
         migrations.CreateModel(
             name='Label',
             fields=[

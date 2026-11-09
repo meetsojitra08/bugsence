@@ -41,7 +41,13 @@ def custom_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
             )
         elif response.status_code == status.HTTP_401_UNAUTHORIZED:
             error_code = "authentication_failed"
-            message = "Authentication credentials were not provided or are invalid."
+            # Keep the specific reason ("Invalid email or password.") visible to the client.
+            detail = response.data.get("detail") if isinstance(response.data, dict) else None
+            message = (
+                str(detail)
+                if detail
+                else ("Authentication credentials were not provided or are invalid.")
+            )
             details = _format_details(response.data)
         elif response.status_code == status.HTTP_403_FORBIDDEN:
             error_code = "permission_denied"

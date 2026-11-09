@@ -63,7 +63,7 @@ export function CommentCard({
 
   return (
     <div
-      className="bg-card group relative rounded-xl border border-border p-3.5 shadow-sm transition-colors hover:border-border/80"
+      className="bg-surface-elevated group relative rounded-xl border border-border p-3.5 shadow-sm transition-colors hover:border-border/80"
       data-testid={`comment-card-${item.id}`}
     >
       {/* Header */}
@@ -76,7 +76,7 @@ export function CommentCard({
               className="h-6 w-6 rounded-full border border-border object-cover"
             />
           ) : (
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-semibold text-primary">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-[10px] font-semibold text-accent">
               {authorInitials}
             </div>
           )}
@@ -116,7 +116,7 @@ export function CommentCard({
             </button>
             <button
               onClick={() => onDelete(item.id)}
-              className="rounded p-1 text-text-muted hover:bg-background hover:text-red-400"
+              className="rounded p-1 text-text-muted hover:bg-background hover:text-danger"
               title="Delete comment"
               data-testid={`delete-comment-${item.id}`}
             >
@@ -134,7 +134,7 @@ export function CommentCard({
             onChange={(e) => setEditText(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isSubmitting}
-            className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-text focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             rows={3}
             autoFocus
             data-testid={`edit-comment-textarea-${item.id}`}
@@ -159,7 +159,7 @@ export function CommentCard({
               <button
                 onClick={handleSave}
                 disabled={isSubmitting || !editText.trim()}
-                className="hover:bg-primary-hover inline-flex items-center gap-1 rounded bg-primary px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50"
+                className="hover:bg-primary-hover inline-flex items-center gap-1 rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
                 data-testid={`save-comment-btn-${item.id}`}
               >
                 <Check className="h-3 w-3" />

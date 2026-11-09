@@ -11,6 +11,7 @@ import {
 } from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { SafeMarkdown } from "../utils/markdown";
+import { hexToRgba } from "@/lib/color";
 import { IssueTimeline } from "../components/timeline/IssueTimeline";
 import { AISummaryCard } from "../components/ai/AISummaryCard";
 import type { IssuePriority, IssueStatus } from "../types";
@@ -37,9 +38,9 @@ export function IssueDetailPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl animate-pulse space-y-4 p-4">
-        <div className="h-6 w-32 rounded bg-zinc-800" />
-        <div className="h-10 w-3/4 rounded bg-zinc-800" />
-        <div className="h-40 rounded bg-zinc-800" />
+        <div className="h-6 w-32 rounded bg-surface-elevated" />
+        <div className="h-10 w-3/4 rounded bg-surface-elevated" />
+        <div className="h-40 rounded bg-surface-elevated" />
       </div>
     );
   }
@@ -47,7 +48,7 @@ export function IssueDetailPage() {
   if (isError || !issue) {
     return (
       <div
-        className="mx-auto max-w-xl rounded-xl border border-border bg-surface p-8 text-center"
+        className="mx-auto max-w-xl rounded-lg border border-border bg-surface p-8 text-center"
         data-testid="issue-not-found"
       >
         <h2 className="text-base font-semibold text-text">Issue Not Found</h2>
@@ -57,8 +58,8 @@ export function IssueDetailPage() {
         </p>
         <div className="mt-4">
           <Link
-            to="/issues"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white"
+            to={projectKey ? `/p/${projectKey.toLowerCase()}/issues` : "/issues"}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Issues
@@ -102,7 +103,7 @@ export function IssueDetailPage() {
             },
           },
         });
-        navigate("/issues");
+        navigate(projectKey ? `/p/${projectKey.toLowerCase()}/issues` : "/issues");
       },
     });
   };
@@ -112,17 +113,20 @@ export function IssueDetailPage() {
       {/* Top Navigation Breadcrumbs */}
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div className="flex items-center gap-2 text-xs">
-          <Link to="/issues" className="flex items-center gap-1 text-text-muted hover:text-text">
+          <Link
+            to={projectKey ? `/p/${projectKey.toLowerCase()}/issues` : "/issues"}
+            className="flex items-center gap-1 text-text-muted hover:text-text"
+          >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Issues</span>
           </Link>
           <span className="text-text-muted">/</span>
-          <span className="font-mono font-semibold text-primary">{issue.key}</span>
+          <span className="font-mono font-semibold text-accent">{issue.key}</span>
         </div>
 
         <button
           onClick={handleDelete}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-text-muted hover:bg-background hover:text-red-400"
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-text-muted hover:bg-background hover:text-danger"
           data-testid="detail-page-delete-btn"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -136,7 +140,7 @@ export function IssueDetailPage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Title */}
           <div>
-            <h1 className="text-2xl font-bold leading-snug tracking-tight text-text">
+            <h1 className="text-2xl font-semibold leading-snug tracking-tight text-text">
               {issue.title}
             </h1>
             <p className="mt-1 text-xs text-text-muted">
@@ -151,12 +155,17 @@ export function IssueDetailPage() {
 
           {/* Tab Navigation */}
           <div className="border-b border-border">
-            <div className="flex gap-4">
+            <div className="flex gap-4" role="tablist" aria-label="Issue views">
               <button
+                type="button"
+                role="tab"
+                id="tab-details"
+                aria-selected={activeTab === "details"}
+                aria-controls="panel-details"
                 onClick={() => setActiveTab("details")}
                 className={`border-b-2 pb-2 text-xs font-medium transition-colors ${
                   activeTab === "details"
-                    ? "border-primary text-primary"
+                    ? "border-accent text-accent"
                     : "border-transparent text-text-muted hover:text-text"
                 }`}
                 data-testid="page-tab-details"
@@ -164,10 +173,15 @@ export function IssueDetailPage() {
                 Overview & Reproduction
               </button>
               <button
+                type="button"
+                role="tab"
+                id="tab-activity"
+                aria-selected={activeTab === "activity"}
+                aria-controls="panel-activity"
                 onClick={() => setActiveTab("activity")}
                 className={`flex items-center gap-1.5 border-b-2 pb-2 text-xs font-medium transition-colors ${
                   activeTab === "activity"
-                    ? "border-primary text-primary"
+                    ? "border-accent text-accent"
                     : "border-transparent text-text-muted hover:text-text"
                 }`}
                 data-testid="page-tab-activity"
@@ -179,12 +193,12 @@ export function IssueDetailPage() {
           </div>
 
           {activeTab === "details" ? (
-            <div className="space-y-6">
+            <div className="space-y-6" role="tabpanel" id="panel-details" aria-labelledby="tab-details">
               {/* AI Summary Card */}
               <AISummaryCard issueId={issue.id} initialSummary={issue.ai_summary} />
 
               {/* Description */}
-              <div className="shadow-xs space-y-2 rounded-xl border border-border bg-surface p-5">
+              <div className="shadow-none space-y-2 rounded-lg border border-border bg-surface p-5">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-text">
                   Description
                 </h3>
@@ -197,7 +211,7 @@ export function IssueDetailPage() {
 
               {/* Reproduction steps */}
               {issue.steps_to_reproduce && (
-                <div className="shadow-xs space-y-2 rounded-xl border border-border bg-surface p-5">
+                <div className="shadow-none space-y-2 rounded-lg border border-border bg-surface p-5">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-text">
                     Steps to Reproduce
                   </h3>
@@ -209,21 +223,21 @@ export function IssueDetailPage() {
               {(issue.expected || issue.actual) && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {issue.expected && (
-                    <div className="space-y-1.5 rounded-xl border border-border bg-surface p-4">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                    <div className="space-y-1.5 rounded-lg border border-border bg-surface p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-success">
                         Expected Behavior
                       </h4>
-                      <p className="text-text-secondary text-xs leading-relaxed">
+                      <p className="text-text-muted text-xs leading-relaxed">
                         {issue.expected}
                       </p>
                     </div>
                   )}
                   {issue.actual && (
-                    <div className="space-y-1.5 rounded-xl border border-border bg-surface p-4">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-red-400">
+                    <div className="space-y-1.5 rounded-lg border border-border bg-surface p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-danger">
                         Actual Behavior
                       </h4>
-                      <p className="text-text-secondary text-xs leading-relaxed">{issue.actual}</p>
+                      <p className="text-text-muted text-xs leading-relaxed">{issue.actual}</p>
                     </div>
                   )}
                 </div>
@@ -231,19 +245,22 @@ export function IssueDetailPage() {
 
               {/* Environment */}
               {issue.environment && (
-                <div className="space-y-1 rounded-xl border border-border bg-surface p-4">
+                <div className="space-y-1 rounded-lg border border-border bg-surface p-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                     Environment
                   </h4>
-                  <p className="text-text-secondary font-mono text-xs">{issue.environment}</p>
+                  <p className="text-text-muted font-mono text-xs">{issue.environment}</p>
                 </div>
               )}
             </div>
           ) : (
             /* Activity & Comments timeline */
             <div
-              className="rounded-xl border border-border bg-surface p-5"
+              className="rounded-lg border border-border bg-surface p-5"
               data-testid="activity-timeline"
+              role="tabpanel"
+              id="panel-activity"
+              aria-labelledby="tab-activity"
             >
               <IssueTimeline
                 issueId={issue.id}
@@ -257,7 +274,7 @@ export function IssueDetailPage() {
 
         {/* Right Properties Sidebar */}
         <div className="space-y-4">
-          <div className="shadow-xs space-y-4 rounded-xl border border-border bg-surface p-4">
+          <div className="shadow-none space-y-4 rounded-lg border border-border bg-surface p-4">
             <h3 className="border-b border-border pb-2 text-xs font-semibold uppercase tracking-wider text-text">
               Properties
             </h3>
@@ -328,7 +345,15 @@ export function IssueDetailPage() {
               <span className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
                 <Calendar className="h-3 w-3" /> Due Date
               </span>
-              <p className="px-1 text-xs text-text">{issue.due_date || "No due date set"}</p>
+              <p className="px-1 text-xs text-text">
+                {issue.due_date
+                  ? new Date(`${issue.due_date}T00:00:00`).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "No due date set"}
+              </p>
             </div>
 
             {/* Labels */}
@@ -341,7 +366,7 @@ export function IssueDetailPage() {
                       key={lbl.id}
                       className="rounded px-2 py-0.5 text-xs font-medium"
                       style={{
-                        backgroundColor: `${lbl.color}20`,
+                        backgroundColor: hexToRgba(lbl.color, 0.13),
                         color: lbl.color,
                       }}
                     >
