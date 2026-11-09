@@ -17,9 +17,9 @@ env = environ.Env(
     CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:5173", "http://127.0.0.1:5173"]),
     JWT_ACCESS_MINUTES=(int, 15),
     JWT_REFRESH_DAYS=(int, 7),
-    GEMINI_API_KEY=(str, ""),
-    GEMINI_MODEL=(str, "gemini-3.5-flash"),
-    GEMINI_EMBED_MODEL=(str, "gemini-embedding-001"),
+    GROQ_API_KEY=(str, ""),
+    GROQ_MODEL=(str, "openai/gpt-oss-120b"),
+    GROQ_FALLBACK_MODEL=(str, "openai/gpt-oss-20b"),
 )
 
 # Take environment variables from .env file if it exists.
@@ -176,7 +176,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# Gemini AI settings
-GEMINI_API_KEY = env("GEMINI_API_KEY")
-GEMINI_MODEL = env("GEMINI_MODEL")
-GEMINI_EMBED_MODEL = env("GEMINI_EMBED_MODEL")
+# Groq AI settings
+GROQ_API_KEY = env("GROQ_API_KEY")
+GROQ_MODEL = env("GROQ_MODEL")
+GROQ_FALLBACK_MODEL = env("GROQ_FALLBACK_MODEL")

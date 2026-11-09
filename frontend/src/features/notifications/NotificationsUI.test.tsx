@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { notificationsApi } from "./api/notificationsApi";
 import { NotificationBell } from "./components/NotificationBell";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import * as notificationsHook from "./hooks/useNotifications";
@@ -58,40 +57,6 @@ const mockNotifications: NotificationItem[] = [
     created_at: new Date().toISOString(),
   },
 ];
-
-describe("Notifications API Client", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it("returns demo notifications and correct unread count in demo mode", async () => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    const count = await notificationsApi.getUnreadCount();
-    expect(count).toBeGreaterThan(0);
-
-    const list = await notificationsApi.list(false);
-    expect(list.length).toBeGreaterThan(0);
-
-    const unreadList = await notificationsApi.list(true);
-    expect(unreadList.every((n) => !n.is_read)).toBe(true);
-  });
-
-  it("marks a notification read and marks all read in demo mode", async () => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    const list = await notificationsApi.list(true);
-    const firstUnread = list[0];
-
-    if (firstUnread) {
-      const updated = await notificationsApi.markAsRead(firstUnread.id);
-      expect(updated.is_read).toBe(true);
-    }
-
-    const res = await notificationsApi.markAllAsRead();
-    expect(res).toHaveProperty("marked_read");
-    const remainingUnread = await notificationsApi.getUnreadCount();
-    expect(remainingUnread).toBe(0);
-  });
-});
 
 describe("NotificationBell UI Component", () => {
   let queryClient: QueryClient;

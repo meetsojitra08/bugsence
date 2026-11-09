@@ -4,10 +4,9 @@
 Prevent duplicate issues and make long threads digestible.
 
 ## Duplicate Detection
-- On issue create/update (title+description), generate an embedding via Gemini embedding model; store in `Issue.embedding` (vector 768). Run async if a task queue exists, else synchronously with fallback.
-- `POST /ai/duplicates` body `{project_id, title, description}` returns top 5 similar open/closed issues with cosine similarity score; threshold default 0.80 (configurable).
-- Use pgvector cosine distance with HNSW index; scope to the same project.
-- Fallback when embeddings unavailable: Postgres trigram similarity on title.
+- `POST /ai/duplicates` body `{project_id, title, description}` returns top 5 similar issues with trigram similarity; threshold is configurable.
+- Use PostgreSQL trigram similarity on title, always scoped to the same project.
+- SQLite/test environments use an in-memory trigram similarity fallback.
 
 ### Frontend
 - As the user types in the create modal (debounced 800ms, min 20 chars), show a non-blocking banner: "3 similar issues found" with expandable list (key, title, status, similarity %).

@@ -19,7 +19,6 @@ describe("LoginPage UI", () => {
     expect(screen.getByLabelText(/email/i)).toBeDefined();
     expect(screen.getByLabelText(/^password$/i, { selector: "input" })).toBeDefined();
     expect(screen.getByRole("button", { name: /sign in/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /try demo account/i })).toBeDefined();
   });
 
   it("shows validation errors on empty submit", async () => {

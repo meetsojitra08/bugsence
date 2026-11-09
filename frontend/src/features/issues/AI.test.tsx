@@ -118,27 +118,6 @@ describe("AI API Client and Hooks", () => {
       });
       expect(result.tldr).toBe("Issue summarized.");
     });
-
-    it("uses demo mock handlers when in demo mode", async () => {
-      localStorage.setItem("bugsense_demo_mode", "true");
-      const spy = vi.spyOn(apiClient, "apiRequest");
-
-      const triageResult = await aiApi.triageIssue({
-        projectId: "demo-proj",
-        rawText: "Uncaught TypeError: Cannot read properties of undefined in KanbanColumn",
-      });
-
-      expect(spy).not.toHaveBeenCalled();
-      expect(triageResult.type).toBe("bug");
-      expect(triageResult.priority).toBe("high");
-
-      const dups = await aiApi.findDuplicates({
-        projectId: "demo-proj",
-        title: "Token refresh failure",
-      });
-      expect(dups).toHaveLength(1);
-      expect(dups[0].key).toBe("BUG-1");
-    });
   });
 
   describe("useAITriage Hook", () => {

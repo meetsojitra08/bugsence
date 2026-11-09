@@ -31,7 +31,7 @@ export function OnboardingChecklist({ project, totalIssues }: OnboardingChecklis
     },
     {
       id: "ai",
-      label: "Test Gemini AI Triage assistant (⌘J)",
+      label: "Test Groq AI Triage assistant (⌘J)",
       done: totalIssues > 2,
       action: () => navigate("/issues"),
     },

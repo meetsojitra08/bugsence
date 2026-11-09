@@ -9,7 +9,6 @@ import {
   Sun,
   Moon,
   LogOut,
-  Sparkles,
   Users,
   User,
   PlusCircle,
@@ -21,7 +20,7 @@ import { searchApi, type GlobalSearchResponse } from "@/features/projects/api/se
 
 export function CommandPalette() {
   const { isCommandPaletteOpen, setCommandPaletteOpen } = useUiStore();
-  const { logout, loginAsDemo } = useAuth();
+  const { logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -272,14 +271,6 @@ export function CommandPalette() {
                   <Moon className="h-4 w-4 text-text-muted" />
                 )}
                 <span>Toggle {resolvedTheme === "dark" ? "Light" : "Dark"} Mode</span>
-              </Command.Item>
-
-              <Command.Item
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
-                onSelect={() => runAction(() => loginAsDemo())}
-              >
-                <Sparkles className="h-4 w-4 text-accent" />
-                <span>Switch to Demo Account</span>
               </Command.Item>
 
               <Command.Item

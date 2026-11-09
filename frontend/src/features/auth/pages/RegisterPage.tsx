@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Sparkles, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { AuthLayout } from "../components/AuthLayout";
@@ -23,12 +23,11 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
-  const { register: registerUser, loginAsDemo, isAuthenticated, isLoading } = useAuth();
+  const { register: registerUser, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   const destination =
     (location.state as { from?: { pathname?: string } })?.from?.pathname || "/dashboard";
@@ -68,24 +67,10 @@ export function RegisterPage() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsDemoLoading(true);
-    setFormError(null);
-    try {
-      await loginAsDemo();
-      toast.success("Signed in with recruiter demo account!");
-      navigate(destination, { replace: true });
-    } catch {
-      toast.error("Failed to sign in as demo.");
-    } finally {
-      setIsDemoLoading(false);
-    }
-  };
-
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Start tracking bugs with Linear speed and Gemini intelligence."
+      subtitle="Start tracking bugs with Linear speed and Groq intelligence."
     >
       {!isLoading && isAuthenticated && <Navigate to={destination} replace />}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -159,7 +144,7 @@ export function RegisterPage() {
         <Button
           type="submit"
           className="mt-2 flex w-full items-center justify-center gap-2"
-          disabled={isSubmitting || isDemoLoading}
+          disabled={isSubmitting}
         >
           {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -167,32 +152,6 @@ export function RegisterPage() {
             <UserPlus className="h-4 w-4" />
           )}
           Create Account
-        </Button>
-
-        {/* Divider */}
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <span className="relative bg-surface px-2 text-[11px] uppercase tracking-wider text-text-muted">
-            Or
-          </span>
-        </div>
-
-        {/* Demo Button */}
-        <Button
-          type="button"
-          variant="ai"
-          className="flex w-full items-center justify-center gap-2"
-          onClick={handleDemoLogin}
-          disabled={isSubmitting || isDemoLoading}
-        >
-          {isDemoLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Try Demo Account
         </Button>
 
         {/* Link to Login */}

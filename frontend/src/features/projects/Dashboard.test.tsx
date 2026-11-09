@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { analyticsApi } from "./api/analyticsApi";
 import { DashboardPage } from "../dashboard/DashboardPage";
 import { DashboardKpis } from "../dashboard/components/DashboardKpis";
 import { StatusDistributionChart } from "../dashboard/components/StatusDistributionChart";
@@ -98,36 +97,6 @@ const mockWorkload = [
   },
 ];
 
-describe("Analytics API Client", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it("returns demo overview data when in demo mode", async () => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    const overview = await analyticsApi.getOverview("any-id");
-    expect(overview).toBeDefined();
-    expect(overview.total_issues).toBe(24);
-    expect(overview.open_issues).toBe(14);
-  });
-
-  it("returns demo trends sequence when in demo mode", async () => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    const trends = await analyticsApi.getTrends("any-id", 7);
-    expect(trends).toHaveLength(7);
-    expect(trends[0]).toHaveProperty("date");
-    expect(trends[0]).toHaveProperty("created");
-    expect(trends[0]).toHaveProperty("resolved");
-  });
-
-  it("returns demo workload distribution when in demo mode", async () => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    const workload = await analyticsApi.getWorkload("any-id");
-    expect(workload.length).toBeGreaterThan(0);
-    expect(workload[0].user?.email).toBe("demo@bugsense.dev");
-  });
-});
-
 describe("Dashboard Modular Components", () => {
   it("renders DashboardKpis with formatted metrics and completion rate", () => {
     render(<DashboardKpis overview={mockOverview} />);
@@ -202,7 +171,6 @@ describe("DashboardPage Full Integration", () => {
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
-      loginAsDemo: vi.fn(),
       updateUser: vi.fn(),
     });
 

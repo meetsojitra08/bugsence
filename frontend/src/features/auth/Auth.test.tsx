@@ -1,19 +1,34 @@
 import { render, screen, act } from "@testing-library/react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "@/app/ProtectedRoute";
 import { clearTokens } from "@/lib/apiClient";
 
+vi.mock("./api/authApi", () => ({
+  authApi: {
+    login: vi.fn().mockResolvedValue({
+      user: {
+        id: "user-1",
+        email: "engineer@company.com",
+        fullName: "Alex Morgan",
+        avatarUrl: "",
+        displayName: "Alex Morgan",
+      },
+    }),
+    logout: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 function TestAuthConsumer() {
-  const { user, isAuthenticated, loginAsDemo, logout } = useAuth();
+  const { user, isAuthenticated, login, logout } = useAuth();
   return (
     <div>
       <div data-testid="auth-status">{isAuthenticated ? "authenticated" : "guest"}</div>
       <div data-testid="user-email">{user?.email || "none"}</div>
-      <button onClick={() => loginAsDemo()} data-testid="btn-demo">
-        Login Demo
+      <button onClick={() => login({ email: "engineer@company.com", password: "pass" })} data-testid="btn-login">
+        Log in
       </button>
       <button onClick={() => logout()} data-testid="btn-logout">
         Logout
@@ -27,7 +42,7 @@ describe("AuthContext and ProtectedRoute", () => {
     clearTokens();
   });
 
-  it("provides authentication state and handles demo login and logout", async () => {
+  it("provides authentication state and handles account login and logout", async () => {
     render(
       <AuthProvider>
         <TestAuthConsumer />
@@ -38,13 +53,13 @@ describe("AuthContext and ProtectedRoute", () => {
     expect(screen.getByTestId("auth-status").textContent).toBe("guest");
     expect(screen.getByTestId("user-email").textContent).toBe("none");
 
-    // Click demo login
+    // Sign in with a registered account
     await act(async () => {
-      screen.getByTestId("btn-demo").click();
+      screen.getByTestId("btn-login").click();
     });
 
     expect(screen.getByTestId("auth-status").textContent).toBe("authenticated");
-    expect(screen.getByTestId("user-email").textContent).toBe("demo@bugsense.dev");
+    expect(screen.getByTestId("user-email").textContent).toBe("engineer@company.com");
 
     // Click logout
     await act(async () => {

@@ -57,7 +57,7 @@ Status colors: backlog = slate, todo = blue, in_progress = amber, in_review = vi
 - Issue detail opens as a **right-side panel** (peek) or full page (deep link), both supported.
 
 ## 7. Key Screens
-1. **Landing/Marketing**: hero with animated product mockup, features grid, AI section, CTA. (Make this impressive; it is the first thing recruiters see.)
+1. **Landing/Marketing**: product-focused hero, feature overview, workflow, and clear account creation CTA.
 2. **Auth**: split layout, form left, animated gradient/product preview right.
 3. **Dashboard**: KPI cards (open, critical, resolved this week, avg resolution time), trend area chart, status donut, workload bar chart, recent activity.
 4. **Board**: columns by status, cards with key, title, priority icon, labels, avatar. Drag and drop, quick-add at column bottom, WIP count.

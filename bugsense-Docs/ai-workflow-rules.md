@@ -94,10 +94,10 @@ After each verified step the agent must:
 
 ## 5. Testing Rules
 - Backend: pytest + pytest-django + factory_boy. Test permissions explicitly (each role).
-- Mock Gemini in tests. Never call the live API in CI.
+- Mock Groq in tests. Never call the live API in CI.
 - Frontend: Vitest + React Testing Library for logic and critical components; Playwright for 2-3 smoke flows (login, create issue, move card).
 
-## 6. AI Feature Rules (Gemini)
+## 6. AI Feature Rules (Groq)
 - All calls through the single service wrapper; no direct SDK calls in views.
 - Validate every model response with a Pydantic schema; never trust raw output.
 - Always show AI output as a **suggestion** the user can edit or reject. Never auto-apply silently.

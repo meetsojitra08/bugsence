@@ -5,7 +5,7 @@ import App from "./App";
 describe("App root integration", () => {
   it("renders marketing landing page by default for unauthenticated visitors", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Paste the mess/i);
-    expect(screen.getByTestId("hero-cta-demo")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Turn bug reports/i);
+    expect(screen.getByRole("button", { name: /Get started/i })).toBeInTheDocument();
   });
 });

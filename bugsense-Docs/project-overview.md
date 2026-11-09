@@ -1,6 +1,6 @@
 # Project Overview: BugSense AI
 
-> AI-powered bug tracking SaaS. Linear-level polish, Gemini-powered intelligence.
+> AI-powered bug tracking SaaS. Linear-level polish, Groq-powered intelligence.
 
 ## 1. Vision
 A bug tracker that feels as fast and beautiful as Linear, and removes the tedious parts of triage with AI: auto-classification, severity/priority suggestions, duplicate detection, and plain-English summaries.
@@ -26,7 +26,7 @@ A bug tracker that feels as fast and beautiful as Linear, and removes the tediou
 | Frontend | React 18 + Vite + TypeScript |
 | Styling | Tailwind CSS + shadcn/ui + Framer Motion |
 | Database | PostgreSQL 16 (+ pgvector for embeddings) |
-| AI | Google Gemini API (`google-genai` SDK) |
+| AI | Groq API (`groq` SDK) for triage and summaries |
 | Auth | JWT (`djangorestframework-simplejwt`) |
 | API testing | Postman collection + pytest |
 | VCS | Git + GitHub (GitHub Actions CI) |
@@ -46,8 +46,8 @@ A bug tracker that feels as fast and beautiful as Linear, and removes the tediou
 Real-time collaboration (WebSockets), GitHub issue sync, Slack integration, billing (Stripe), SSO, mobile app, file attachments to S3.
 
 ## 7. Success Criteria (Resume Value)
-- Live deployed demo URL + seeded demo account
-- README with GIF demo, architecture diagram, and tech decisions
+- Live deployed product URL
+- README with product screenshots, architecture diagram, and technical decisions
 - Lighthouse score 90+ (Performance, A11y, Best Practices)
 - 80%+ backend test coverage on core apps
 - Clean, step-by-step commit history: one separate verified conventional commit per completed step, plus a closing commit per phase (`ai-workflow-rules.md` section 4)

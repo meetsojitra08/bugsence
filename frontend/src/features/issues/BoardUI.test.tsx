@@ -18,8 +18,7 @@ function renderWithProviders(ui: React.ReactElement, initialEntry = "/board") {
 
 describe("BoardPage UI", () => {
   beforeEach(() => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    useProjectStore.getState().setCurrentProjectId("demo-project-1");
+    useProjectStore.getState().setCurrentProjectId("project-1");
   });
 
   it("renders kanban board with columns and switcher", async () => {

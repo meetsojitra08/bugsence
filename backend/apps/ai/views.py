@@ -20,7 +20,7 @@ from apps.ai.serializers import (
     AITriageResponseSerializer,
 )
 from apps.ai.services.duplicates import find_duplicate_issues
-from apps.ai.services.gemini import gemini_service
+from apps.ai.services.groq import groq_service
 from apps.ai.throttling import AIUserRateThrottle
 from apps.issues.models import Issue, Label
 from apps.projects.models import Membership, Project
@@ -36,7 +36,7 @@ class AITriageView(APIView):
     throttle_classes = [AIUserRateThrottle]
 
     @extend_schema(
-        summary="Auto-triage a raw bug report with Gemini AI",
+        summary="Auto-triage a raw bug report with Groq AI",
         request=AITriageRequestSerializer,
         responses={
             200: AITriageResponseSerializer,
@@ -59,7 +59,7 @@ class AITriageView(APIView):
 
         project_labels = list(Label.objects.filter(project=project).values_list("name", flat=True))
 
-        triage_result = gemini_service.triage_issue(
+        triage_result = groq_service.triage_issue(
             raw_text=raw_text,
             project_labels=project_labels,
             user=request.user,
@@ -74,7 +74,7 @@ class AITriageView(APIView):
 class AIDuplicatesView(APIView):
     """
     Searches for semantically and lexically similar issues within the same project
-    using dense vector embeddings and trigram similarity fallback.
+    using project-scoped trigram similarity.
     """
 
     permission_classes = [IsAuthenticated]
@@ -195,7 +195,7 @@ class AISummarizeView(APIView):
             )
         )
 
-        summary_response = gemini_service.summarize_issue(
+        summary_response = groq_service.summarize_issue(
             key=issue.key,
             title=issue.title,
             status=issue.status,

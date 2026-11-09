@@ -30,7 +30,7 @@ class TestAITriageEndpoint:
             reasoning="Critical resource leak affecting worker scalability",
         )
 
-        with patch("apps.ai.views.gemini_service.triage_issue", return_value=mock_triage):
+        with patch("apps.ai.views.groq_service.triage_issue", return_value=mock_triage):
             url = reverse("ai:ai_triage")
             response = api_client.post(
                 url,
@@ -111,7 +111,7 @@ class TestAITriageEndpoint:
             confidence=0.5,
         )
 
-        with patch("apps.ai.views.gemini_service.triage_issue", return_value=mock_triage):
+        with patch("apps.ai.views.groq_service.triage_issue", return_value=mock_triage):
             url = reverse("ai:ai_triage")
             # First call succeeds
             res1 = api_client.post(
@@ -145,25 +145,21 @@ class TestAIDuplicatesEndpoint:
         )
 
         url = reverse("ai:ai_duplicates")
-        with patch(
-            "apps.ai.services.duplicates.gemini_service.generate_embedding",
-            return_value=None,
-        ):
-            response = api_client.post(
-                url,
-                {
-                    "project_id": str(project.id),
-                    "title": "Search bar resets while typing fast",
-                    "threshold": 0.50,
-                },
-                format="json",
-            )
+        response = api_client.post(
+            url,
+            {
+                "project_id": str(project.id),
+                "title": "Search bar resets while typing fast",
+                "threshold": 0.50,
+            },
+            format="json",
+        )
 
-            assert response.status_code == status.HTTP_200_OK
-            assert isinstance(response.data, list)
-            assert len(response.data) >= 1
-            assert response.data[0]["id"] == str(issue.id)
-            assert "similarity" in response.data[0]
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+        assert len(response.data) >= 1
+        assert response.data[0]["id"] == str(issue.id)
+        assert "similarity" in response.data[0]
 
     def test_duplicates_outsider_forbidden(self, api_client):
         project = ProjectFactory()
@@ -205,7 +201,7 @@ class TestAISummarizeEndpoint:
         url = reverse("ai:ai_summarize", kwargs={"issue_id": issue.id})
 
         with patch(
-            "apps.ai.views.gemini_service.summarize_issue", return_value=mock_summary
+            "apps.ai.views.groq_service.summarize_issue", return_value=mock_summary
         ) as mock_svc:
             # First request: generates and caches
             res1 = api_client.post(url, {}, format="json")
@@ -219,7 +215,7 @@ class TestAISummarizeEndpoint:
             assert "Dashboard query is slow" in issue.ai_summary
             assert issue.ai_metadata["summary"]["status"] == "Investigating indexing strategy"
 
-            # Second request without regenerate: cache hit, Gemini NOT called again
+            # Second request without regenerate: cache hit, Groq NOT called again
             res2 = api_client.post(url, {}, format="json")
             assert res2.status_code == status.HTTP_200_OK
             assert mock_svc.call_count == 1  # Unchanged!
@@ -244,12 +240,12 @@ class TestAISummarizeEndpoint:
         url = reverse("ai:ai_summarize", kwargs={"issue_id": issue.id})
 
         with patch(
-            "apps.ai.views.gemini_service.summarize_issue", return_value=mock_summary
+            "apps.ai.views.groq_service.summarize_issue", return_value=mock_summary
         ) as mock_svc:
             api_client.post(url, {}, format="json")
             assert mock_svc.call_count == 1
 
-            # Request with regenerate=true: must invoke Gemini again
+            # Request with regenerate=true: must invoke Groq again
             api_client.post(url, {"regenerate": True}, format="json")
             assert mock_svc.call_count == 2
 
@@ -275,7 +271,7 @@ class TestAISummarizeEndpoint:
 
         url = reverse("ai:ai_summarize", kwargs={"issue_id": issue.id})
 
-        with patch("apps.ai.views.gemini_service.summarize_issue", return_value=mock_summary):
+        with patch("apps.ai.views.groq_service.summarize_issue", return_value=mock_summary):
             res1 = api_client.post(url, {}, format="json")
             assert res1.status_code == status.HTTP_200_OK
             assert res1.data["is_stale"] is False
@@ -302,7 +298,7 @@ class TestAISummarizeEndpoint:
         )
 
         with patch(
-            "apps.ai.views.gemini_service.summarize_issue", return_value=new_mock_summary
+            "apps.ai.views.groq_service.summarize_issue", return_value=new_mock_summary
         ) as mock_svc:
             res2 = api_client.post(url, {}, format="json")
             assert res2.status_code == status.HTTP_200_OK

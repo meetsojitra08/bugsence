@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LandingPage } from "./LandingPage";
 import * as authHook from "@/features/auth/hooks/useAuth";
-
-const mockLoginAsDemo = vi.fn().mockResolvedValue(undefined);
 
 describe("LandingPage Component", () => {
   let queryClient: QueryClient;
@@ -23,7 +21,6 @@ describe("LandingPage Component", () => {
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
-      loginAsDemo: mockLoginAsDemo,
       updateUser: vi.fn(),
     });
   });
@@ -42,56 +39,19 @@ describe("LandingPage Component", () => {
     renderLanding();
 
     const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent(/paste the mess/i);
-    expect(heading).toHaveTextContent(/ship the fix/i);
-    expect(screen.getByTestId("hero-cta-demo")).toBeInTheDocument();
-    expect(screen.getAllByText(/Create free account/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/4 teammates · 2 projects · 40\+ issues/i)).toBeInTheDocument();
+    expect(heading).toHaveTextContent(/turn bug reports/i);
+    expect(heading).toHaveTextContent(/find the next clear step/i);
+    expect(screen.getByRole("button", { name: /get started/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /explore product features/i })).toBeInTheDocument();
   });
 
   it("renders the core feature grid", () => {
     renderLanding();
 
-    expect(screen.getByText("A triage pass that fills the form")).toBeInTheDocument();
-    expect(screen.getByText("Duplicates, caught before filing")).toBeInTheDocument();
-    expect(screen.getByText("A board that keeps up")).toBeInTheDocument();
-    expect(screen.getByText("Analytics without the query tax")).toBeInTheDocument();
-  });
-
-  it("previews structured triage output and labels the example honestly", async () => {
-    renderLanding();
-
-    expect(screen.getByTestId("ai-simulator")).toBeInTheDocument();
-    expect(screen.getByText(/Illustrative preview/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("preset-btn-1"));
-
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("simulated-title")).toHaveTextContent(
-          /Clean up WebSocket event listeners on notification bell unmount/i
-        );
-      },
-      { timeout: 4000 }
-    );
-
-    fireEvent.click(screen.getByTestId("run-ai-simulation-btn"));
-    expect(screen.getByTestId("simulated-title")).toBeInTheDocument();
-  });
-
-  it("switches the product tour with pointer and keyboard", () => {
-    renderLanding();
-
-    expect(screen.getByTestId("tour-panel-dashboard")).toBeInTheDocument();
-    expect(screen.getByTestId("tour-tab-dashboard")).toHaveAttribute("aria-selected", "true");
-
-    fireEvent.click(screen.getByTestId("tour-tab-board"));
-    expect(screen.getByTestId("tour-panel-board")).toBeInTheDocument();
-    expect(screen.queryByTestId("tour-panel-dashboard")).not.toBeInTheDocument();
-
-    fireEvent.keyDown(screen.getByTestId("tour-tab-board"), { key: "ArrowRight" });
-    expect(screen.getByTestId("tour-tab-issue")).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("tour-panel-issue")).toBeInTheDocument();
+    expect(screen.getByText("Turn rough reports into clear issues")).toBeInTheDocument();
+    expect(screen.getByText("Spot similar reports early")).toBeInTheDocument();
+    expect(screen.getByText("A board that shows the next step")).toBeInTheDocument();
+    expect(screen.getByText("Understand project health at a glance")).toBeInTheDocument();
   });
 
   it("toggles FAQ disclosure state and hides the panel from assistive tech when closed", () => {
@@ -108,7 +68,7 @@ describe("LandingPage Component", () => {
 
     expect(faqToggle1).toHaveAttribute("aria-expanded", "true");
     expect(panel).toHaveAttribute("aria-hidden", "false");
-    expect(screen.getByText(/Not for the demo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create, assign, prioritize and track issues/i)).toBeInTheDocument();
 
     fireEvent.click(faqToggle1);
     expect(faqToggle1).toHaveAttribute("aria-expanded", "false");
@@ -124,19 +84,11 @@ describe("LandingPage Component", () => {
     expect(screen.getByRole("button", { name: /close menu/i })).toBeInTheDocument();
   });
 
-  it("shows an honest scope split", () => {
+  it("shows the product principles and open-source path", () => {
     renderLanding();
 
-    expect(screen.getByText("In this build")).toBeInTheDocument();
-    expect(screen.getByText("Deliberately next")).toBeInTheDocument();
-    expect(screen.getByText(/No roadmap theatre/i)).toBeInTheDocument();
+    expect(screen.getByText("The details stay with the work.")).toBeInTheDocument();
+    expect(screen.getByText("Open source under the MIT License")).toBeInTheDocument();
   });
 
-  it("triggers loginAsDemo when clicking the hero demo CTA", () => {
-    renderLanding();
-
-    fireEvent.click(screen.getByTestId("hero-cta-demo"));
-
-    expect(mockLoginAsDemo).toHaveBeenCalled();
-  });
 });

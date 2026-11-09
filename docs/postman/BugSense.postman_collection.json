@@ -2,13 +2,23 @@
   "info": {
     "_postman_id": "7b8f9a2e-4b3c-4a1d-9c8e-3a2b1c0d4e5f",
     "name": "BugSense AI API",
-    "description": "Production API collection for BugSense — AI-Native Issue Tracking with Google Gemini 2.5 Flash and PostgreSQL pgvector.",
+    "description": "Production API collection for BugSense — AI-Native Issue Tracking with Groq and PostgreSQL.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
       "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
       "type": "string"
     },
     {
@@ -85,7 +95,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"demo@bugsense.dev\",\n  \"password\": \"DemoPassword123!\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
             },
             "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""] }
           }

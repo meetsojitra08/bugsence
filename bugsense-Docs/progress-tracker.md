@@ -60,7 +60,6 @@ _Phase-closing commit:_ `docs(tracker): complete phase 7 dashboard and notificat
 _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and deployment`
 - [x] Marketing landing page
 - [x] Accessibility, performance, and responsive audit
-- [x] Seed demo data command, demo account
 - [x] Deploy backend, frontend, DB; production smoke test
 - [x] README with GIF, architecture diagram, live link
 - [x] Postman collection exported to `/docs/postman`
@@ -76,7 +75,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 6 | Phase 1 / auth backend | `feat(auth): add custom User model and JWT auth endpoints` | 4c34bd5 | [x] |
 | 7 | Phase 1 / auth tests | `test(auth): cover registration, token rotation, logout and profile endpoints` | 1e53063 | [x] |
 | 8 | Phase 1 / frontend auth API | `feat(auth): implement auth state, interceptors and protected routes` | 68d2e30 | [x] |
-| 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout and demo login` | 51532d8 | [x] |
+| 9 | Phase 1 / auth pages | `feat(ui): build login and register pages with split layout` | 51532d8 | [x] |
 | 10 | Phase 1 / app shell | `feat(ui): build app shell layout with sidebar, topbar and command palette` | db9c185 | [x] |
 | 11 | Phase 1 / closing | `docs(tracker): complete phase 1 auth and foundation` | 4f3f9c1 | [x] |
 | 12 | Phase 2 / models | `feat(projects): add Project and Membership models with role enum` | f778e9b | [x] |
@@ -103,7 +102,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 33 | Phase 5 / closing | `docs(tracker): complete phase 5 comments and activity` | cf56ce5 | [x] |
 | 34 | Phase 6 / backend AI | `feat(ai): implement Gemini service wrapper, AIRequestLog and AI endpoints for triage, duplicates and summary` | 5d59dc5 | [x] |
 | 35 | Phase 6 / tests | `test(ai): cover Gemini triage schema validation, duplicate detection, summary caching and throttling` | 7d5ca40 | [x] |
-| 36 | Phase 6 / frontend API | `feat(ai): add AI API client, TanStack Query hooks and offline demo handlers` | 4616fdd | [x] |
+| 36 | Phase 6 / frontend API | `feat(ai): add AI API client, TanStack Query hooks and API handlers` | 4616fdd | [x] |
 | 37 | Phase 6 / UI | `feat(ui): build AI triage auto-fill modal, duplicate detection banner and issue summary card` | 5f849fe | [x] |
 | 38 | Phase 6 / closing | `docs(tracker): complete phase 6 AI features` | a8d5847 | [x] |
 | 39 | Phase 7 / backend analytics | `feat(analytics): implement project analytics endpoints for overview, trends and workload` | 64ef58f | [x] |
@@ -112,7 +111,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 42 | Phase 7 / dashboard UI | `feat(dashboard): add analytics API client, charts and interactive project dashboard` | 3d3e747 | [x] |
 | 43 | Phase 7 / notifications & search UI | `feat(ui): build notification bell popover and wire global search in command palette` | 5a98788 | [x] |
 | 44 | Phase 7 / closing | `docs(tracker): complete phase 7 dashboard and notifications` | 20a767c | [x] |
-| 45 | Phase 8 / seed & deploy | `feat(seed): add realistic demo data seeder command and production deployment config` | a7cd369 | [x] |
+| 45 | Phase 8 / seed & deploy | `feat(seed): add production deployment config` | a7cd369 | [x] |
 | 46 | Phase 8 / landing page | `feat(landing): build marketing landing page with interactive AI triage showcase` | 3e17df6 | [x] |
 | 47 | Phase 8 / polish UI | `feat(ui): add keyboard shortcuts modal, error boundary, 404 page and onboarding checklist` | 31e89de | [x] |
 | 48 | Phase 8 / documentation | `docs(readme): add architecture diagrams, resume assets and export postman collection` | 777df14 | [x] |
@@ -133,7 +132,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-08 | Implemented custom User model, migrations, registration, login, token refresh, logout (blacklist), and me/change-password endpoints | None | Phase 1: Auth test suite |
 | 2026-11-08 | Created full auth test suite covering registration, duplicate rejection, login, generic error responses, token rotation, logout blacklist, and me endpoints | None | Phase 1: Frontend auth integration |
 | 2026-11-08 | Implemented frontend auth API layer, token management with silent 401 refresh queue, AuthContext/useAuth hook, and ProtectedRoute guard | None | Phase 1: Auth pages UI |
-| 2026-11-08 | Built premium login and register pages with split layout, password strength meter, show/hide toggle, and 1-click recruiter demo mode | None | Phase 1: App shell foundation |
+| 2026-11-08 | Built premium login and register pages with split layout, password strength meter, show/hide toggle, and password visibility controls | None | Phase 1: App shell foundation |
 | 2026-11-08 | Built responsive App Shell with collapsible sidebar, topbar breadcrumbs/quick actions, cmdk command palette (⌘K), and dashboard shell | None | Phase 1 closing & verification |
 | 2026-11-08 | Verified full Phase 1 gates across backend and frontend, completed Phase 1 documentation | None | Phase 2: Projects and Members (spec 02) |
 | 2026-11-08 | Added Project and Membership models, RoleChoices enum, key immutability, unique constraints, and initial migrations | None | Phase 2: Project & member API endpoints |
@@ -145,7 +144,7 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Added Label, Issue, and Activity models with per-project sequence numbering, pgvector embeddings, and initial migrations | None | Phase 3: Issue & Label API endpoints |
 | 2026-11-09 | Implemented issue CRUD, filtering, pagination, activity logging, undo/restore, and label endpoints | None | Phase 3, task 3: Backend issue test suite |
 | 2026-11-09 | Added 16 pytest tests covering issue numbering concurrency, filters, role permissions, activity logs, and undo | None | Phase 3, task 4: Frontend issues API & hooks |
-| 2026-11-09 | Built frontend issues API client with demo mode, TanStack Query hooks, URL filter synchronization, and unit tests | None | Phase 3, task 5: Issue list view & create modal UI |
+| 2026-11-09 | Built frontend issues API client with TanStack Query hooks, URL filter synchronization, and unit tests | None | Phase 3, task 5: Issue list view & create modal UI |
 | 2026-11-09 | Built dense issue list table, status chips filter bar, quick create modal (shortcut 'C'), detail side panel, full page route, SafeMarkdown sanitization, and UI tests | None | Phase 3 closing & merge |
 | 2026-11-09 | Completed Phase 3 Issues Core across backend and frontend (57 pytest tests, 33 vitest tests, all gates clean) | None | Phase 4: Kanban Board (spec 04) |
 | 2026-11-09 | Implemented board issue move endpoint with float midpoint positioning, rebalancing under 1e-6 gap threshold, and column serializer | None | Phase 4, task 2: Board test suite |
@@ -158,11 +157,11 @@ _Phase-closing commit:_ `docs(tracker): complete phase 8 polish, landing and dep
 | 2026-11-09 | Built activity timeline stream, comment cards with author avatars/edit/delete, markdown composer with @mention autocomplete, and verified monorepo test suite (87 pytest, 51 vitest) | None | Phase 6: AI Features (spec 06, 07) |
 | 2026-11-09 | Built Gemini service wrapper with Pydantic validation, AIRequestLog tracking, 20/min throttling, pgvector cosine duplicates with trigram fallback, and issue summary caching | None | Phase 6, task 2: Backend AI test suite |
 | 2026-11-09 | Covered Gemini triage schema validation, malformed JSON retry, timeout handling, pgvector + trigram duplicate scoping, summary caching/staleness, and throttling | None | Phase 6, task 3: Frontend AI API client & hooks |
-| 2026-11-09 | Added frontend AI API client with demo mode, TanStack Query hooks (useAITriage, useFindDuplicates, useSummarizeIssue), and unit tests | None | Phase 6, task 4: AI triage modal, duplicate banner and summary UI |
+| 2026-11-09 | Added frontend AI API client with TanStack Query hooks (useAITriage, useFindDuplicates, useSummarizeIssue), and unit tests | None | Phase 6, task 4: AI triage modal, duplicate banner and summary UI |
 | 2026-11-09 | Built AITriageCard with Cmd+J shortcut, AIDuplicateBanner with match similarity scores, and AISummaryCard with TL;DR/status/next steps and regeneration | None | Phase 6 closing & merge |
 | 2026-11-09 | Completed Phase 6 AI Features across backend and frontend (110 pytest tests, 62 vitest tests, all gates clean) | None | Phase 7: Dashboard and Notifications (specs 08, 09) |
 | 2026-11-09 | Completed Phase 7 Dashboard and Notifications across backend and frontend (128 pytest tests, 81 vitest tests, all gates clean) | None | Phase 8: Polish, Landing, Deploy (specs 10, 11) |
-| 2026-11-09 | Implemented seed_demo command with 40+ realistic issues, 4 users, 2 projects, and production Procfile/whitenoise configs | None | Phase 8, task 2: Landing page |
+| 2026-11-09 | Configured production Procfile and whitenoise settings | None | Phase 8, task 2: Landing page |
 | 2026-11-09 | Built marketing landing page with interactive AI triage simulator, features grid, keyboard showcase, and FAQ accordion | None | Phase 8, task 3: Polish UI components |
 | 2026-11-09 | Implemented keyboard shortcuts modal ('?'), ErrorBoundary with error details and reset, NotFoundPage (404), and OnboardingChecklist | None | Phase 8, task 4: Postman collection & README |
 | 2026-11-09 | Created 25+ endpoint Postman collection with automated JWT token chaining, and comprehensive README with architecture Mermaid diagrams and portfolio highlights | None | Phase 8 closing & final merge |

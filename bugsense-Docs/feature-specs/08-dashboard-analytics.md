@@ -12,7 +12,7 @@ At-a-glance project health that looks stunning.
 ## Frontend
 - KPI cards with animated count-up and delta vs previous period.
 - Area chart (created vs resolved), donut (status), horizontal bars (workload), heat/priority breakdown.
-- Date range selector (7/30/90 days). Recent activity feed. "AI insight" card (optional): one-sentence Gemini summary of the week.
+- Date range selector (7/30/90 days). Recent activity feed. "AI insight" card (optional): one-sentence Groq summary of the week.
 - Charts themed with design tokens; tooltips polished; skeleton on load; empty state if no data.
 
 ## Acceptance Criteria

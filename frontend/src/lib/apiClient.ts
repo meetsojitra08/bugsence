@@ -1,6 +1,9 @@
-import { disableDemoSession } from "@/lib/demo";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+// Local development uses the Django dev server directly. Production defaults to
+// a same-origin API so the browser never tries to reach the visitor's localhost.
+// Deployments with a separate API host should set VITE_API_BASE_URL at build time.
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? "http://localhost:8000/api/v1" : "/api/v1");
 
 const ACCESS_TOKEN_KEY = "bugsense_access_token";
 const REFRESH_TOKEN_KEY = "bugsense_refresh_token";
@@ -22,7 +25,6 @@ export function setTokens(access: string, refresh: string): void {
 export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
-  disableDemoSession();
 }
 
 export class ApiError extends Error {
@@ -42,6 +44,7 @@ export class ApiError extends Error {
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
+  timeoutMs?: number;
   skipAuth?: boolean;
   /** Internal: prevents an infinite refresh loop when the new token is also rejected. */
   retriedAfterRefresh?: boolean;
@@ -62,9 +65,13 @@ function addRefreshSubscriber(callback: RefreshSubscriber) {
   refreshSubscribers.push(callback);
 }
 
-async function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit = {},
+  timeoutMs = REQUEST_TIMEOUT_MS
+): Promise<Response> {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(input, { ...init, signal: init.signal ?? controller.signal });
   } finally {
@@ -108,6 +115,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   const {
     params,
     headers,
+    timeoutMs = REQUEST_TIMEOUT_MS,
     skipAuth = false,
     retriedAfterRefresh = false,
     ...customConfig
@@ -151,7 +159,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
         ...defaultHeaders,
         ...headers,
       },
-    });
+    }, timeoutMs);
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
     throw new ApiError(

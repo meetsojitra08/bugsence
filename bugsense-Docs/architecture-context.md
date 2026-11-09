@@ -7,7 +7,7 @@ React SPA (Vite, TS, Tailwind)
     v
 Django REST API  --->  PostgreSQL (+ pgvector)
     |
-    +--> Gemini API (triage, summary, embeddings)
+    +--> Groq API (triage, summary)
     +--> Background tasks (Django-Q2 or Celery + Redis; optional in v1)
 ```
 
@@ -22,7 +22,7 @@ bugsense/
       users/                 # custom User, auth endpoints
       projects/              # Project, Membership
       issues/                # Issue, Label, Comment, Activity
-      ai/                    # Gemini service, triage, duplicates
+      ai/                    # Groq service, triage, duplicates
       analytics/             # dashboard aggregations
       notifications/
     common/                  # pagination, permissions, exceptions, mixins
@@ -94,12 +94,13 @@ Conventions: cursor or page-number pagination (`page_size` max 100), `?search=`,
 Enforce via DRF permission classes + queryset scoping (never trust client project IDs).
 
 ## 7. AI Architecture
-- All Gemini calls go through `apps/ai/services/gemini.py` (single client wrapper).
-- Model name from env `GEMINI_MODEL` (default a fast Flash-class model); embedding model from `GEMINI_EMBED_MODEL`.
-- Structured output: request JSON with a response schema, validate with Pydantic, retry once on invalid JSON.
+- All Groq calls go through `apps/ai/services/groq.py` (single client wrapper).
+- Model names come from `GROQ_MODEL` and `GROQ_FALLBACK_MODEL`; API key comes from `GROQ_API_KEY`.
+- Request JSON object responses, validate with Pydantic, and retry on invalid JSON or transient provider errors.
+- Groq does not provide embeddings; duplicate detection uses project-scoped PostgreSQL trigram similarity with an in-memory fallback.
 - Prompts live in `apps/ai/prompts/*.py` as versioned constants.
 - Rate limit per user (e.g. 20 AI calls/min) via DRF throttle; log each call to `AIRequestLog`.
-- Graceful degradation: if Gemini fails or times out (8s), return 503 with `ai_unavailable`; UI must still allow manual creation.
+- Graceful degradation: if Groq fails or times out, return a service error; UI must still allow manual creation.
 - Never send secrets, emails or PII in prompts. Truncate descriptions to 4000 chars.
 
 ## 8. Frontend Architecture
@@ -112,7 +113,7 @@ Enforce via DRF permission classes + queryset scoping (never trust client projec
 - Icons: lucide-react. Toasts: sonner. Command palette: cmdk.
 
 ## 9. Environment Variables
-Backend: `SECRET_KEY, DEBUG, DATABASE_URL, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, GEMINI_API_KEY, GEMINI_MODEL, GEMINI_EMBED_MODEL, JWT_ACCESS_MINUTES, JWT_REFRESH_DAYS`
+Backend: `SECRET_KEY, DEBUG, DATABASE_URL, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, GROQ_API_KEY, GROQ_MODEL, GROQ_FALLBACK_MODEL, JWT_ACCESS_MINUTES, JWT_REFRESH_DAYS`
 Frontend: `VITE_API_BASE_URL`
 
 ## 10. Non-Functional Requirements

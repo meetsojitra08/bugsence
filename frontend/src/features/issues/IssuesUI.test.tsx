@@ -19,8 +19,7 @@ function renderWithProviders(ui: React.ReactElement, initialEntry = "/issues") {
 
 describe("IssuesPage UI", () => {
   beforeEach(() => {
-    localStorage.setItem("bugsense_demo_mode", "true");
-    useProjectStore.getState().setCurrentProjectId("demo-project-1");
+    useProjectStore.getState().setCurrentProjectId("project-1");
   });
 
   it("renders filter bar, search input, status chips, and issue table", async () => {

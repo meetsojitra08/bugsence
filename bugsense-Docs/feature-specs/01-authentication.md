@@ -19,7 +19,6 @@ Secure JWT auth with a beautiful onboarding experience.
 - Zod validation; password strength meter; show/hide password.
 - Axios client with interceptor: attach access token, on 401 call refresh once, then retry or redirect to login.
 - `AuthProvider` + `ProtectedRoute`. Preserve intended URL after login.
-- Demo login button ("Try demo account") for recruiters.
 
 ## Acceptance Criteria
 - Invalid credentials show friendly inline error.

@@ -140,7 +140,7 @@ export function AITriageCard({
               {triageMutation.isPending ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Triaging with Gemini...
+                  Triaging with Groq...
                 </>
               ) : (
                 <>

@@ -1,4 +1,4 @@
-"""Prompt templates and schemas for Gemini AI issue summarization."""
+"""Prompt templates and schemas for AI issue summarization."""
 
 SUMMARY_SYSTEM_PROMPT = """You are an expert technical lead on an engineering team using BugSense.
 Your task is to summarize an issue thread including its description, reproduction details,

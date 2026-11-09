@@ -6,7 +6,6 @@ import {
   Bug,
   Check,
   ChevronDown,
-  Copy,
   Github,
   Menu,
   Moon,
@@ -18,38 +17,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import {
-  CODE_SNIPPET,
-  ENGINEERING_FACTS,
   FAQS,
   FEATURES,
   NAV_ITEMS,
-  SCOPE_NEXT,
-  SCOPE_SHIPPED,
   SHORTCUTS,
-  STACK_GROUPS,
   WORKFLOW_STEPS,
   type Feature,
 } from "./content";
-import { ProductTour } from "./components/ProductTour";
 import { Reveal } from "./components/Reveal";
-import { TriagePreview } from "./components/TriagePreview";
-
-const DEMO_PEOPLE = ["Demo Recruiter", "Sarah Chen", "Marcus Vance", "Elena Rostova"];
-
-const AVATAR_TONES = [
-  "bg-accent/15 text-accent",
-  "bg-text/10 text-text",
-  "bg-warning/15 text-warning",
-  "bg-info/15 text-info",
-];
-
-function initialsOf(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("");
-}
 
 function SectionHeading({
   eyebrow,
@@ -282,7 +257,7 @@ function FeatureVisual({ feature }: { feature: Feature }) {
 }
 
 export function LandingPage() {
-  const { isAuthenticated, loginAsDemo } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -291,7 +266,6 @@ export function LandingPage() {
   const [progress, setProgress] = useState(0);
   const [activeSection, setActiveSection] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -335,23 +309,10 @@ export function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
-  const handleDemoClick = useCallback(async () => {
+  const handleGetStarted = useCallback(() => {
     setMobileOpen(false);
-    if (!isAuthenticated) {
-      await loginAsDemo();
-    }
-    navigate("/dashboard");
-  }, [isAuthenticated, loginAsDemo, navigate]);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(CODE_SNIPPET);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard access can be blocked; the snippet stays selectable.
-    }
-  }, []);
+    navigate(isAuthenticated ? "/dashboard" : "/register");
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-text">
@@ -456,11 +417,10 @@ export function LandingPage() {
                 </Link>
                 <Button
                   size="sm"
-                  onClick={handleDemoClick}
+                  onClick={handleGetStarted}
                   className="hidden gap-1.5 sm:inline-flex"
-                  data-testid="hero-try-demo-btn"
                 >
-                  Launch demo
+                  Get started
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </>
@@ -504,8 +464,8 @@ export function LandingPage() {
             </nav>
 
             <div className="mt-4 flex flex-col gap-2">
-              <Button onClick={handleDemoClick} className="w-full justify-between">
-                Launch the live demo
+              <Button onClick={handleGetStarted} className="w-full justify-between">
+                Create an account
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
               <div className="grid grid-cols-2 gap-2">
@@ -538,15 +498,15 @@ export function LandingPage() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60 motion-reduce:animate-none" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
                 </span>
-                AI-native issue tracking · v2.0
+                Issue tracking for teams that ship
               </div>
 
               <h1 className="mt-6 text-[clamp(2.75rem,7.4vw,4.75rem)] font-semibold leading-[0.94] tracking-[-0.05em] text-text">
-                Paste the mess.
+                Turn bug reports.
                 <span className="mt-1 block">
-                  Ship the{" "}
+                  Find the next{" "}
                   <span className="relative inline-block text-accent">
-                    fix
+                    clear step
                     <svg
                       viewBox="0 0 120 12"
                       preserveAspectRatio="none"
@@ -569,18 +529,17 @@ export function LandingPage() {
               </h1>
 
               <p className="mt-7 max-w-lg text-[15px] leading-relaxed text-text-muted sm:text-[16px]">
-                BugSense reads the stack trace, writes the ticket, and catches the duplicate
-                before it exists — then keeps the fix moving on a board that never stutters.
+                Bring reports, issue tracking and team discussion into one clear workflow. Use AI
+                suggestions to speed up triage, then keep every decision and next step with the issue.
               </p>
 
               <div className="mt-8 flex flex-col gap-2.5 sm:flex-row">
                 <Button
                   size="lg"
-                  onClick={handleDemoClick}
+                  onClick={handleGetStarted}
                   className="group h-11 gap-2 px-5 shadow-card"
-                  data-testid="hero-cta-demo"
                 >
-                  {isAuthenticated ? "Open your workspace" : "Launch the live demo"}
+                  {isAuthenticated ? "Open your workspace" : "Get started"}
                   <ArrowRight
                     className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
                     aria-hidden="true"
@@ -589,15 +548,15 @@ export function LandingPage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => navigate("/register")}
+                  asChild
                   className="h-11 px-5"
                 >
-                  Create free account
+                  <a href="#features">Explore product features</a>
                 </Button>
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-text-muted">
-                {["No card required", "One-click demo", "MIT licensed"].map((item) => (
+                {["Editable AI suggestions", "Project-scoped issue tracking", "Open source"].map((item) => (
                   <span key={item} className="inline-flex items-center gap-1.5">
                     <Check className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
                     {item}
@@ -605,48 +564,63 @@ export function LandingPage() {
                 ))}
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border/80 pt-5">
-                <div className="flex -space-x-2">
-                  {DEMO_PEOPLE.map((name) => (
-                    <span
-                      key={name}
-                      className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-full text-[9px] font-semibold ring-2 ring-background",
-                        AVATAR_TONES[name.charCodeAt(0) % AVATAR_TONES.length]
-                      )}
-                      title={name}
-                    >
-                      {initialsOf(name)}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-[11px] leading-relaxed text-text-muted">
-                  The seeded demo workspace:{" "}
-                  <span className="font-medium text-text">
-                    4 teammates · 2 projects · 40+ issues
+              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 border-t border-border/80 pt-5 text-[11px] text-text-muted">
+                {[
+                  "Keep reports and fixes connected",
+                  "Make ownership visible",
+                  "Understand project health",
+                ].map((benefit) => (
+                  <span key={benefit} className="inline-flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+                    {benefit}
                   </span>
-                </p>
+                ))}
               </div>
             </div>
 
             <div className="animate-rise [animation-delay:120ms]">
-              <TriagePreview />
+              <div className="rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-6">
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-text-muted">Issue lifecycle</p>
+                    <p className="mt-1 text-[14px] font-semibold tracking-tight">One clear path through the work</p>
+                  </div>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                    <Bug className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </div>
+                <ol className="mt-5 space-y-3">
+                  {[
+                    ["01", "Capture the report", "Keep reproduction details and context together."],
+                    ["02", "Triage with care", "Review editable AI suggestions and related issues."],
+                    ["03", "Assign the next step", "Give the work a clear owner and priority."],
+                    ["04", "Track it to resolution", "Follow progress, discussion and issue history."],
+                  ].map(([number, title, description]) => (
+                    <li key={number} className="flex items-start gap-3 rounded-lg border border-border/70 bg-background/50 p-3">
+                      <span className="font-mono text-[10px] font-medium text-accent">{number}</span>
+                      <div>
+                        <p className="text-[12px] font-medium text-text">{title}</p>
+                        <p className="mt-0.5 text-[10.5px] leading-relaxed text-text-muted">{description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </div>
           </div>
 
-          {/* Stack strip */}
+          {/* Core capabilities */}
           <div className="relative border-t border-border bg-surface/30">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3.5 text-[10.5px] text-text-muted sm:px-6">
               <span className="font-mono uppercase tracking-[0.18em] text-text-muted/80">
-                Built on
+                Product
               </span>
               {[
-                "Django 5",
-                "PostgreSQL 16 + pgvector",
-                "Gemini",
-                "React 18",
-                "TypeScript",
-                "Tailwind",
+                "Issue tracking",
+                "AI-assisted triage",
+                "Duplicate detection",
+                "Team collaboration",
+                "Project analytics",
               ].map((item, index) => (
                 <span key={item} className="flex items-center gap-5">
                   {index > 0 && <span className="h-3 w-px bg-border" aria-hidden="true" />}
@@ -660,33 +634,13 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Product tour */}
-        <section id="tour" className="scroll-mt-20 border-b border-border">
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <SectionHeading
-                eyebrow="Product tour"
-                title="Look at the real thing."
-                description="Four screens, drawn from the actual component structure and the seeded demo workspace. No invented dashboards, no lorem ipsum."
-              />
-              <p className="shrink-0 pb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                app.bugsense.dev
-              </p>
-            </div>
-
-            <div className="mt-10">
-              <ProductTour onLaunchDemo={handleDemoClick} />
-            </div>
-          </div>
-        </section>
-
         {/* Features */}
         <section id="features" className="scroll-mt-20 border-b border-border bg-surface/30">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
             <SectionHeading
               eyebrow="The product"
-              title="Seven things you will actually use."
-              description="Not a platform with a thousand switches. A focused tracker where each surface earns its place — and the AI is measured, editable, and clearly labelled."
+              title="Everything needed to resolve issues together."
+              description="Issue tracking, team context and practical AI assistance, connected in one focused workflow."
             />
 
             <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -734,9 +688,9 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
             <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
               <SectionHeading
-                eyebrow="The loop"
-                title="From rant to resolvable in four moves."
-                description="The point isn't to remove the engineer from triage. It's to stop the engineer from doing data entry at 11pm."
+                eyebrow="The workflow"
+                title="From incoming report to resolved issue."
+                description="Capture the report, review suggestions, check for related work, then keep ownership and progress visible."
               />
 
               <div className="grid gap-8 sm:grid-cols-2">
@@ -763,216 +717,36 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Under the hood */}
-        <section id="stack" className="scroll-mt-20 border-b border-border bg-surface/30">
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
-            <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14">
-              <div>
-                <SectionHeading
-                  eyebrow="Under the hood"
-                  title="Boring infrastructure. Interesting behaviour."
-                  description="The intelligence is a small, typed surface on top of a conventional Django + PostgreSQL stack. Nothing magic, nothing hidden in a prompt you can't read."
-                />
-
-                <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
-                  {ENGINEERING_FACTS.map((fact) => (
-                    <li key={fact} className="flex items-start gap-2 text-[12px] text-text">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
-                      {fact}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-7 space-y-3">
-                  {STACK_GROUPS.map((group) => (
-                    <div key={group.label} className="flex flex-col gap-1.5">
-                      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted/70">
-                        {group.label}
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {group.items.map((item) => (
-                          <span
-                            key={item}
-                            className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[9.5px] text-text-muted"
-                          >
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-7 flex flex-wrap items-center gap-4 text-[11.5px] font-medium">
-                  <a
-                    href="https://github.com/meetsojitra08/bugsence"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-text underline decoration-border underline-offset-4 transition-colors hover:decoration-accent"
-                  >
-                    <Github className="h-3.5 w-3.5" aria-hidden="true" />
-                    Read the source
-                  </a>
-                  <a
-                    href="https://github.com/meetsojitra08/bugsence/blob/main/README.md"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-text-muted transition-colors hover:text-text"
-                  >
-                    Setup guide
-                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-                </div>
-              </div>
-
-              <div className="min-w-0">
-                <div className="overflow-hidden rounded-xl border border-[#262626] bg-[#0A0A0A] shadow-card">
-                  <div className="flex items-center gap-2 border-b border-[#242424] px-3 py-2">
-                    <span className="h-2 w-2 rounded-full bg-[#2E2E2E]" aria-hidden="true" />
-                    <span className="h-2 w-2 rounded-full bg-[#2E2E2E]" aria-hidden="true" />
-                    <span className="h-2 w-2 rounded-full bg-[#2E2E2E]" aria-hidden="true" />
-                    <span className="ml-2 font-mono text-[9.5px] text-[#8A857E]">
-                      backend/apps/ai · python
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopy}
-                      className="ml-auto inline-flex items-center gap-1.5 rounded border border-[#2A2A2A] bg-[#121212] px-2 py-1 font-mono text-[9px] text-[#B8B3AB] transition-colors hover:border-[#3A3A3A] hover:text-[#F5F5F5]"
-                      aria-label="Copy the code snippet"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="h-2.5 w-2.5 text-[#6EE7A8]" aria-hidden="true" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-2.5 w-2.5" aria-hidden="true" />
-                          Copy
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <pre className="overflow-x-auto p-4 font-mono text-[10px] leading-[1.75] sm:text-[10.5px]">
-                    <code>
-                      {CODE_SNIPPET.split("\n").map((line, index) => (
-                        <span key={index} className="block whitespace-pre">
-                          <span className="mr-3 inline-block w-4 select-none text-right text-[#4A4742]">
-                            {index + 1}
-                          </span>
-                          <span
-                            className={
-                              line.trimStart().startsWith("#")
-                                ? "text-[#7C7770]"
-                                : "text-[#D8D3CB]"
-                            }
-                          >
-                            {line || " "}
-                          </span>
-                        </span>
-                      ))}
-                    </code>
-                  </pre>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
-                  <p className="text-[10.5px] leading-relaxed text-text-muted">
-                    Real excerpts from{" "}
-                    <span className="font-mono text-text">apps/ai/services/duplicates.py</span> and{" "}
-                    <span className="font-mono text-text">apps/ai/schemas.py</span>.
-                  </p>
-                  <span className="shrink-0 rounded-full border border-accent/25 bg-accent/[0.06] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-accent">
-                    MIT
-                  </span>
-                </div>
-              </div>
+        {/* Team confidence */}
+        <section className="border-b border-border bg-surface/30">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
+            <SectionHeading
+              eyebrow="Designed for clarity"
+              title="The details stay with the work."
+              description="BugSense keeps the issue, the conversation and the next action connected as work moves across the team."
+            />
+            <div className="mt-9 grid gap-3 md:grid-cols-3">
+              {[
+                ["A shared source of context", "Keep reports, reproduction steps, owners and discussion together."],
+                ["AI with a human in the loop", "Review and edit suggestions before they become part of an issue."],
+                ["Visibility from intake to resolution", "Follow status, activity and project trends without losing the details."],
+              ].map(([title, body]) => (
+                <article key={title} className="rounded-xl border border-border bg-surface p-5">
+                  <Check className="h-4 w-4 text-accent" aria-hidden="true" />
+                  <h3 className="mt-4 text-[14px] font-semibold tracking-tight">{title}</h3>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-text-muted">{body}</p>
+                </article>
+              ))}
             </div>
-          </div>
-        </section>
-
-        {/* Honest scope */}
-        <section className="border-b border-border">
-          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <SectionHeading
-                eyebrow="Scope"
-                title="What is in the box, and what is not."
-                description="A landing page should tell you what you are actually getting. Here is the honest split for this build."
-              />
-              <p className="shrink-0 pb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                v2.0 · shipped
-              </p>
-            </div>
-
-            <div className="mt-10 grid gap-3 lg:grid-cols-[1.08fr_0.92fr]">
-              <Reveal>
-                <div className="relative h-full overflow-hidden rounded-xl border border-accent/25 bg-surface p-6">
-                  <span
-                    className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-accent/60 via-accent/20 to-transparent"
-                    aria-hidden="true"
-                  />
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                        <Check className="h-3 w-3" aria-hidden="true" />
-                      </span>
-                      In this build
-                    </h3>
-                    <span className="font-mono text-[10px] text-accent">
-                      {String(SCOPE_SHIPPED.length).padStart(2, "0")}
-                    </span>
-                  </div>
-
-                  <ul className="mt-5 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                    {SCOPE_SHIPPED.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-[12px] leading-relaxed">
-                        <Check
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent"
-                          aria-hidden="true"
-                        />
-                        <span className="text-text">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Reveal>
-
-              <Reveal delay={80}>
-                <div className="h-full rounded-xl border border-dashed border-border bg-background/40 p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-text-muted">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-text-muted">
-                        <span className="h-1.5 w-1.5 rounded-full bg-text-muted/60" />
-                      </span>
-                      Deliberately next
-                    </h3>
-                    <span className="font-mono text-[10px] text-text-muted">
-                      {String(SCOPE_NEXT.length).padStart(2, "0")}
-                    </span>
-                  </div>
-
-                  <ul className="mt-5 space-y-3">
-                    {SCOPE_NEXT.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-2 text-[12px] leading-relaxed text-text-muted"
-                      >
-                        <span
-                          className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-text-muted/40"
-                          aria-hidden="true"
-                        />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <p className="mt-6 border-t border-border/70 pt-4 text-[11px] leading-relaxed text-text-muted/80">
-                    No roadmap theatre. If it isn't in the repository, it isn't on this page.
-                  </p>
-                </div>
-              </Reveal>
-            </div>
+            <a
+              href="https://github.com/meetsojitra08/bugsence"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-text-muted underline decoration-border underline-offset-4 transition-colors hover:text-text hover:decoration-accent"
+            >
+              Open source under the MIT License
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
           </div>
         </section>
 
@@ -983,12 +757,11 @@ export function LandingPage() {
               <SectionHeading
                 eyebrow="FAQ"
                 title="Fair questions."
-                description="The short version: the AI is real, the demo is mocked on purpose, and the scope is written down."
+                description="Straight answers about AI features, team access and hosting."
               />
               <div className="mt-6 rounded-lg border border-border bg-surface p-3">
                 <p className="text-[11px] leading-relaxed text-text-muted">
-                  Something missing? The source, the setup guide and the issue tracker's own
-                  backlog are all public.
+                  Want to explore the implementation or host BugSense yourself? The source and setup guide are available on GitHub.
                 </p>
                 <a
                   href="https://github.com/meetsojitra08/bugsence"
@@ -1079,42 +852,42 @@ export function LandingPage() {
 
               <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/60">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#FF0000]" aria-hidden="true" />
-                No signup required
+                Start with your team
               </p>
 
               <h2 className="mx-auto mt-5 max-w-2xl text-balance text-[clamp(2rem,4.6vw,3.25rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-[#F5F5F5]">
-                See it with the demo data first.
+                Bring your issue workflow into focus.
               </h2>
               <p className="mx-auto mt-4 max-w-lg text-[13.5px] leading-relaxed text-[#A3A3A3]">
-                The same seeded workspace opens in one click: 4 teammates, 2 projects, 40+ issues,
-                an AI triage pass and a board you can drag.
+                Create a workspace to organize bug reports, assign clear ownership and track every issue through resolution.
               </p>
 
               <div className="mt-8 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
                 <Button
                   size="lg"
-                  onClick={handleDemoClick}
+                  onClick={handleGetStarted}
                   className="group h-11 w-full gap-2 bg-[#F5F5F5] px-5 text-[#0A0A0A] hover:bg-white sm:w-auto"
-                  data-testid="closing-cta-demo"
                 >
-                  Launch the live demo
+                  {isAuthenticated ? "Open your workspace" : "Create your workspace"}
                   <ArrowRight
                     className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
                     aria-hidden="true"
                   />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => navigate("/register")}
-                  className="h-11 w-full border-white/20 bg-transparent px-5 text-[#F5F5F5] hover:border-white/30 hover:bg-white/10 hover:text-white sm:w-auto"
-                >
-                  Create free account
-                </Button>
+                {!isAuthenticated && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    asChild
+                    className="h-11 w-full border-white/20 bg-transparent px-5 text-[#F5F5F5] hover:border-white/30 hover:bg-white/10 hover:text-white sm:w-auto"
+                  >
+                    <Link to="/login">Sign in</Link>
+                  </Button>
+                )}
               </div>
 
               <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.14em] text-white/40">
-                MIT licensed · self-hostable · demo runs entirely in your browser
+                Open source · self-hostable
               </p>
             </div>
           </div>
@@ -1133,8 +906,8 @@ export function LandingPage() {
                 <span className="text-[14.5px] font-semibold tracking-tight">BugSense</span>
               </Link>
               <p className="mt-3 text-[11.5px] leading-relaxed text-text-muted">
-                AI-native issue tracking for teams that would rather ship than triage. Built with
-                Django, React, PostgreSQL and pgvector.
+                Issue tracking that brings reports, team context and resolution into one clear
+                workflow.
               </p>
             </div>
 
@@ -1206,10 +979,10 @@ export function LandingPage() {
                   <li>
                     <button
                       type="button"
-                      onClick={handleDemoClick}
+                      onClick={handleGetStarted}
                       className="text-left text-text-muted transition-colors hover:text-text"
                     >
-                      Live demo
+                      {isAuthenticated ? "Open workspace" : "Create account"}
                     </button>
                   </li>
                   <li>
@@ -1233,7 +1006,7 @@ export function LandingPage() {
           <div className="mt-10 flex flex-col gap-2 border-t border-border/70 pt-5 text-[10.5px] text-text-muted sm:flex-row sm:items-center sm:justify-between">
             <p>© {new Date().getFullYear()} BugSense · MIT License</p>
             <p className="font-mono uppercase tracking-[0.12em] text-text-muted/70">
-              v2.0 · built in the open
+              Open source under the MIT License
             </p>
           </div>
         </div>

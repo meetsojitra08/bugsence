@@ -1,15 +1,15 @@
 from apps.ai.services.duplicates import find_duplicate_issues
-from apps.ai.services.gemini import (
+from apps.ai.services.groq import (
     AIServiceUnavailable,
     AITimeoutError,
-    GeminiService,
-    gemini_service,
+    GroqService,
+    groq_service,
 )
 
 __all__ = [
     "AIServiceUnavailable",
     "AITimeoutError",
-    "GeminiService",
+    "GroqService",
     "find_duplicate_issues",
-    "gemini_service",
+    "groq_service",
 ]

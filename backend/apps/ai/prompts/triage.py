@@ -1,4 +1,4 @@
-"""Prompt templates and schemas for Gemini AI bug triage."""
+"""Prompt templates and schemas for AI bug triage."""
 
 TRIAGE_SYSTEM_PROMPT = """You are an expert software engineer and QA triage specialist for BugSense.
 Your task is to analyze raw bug reports, error logs, user feedback, or feature requests
