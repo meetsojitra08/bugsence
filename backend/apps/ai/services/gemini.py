@@ -33,8 +33,16 @@ class GeminiService:
 
     def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key if api_key is not None else getattr(settings, "GEMINI_API_KEY", "")
-        self.model = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash")
-        self.embed_model = getattr(settings, "GEMINI_EMBED_MODEL", "gemini-embedding-001")
+        model = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash")
+        if model in ("gemini-3-flash", "gemini-1.5-flash", "gemini-2.5-flash", ""):
+            model = "gemini-3.5-flash"
+        self.model = model
+
+        embed_model = getattr(settings, "GEMINI_EMBED_MODEL", "gemini-embedding-001")
+        if embed_model in ("text-embedding-004", ""):
+            embed_model = "gemini-embedding-001"
+        self.embed_model = embed_model
+
         self._client: genai.Client | None = None
 
     def _get_client(self) -> genai.Client:

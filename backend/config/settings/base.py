@@ -23,7 +23,7 @@ env = environ.Env(
 )
 
 # Take environment variables from .env file if it exists
-environ.Env.read_env(BASE_DIR / ".env")
+environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
