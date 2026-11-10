@@ -12,6 +12,7 @@ import { AIDuplicateBanner } from "./ai/AIDuplicateBanner";
 import { useFindDuplicates } from "../hooks/useAI";
 import type {
   AITriageResult,
+  IssueDetail,
   IssuePriority,
   IssueSeverity,
   IssueStatus,
@@ -21,6 +22,7 @@ import type {
 interface CreateIssueModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (issue: IssueDetail) => void;
   projectId: string;
   projectKey?: string;
 }
@@ -28,6 +30,7 @@ interface CreateIssueModalProps {
 export function CreateIssueModal({
   isOpen,
   onClose,
+  onCreated,
   projectId,
   projectKey,
 }: CreateIssueModalProps) {
@@ -157,7 +160,7 @@ export function CreateIssueModal({
     }
 
     try {
-      await createMutation.mutateAsync({
+      const createdIssue = await createMutation.mutateAsync({
         title: title.trim(),
         description: description.trim(),
         type,
@@ -172,9 +175,10 @@ export function CreateIssueModal({
         actual: actual.trim(),
         environment: environment.trim(),
       });
-      toast.success("Issue created successfully");
+      toast.success(`Created ${createdIssue.key}`);
       resetForm();
       onClose();
+      onCreated?.(createdIssue);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to create issue");
     }

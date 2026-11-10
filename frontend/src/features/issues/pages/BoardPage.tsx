@@ -172,6 +172,7 @@ export function BoardPage() {
           <CreateIssueModal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
+            onCreated={(issue) => setSelectedIssue(issue)}
             projectId={activeProject.id}
             projectKey={activeProject.key}
           />

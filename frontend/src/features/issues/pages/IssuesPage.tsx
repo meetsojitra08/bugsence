@@ -48,10 +48,12 @@ export function IssuesPage() {
     () => (isMyIssues && user ? { ...filters, assignee: user.id } : filters),
     [filters, isMyIssues, user]
   );
-  const { data: issuesData, isLoading, isError, refetch } = useIssues(
-    activeProject?.id || null,
-    effectiveFilters
-  );
+  const {
+    data: issuesData,
+    isLoading,
+    isError,
+    refetch,
+  } = useIssues(activeProject?.id || null, effectiveFilters);
 
   const updateMutation = useUpdateIssue(undefined, activeProject?.id);
   const deleteMutation = useDeleteIssue(activeProject?.id);
@@ -218,6 +220,7 @@ export function IssuesPage() {
           <CreateIssueModal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
+            onCreated={(issue) => setSelectedIssue(issue)}
             projectId={activeProject.id}
             projectKey={activeProject.key}
           />
