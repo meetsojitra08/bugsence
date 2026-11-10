@@ -39,6 +39,13 @@ export function formatRelativeAge(dateInput?: string | null): string {
   return `${months}mo`;
 }
 
+/** Formats relative time with natural 'ago' phrasing without producing 'just now ago'. */
+export function formatTimeAgo(dateInput?: string | null): string {
+  const rel = formatRelativeAge(dateInput);
+  if (rel === "–" || rel === "just now") return rel;
+  return `${rel} ago`;
+}
+
 export function daysSince(dateInput?: string | null): number {
   if (!dateInput) return 0;
   const ts = new Date(dateInput).getTime();
@@ -52,12 +59,18 @@ export function formatDurationDays(days: number | null | undefined, resolvedCoun
 }
 
 export function buildGitBranchName(issueKey: string, title: string): string {
-  const slug = title
+  const clean = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 36)
-    .replace(/-+$/, "");
+    .replace(/^-+|-+$/g, "");
+  let slug = clean;
+  if (slug.length > 36) {
+    const truncated = slug.slice(0, 36);
+    const lastDash = truncated.lastIndexOf("-");
+    // Break on whole word boundary unless single continuous token exceeds 36 chars
+    slug = lastDash >= 12 ? truncated.slice(0, lastDash) : truncated;
+  }
+  slug = slug.replace(/-+$/g, "");
   const prefix = issueKey.toLowerCase();
   return slug ? `${prefix}-${slug}` : prefix;
 }

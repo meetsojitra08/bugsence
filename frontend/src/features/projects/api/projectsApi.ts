@@ -133,4 +133,14 @@ export const projectsApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  async testIntegration(
+    projectId: string,
+    provider: IntegrationProvider
+  ): Promise<{ ok: boolean; provider: IntegrationProvider; message: string }> {
+    return apiRequest<{ ok: boolean; provider: IntegrationProvider; message: string }>(
+      `/projects/${projectId}/integrations/${provider}/test/`,
+      { method: "POST" }
+    );
+  },
 };

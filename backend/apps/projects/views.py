@@ -105,6 +105,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 has_current_triager="current_triager_id" in data,
                 ai_auto_triage=data.get("ai_auto_triage"),
                 ai_confidence_threshold=data.get("ai_confidence_threshold"),
+                ai_priority_rules=data.get("ai_priority_rules"),
             )
         except DjangoValidationError as exc:
             raise ValidationError(

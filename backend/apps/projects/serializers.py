@@ -156,6 +156,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "current_triager",
             "ai_auto_triage",
             "ai_confidence_threshold",
+            "ai_priority_rules",
             "is_demo",
             "inbox_count",
             "total_issues_count",
@@ -225,3 +226,4 @@ class ProjectUpdateSerializer(serializers.Serializer):
     current_triager_id = serializers.UUIDField(required=False, allow_null=True)
     ai_auto_triage = serializers.BooleanField(required=False)
     ai_confidence_threshold = serializers.FloatField(min_value=0.0, max_value=1.0, required=False)
+    ai_priority_rules = serializers.JSONField(required=False)

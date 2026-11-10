@@ -11,6 +11,7 @@ from apps.projects.integrations import (
     GitHubWebhookView,
     ProjectIntegrationDetailView,
     ProjectIntegrationsListView,
+    ProjectIntegrationTestView,
     PublicReportFormView,
     SentryWebhookView,
     SlackCommandWebhookView,
@@ -98,6 +99,11 @@ urlpatterns = [
         "projects/<uuid:project_id>/integrations/<str:provider>/",
         ProjectIntegrationDetailView.as_view(),
         name="project-integration-detail",
+    ),
+    path(
+        "projects/<uuid:project_id>/integrations/<str:provider>/test/",
+        ProjectIntegrationTestView.as_view(),
+        name="project-integration-test",
     ),
     path(
         "integrations/github/webhook/<str:project_key>/",

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -15,7 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateIssue, useLabels } from "../hooks/useIssues";
 import { issuesApi } from "../api/issuesApi";
-import { useProjectMembers } from "@/features/projects/hooks/useProjects";
+import { useProjectMembers, useProjects } from "@/features/projects/hooks/useProjects";
+import { useProjectStore } from "@/stores/useProjectStore";
+import { AuthContext } from "@/features/auth/context/AuthContext";
+import { DueDatePicker } from "@/components/common/DueDatePicker";
 import { AIDuplicateBanner } from "./ai/AIDuplicateBanner";
 import { useAITriage, useFindDuplicates } from "../hooks/useAI";
 import { formatShortcut } from "@/lib/format";
@@ -46,17 +49,39 @@ export function CreateIssueModal({
   onCreated,
   projectId,
   projectKey,
-  defaultStatus = "todo",
+  defaultStatus,
 }: CreateIssueModalProps) {
+  const auth = useContext(AuthContext);
+  const { data: projects = [] } = useProjects();
+  const { getActiveProject } = useProjectStore();
+  const activeProject = projects.find((p) => p.id === projectId) || getActiveProject(projects);
+  const isNonTriager = Boolean(
+    activeProject?.current_triager_id &&
+      auth?.user?.id &&
+      activeProject.current_triager_id !== auth.user.id
+  );
+  const resolvedDefaultDest: "todo" | "inbox" =
+    defaultStatus === "inbox"
+      ? "inbox"
+      : defaultStatus === "todo"
+        ? "todo"
+        : isNonTriager
+          ? "inbox"
+          : "todo";
+
   const [rawPaste, setRawPaste] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<IssueType>("bug");
   // Blank string when AI confidence is low so user explicitly chooses or confirms Medium
-  const [priority, setPriority] = useState<IssuePriority | "">("medium");
+  const [priority, setPriority] = useState<IssuePriority | "">("");
   const [severity, setSeverity] = useState<IssueSeverity>("minor");
-  const [destination, setDestination] = useState<"todo" | "inbox">(
-    defaultStatus === "inbox" ? "inbox" : "todo"
-  );
+  const [destination, setDestination] = useState<"todo" | "inbox">(resolvedDefaultDest);
+
+  useEffect(() => {
+    if (isOpen && !rawPaste && !title) {
+      setDestination(resolvedDefaultDest);
+    }
+  }, [isOpen, resolvedDefaultDest, rawPaste, title]);
   const [assigneeId, setAssigneeId] = useState("");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
@@ -104,9 +129,9 @@ export function CreateIssueModal({
     setRawPaste("");
     setTitle("");
     setType("bug");
-    setPriority("medium");
+    setPriority("");
     setSeverity("minor");
-    setDestination(defaultStatus === "inbox" ? "inbox" : "todo");
+    setDestination(resolvedDefaultDest);
     setAssigneeId("");
     setSelectedLabels([]);
     setDueDate("");
@@ -124,7 +149,7 @@ export function CreateIssueModal({
     setTriageResult(null);
     setPreviousDraft(null);
     lastTriagedTextRef.current = "";
-  }, [defaultStatus]);
+  }, [resolvedDefaultDest]);
 
   // Ensure modal opens clean and focuses the Paste anything field
   useEffect(() => {
@@ -424,6 +449,13 @@ export function CreateIssueModal({
             data-testid="ai-triage-raw-input"
           />
 
+          {!rawPaste.trim() && !triageResult && (
+            <p className="text-[11px] text-text-muted" data-testid="capture-capability-strip">
+              Auto-triages stack traces &amp; emails · Checks title &amp; body duplicates · Paste
+              screenshots ({formatShortcut("V")}) · Guides when context is missing
+            </p>
+          )}
+
           {/* Confidence / Missing Context Guidance (never bare percentage) */}
           {triageResult && (
             <div
@@ -580,6 +612,11 @@ export function CreateIssueModal({
               <option value="todo">Todo (Ready)</option>
               <option value="inbox">Inbox (Needs triage)</option>
             </select>
+            {isNonTriager && activeProject?.current_triager && (
+              <p className="text-[10px] text-text-muted">
+                Defaulted to Inbox (Triager: {activeProject.current_triager.full_name})
+              </p>
+            )}
           </div>
         </div>
 
@@ -649,14 +686,12 @@ export function CreateIssueModal({
               <span>Blocking release</span>
             </label>
 
-            <Input
-              type="date"
+            <DueDatePicker
+              compact
+              id="create-issue-due-date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              aria-label="Due date"
-              autoComplete="off"
-              className="h-7 w-36 bg-background text-[11px]"
-              data-testid="create-issue-due-date"
+              onChange={setDueDate}
+              testId="create-issue-due-date"
             />
           </div>
         </div>

@@ -16,8 +16,10 @@ import {
   Moon,
   Plus,
   Radio,
+  RefreshCw,
   Sun,
   Trash2,
+  Upload,
   UserRound,
   Webhook,
 } from "lucide-react";
@@ -44,12 +46,22 @@ import { PageHeader } from "@/components/common/PageHeader";
 import type { IntegrationProvider, ProjectIntegration } from "@/features/projects/types";
 
 const DEFAULT_PREFS: NotificationPreferences = {
-  assigned: { in_app: true, email: true, slack: true },
+  assigned: { in_app: true, email: true, slack: false },
   mention: { in_app: true, email: true, slack: false },
   pr_status: { in_app: true, email: false, slack: false },
-  inbox_arrival: { in_app: true, email: false, slack: true },
-  resolved: { in_app: true, email: true, slack: true },
+  inbox_arrival: { in_app: true, email: false, slack: false },
+  resolved: { in_app: true, email: true, slack: false },
 };
+
+const PRESET_TIMEZONES = [
+  "UTC",
+  "America/Los_Angeles",
+  "America/New_York",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Kolkata",
+  "Asia/Tokyo",
+];
 
 const EVENT_LABELS: { key: keyof NotificationPreferences; label: string }[] = [
   { key: "assigned", label: "Issue assigned to me" },
@@ -77,9 +89,16 @@ export function SettingsPage() {
   // Account state
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [timezone, setTimezone] = useState("UTC");
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const browserTz =
+    typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" : "UTC";
+  const timezoneOptions = Array.from(
+    new Set([browserTz, timezone, ...PRESET_TIMEZONES].filter(Boolean))
+  );
 
   // Password state with show/hide
   const [oldPassword, setOldPassword] = useState("");
@@ -106,15 +125,21 @@ export function SettingsPage() {
   const [rotationCadence, setRotationCadence] = useState<"daily" | "weekly">("weekly");
   const [currentTriagerId, setCurrentTriagerId] = useState("");
   const [aiAutoTriage, setAiAutoTriage] = useState(true);
+  const [aiThreshold, setAiThreshold] = useState(0.6);
+  const [defaultPriorityRule, setDefaultPriorityRule] = useState("medium");
+  const [urgentKeywords, setUrgentKeywords] = useState("");
+  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, boolean>>({});
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#2563EB");
 
   useEffect(() => {
     setFullName(user?.fullName ?? "");
     setAvatarUrl(user?.avatarUrl ?? "");
-    setTimezone(user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+    const savedTz = user?.timezone;
+    setTimezone(savedTz && savedTz !== "UTC" ? savedTz : browserTz);
     if (user?.notificationPreferences) setPrefs(user.notificationPreferences);
-  }, [user]);
+  }, [user, browserTz]);
 
   useEffect(() => {
     if (!activeProject) return;
@@ -125,6 +150,9 @@ export function SettingsPage() {
     setRotationCadence(activeProject.triage_rotation_cadence || "weekly");
     setCurrentTriagerId(activeProject.current_triager_id || "");
     setAiAutoTriage(activeProject.ai_auto_triage ?? true);
+    setAiThreshold(activeProject.ai_confidence_threshold ?? 0.6);
+    setDefaultPriorityRule(activeProject.ai_priority_rules?.default_priority || "medium");
+    setUrgentKeywords((activeProject.ai_priority_rules?.urgent_keywords || []).join(", "));
   }, [activeProject]);
 
   const handleProfileSave = async (event: React.FormEvent) => {
@@ -201,6 +229,14 @@ export function SettingsPage() {
         triage_rotation_cadence: rotationCadence,
         current_triager_id: currentTriagerId || null,
         ai_auto_triage: aiAutoTriage,
+        ai_confidence_threshold: aiThreshold,
+        ai_priority_rules: {
+          default_priority: defaultPriorityRule,
+          urgent_keywords: urgentKeywords
+            .split(",")
+            .map((k) => k.trim())
+            .filter(Boolean),
+        },
       });
       toast.success("Project settings saved");
     } catch (err) {
@@ -210,15 +246,44 @@ export function SettingsPage() {
 
   const handleToggleIntegration = async (
     integration: ProjectIntegration,
-    patch: { enabled?: boolean; config?: Record<string, unknown> }
+    patch: { enabled?: boolean; config?: Record<string, unknown>; regenerate_secret?: boolean }
   ) => {
     if (!activeProject) return;
     try {
       await projectsApi.updateIntegration(activeProject.id, integration.provider, patch);
-      toast.success("Integration updated");
+      toast.success(patch.regenerate_secret ? "Webhook secret regenerated" : "Integration updated");
       refetchIntegrations();
     } catch (err) {
       toast.error(errorMessage(err, "Could not update integration"));
+    }
+  };
+
+  const handleTestIntegration = async (integration: ProjectIntegration) => {
+    if (!activeProject) return;
+    setTestingProvider(integration.provider);
+    try {
+      const res = await projectsApi.testIntegration(activeProject.id, integration.provider);
+      toast.success(res.message || `${integration.provider} endpoint ready`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Integration check failed"));
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
+  const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    try {
+      const updated = await authApi.uploadAvatar(file);
+      updateUser(updated);
+      setAvatarUrl(updated.avatarUrl || "");
+      toast.success("Avatar uploaded");
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not upload avatar image."));
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -230,6 +295,7 @@ export function SettingsPage() {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const projKey = activeProject?.key || "PROJ";
+  const isSlackEnabled = integrations.some((i) => i.provider === "slack" && i.enabled);
 
   const integrationMeta: Record<
     IntegrationProvider,
@@ -248,8 +314,8 @@ export function SettingsPage() {
       icon: <MessageSquare className="h-4 w-4 text-accent" />,
     },
     email_in: {
-      title: "Email-in",
-      subtitle: `Forward customer emails to bugs@${projKey.toLowerCase()}.bugsense.app into Inbox.`,
+      title: "Email-in webhook relay",
+      subtitle: `Configure your mail parser (Postmark, Mailgun, or SendGrid) to forward inbound mail into ${projKey} Inbox.`,
       endpoint: `${origin}/api/v1/integrations/email/inbound/${projKey}/`,
       icon: <Mail className="h-4 w-4 text-accent" />,
     },
@@ -331,29 +397,62 @@ export function SettingsPage() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="settings-avatar">Avatar URL</Label>
-                    <Input
-                      id="settings-avatar"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="https://…"
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="settings-avatar">Avatar</Label>
+                      <label className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-accent hover:underline">
+                        <Upload className="h-3 w-3" />
+                        {isUploadingAvatar ? "Uploading…" : "Upload image"}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          onChange={handleAvatarFileChange}
+                          disabled={isUploadingAvatar}
+                          className="sr-only"
+                          data-testid="settings-avatar-file"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {avatarUrl && (
+                        <img
+                          src={avatarUrl}
+                          alt="Avatar preview"
+                          className="h-9 w-9 shrink-0 rounded-full border border-border object-cover"
+                        />
+                      )}
+                      <Input
+                        id="settings-avatar"
+                        value={avatarUrl}
+                        onChange={(e) => setAvatarUrl(e.target.value)}
+                        placeholder="https://… or upload above"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="settings-timezone">Timezone</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="settings-timezone">Timezone</Label>
+                      {timezone !== browserTz && (
+                        <button
+                          type="button"
+                          onClick={() => setTimezone(browserTz)}
+                          className="text-[11px] font-medium text-accent hover:underline"
+                        >
+                          Use browser ({browserTz})
+                        </button>
+                      )}
+                    </div>
                     <select
                       id="settings-timezone"
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
                       className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-xs text-text"
                     >
-                      <option value="UTC">UTC</option>
-                      <option value="America/Los_Angeles">America/Los_Angeles</option>
-                      <option value="America/New_York">America/New_York</option>
-                      <option value="Europe/London">Europe/London</option>
-                      <option value="Europe/Berlin">Europe/Berlin</option>
-                      <option value="Asia/Kolkata">Asia/Kolkata</option>
-                      <option value="Asia/Tokyo">Asia/Tokyo</option>
+                      {timezoneOptions.map((tz) => (
+                        <option key={tz} value={tz}>
+                          {tz}
+                          {tz === browserTz ? " (detected)" : ""}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -446,21 +545,45 @@ export function SettingsPage() {
                     {EVENT_LABELS.map((ev) => (
                       <tr key={ev.key}>
                         <td className="py-2.5 pr-2 text-text">{ev.label}</td>
-                        {(["in_app", "email", "slack"] as const).map((ch) => (
-                          <td key={ch} className="py-2.5 text-center">
-                            <input
-                              type="checkbox"
-                              checked={prefs[ev.key][ch]}
-                              onChange={() => togglePref(ev.key, ch)}
-                              aria-label={`${ev.label} via ${ch}`}
-                              className="rounded border-border text-accent"
-                            />
-                          </td>
-                        ))}
+                        {(["in_app", "email", "slack"] as const).map((ch) => {
+                          const slackDisabled = ch === "slack" && !isSlackEnabled;
+                          return (
+                            <td key={ch} className="py-2.5 text-center">
+                              <input
+                                type="checkbox"
+                                checked={slackDisabled ? false : prefs[ev.key][ch]}
+                                disabled={slackDisabled}
+                                onChange={() => togglePref(ev.key, ch)}
+                                aria-label={`${ev.label} via ${ch}`}
+                                title={
+                                  slackDisabled
+                                    ? "Enable Slack integration to receive Slack alerts"
+                                    : undefined
+                                }
+                                className={`rounded border-border text-accent ${
+                                  slackDisabled ? "cursor-not-allowed opacity-40" : ""
+                                }`}
+                              />
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                {!isSlackEnabled && (
+                  <p className="mt-2 text-[11px] text-text-muted">
+                    Slack notifications are disabled until Slack is enabled in{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("integrations")}
+                      className="font-medium text-accent hover:underline"
+                    >
+                      Project Integrations
+                    </button>
+                    .
+                  </p>
+                )}
               </div>
             </section>
 
@@ -604,6 +727,49 @@ export function SettingsPage() {
               />
               Automatically triage incoming Inbox &amp; pasted bug reports
             </label>
+
+            <div className="grid grid-cols-1 gap-4 border-t border-border/60 pt-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label htmlFor="proj-ai-threshold">AI confidence threshold</Label>
+                <select
+                  id="proj-ai-threshold"
+                  value={String(aiThreshold)}
+                  onChange={(e) => setAiThreshold(Number(e.target.value))}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-text"
+                  data-testid="proj-ai-threshold-select"
+                >
+                  <option value="0.4">Low (0.40)</option>
+                  <option value="0.6">Balanced (0.60)</option>
+                  <option value="0.75">Strict (0.75)</option>
+                  <option value="0.85">High precision (0.85)</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="proj-default-priority">Default priority rule</Label>
+                <select
+                  id="proj-default-priority"
+                  value={defaultPriorityRule}
+                  onChange={(e) => setDefaultPriorityRule(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-text"
+                  data-testid="proj-default-priority-select"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="proj-urgent-keywords">Urgent keywords</Label>
+                <Input
+                  id="proj-urgent-keywords"
+                  value={urgentKeywords}
+                  onChange={(e) => setUrgentKeywords(e.target.value)}
+                  placeholder="outage, 500, data loss"
+                  data-testid="proj-urgent-keywords-input"
+                />
+              </div>
+            </div>
 
             <div className="flex justify-end border-t border-border pt-3">
               <Button type="submit" size="sm" disabled={updateProjectMutation.isPending}>
@@ -772,7 +938,67 @@ export function SettingsPage() {
                     <Copy className="h-3 w-3" />
                     Copy
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={testingProvider === item.provider}
+                    className="h-7 text-[11px]"
+                    onClick={() => handleTestIntegration(item)}
+                    data-testid={`test-integration-${item.provider}`}
+                  >
+                    {testingProvider === item.provider ? "Checking…" : "Test setup"}
+                  </Button>
                 </div>
+
+                {item.provider !== "public_form" && item.webhook_secret && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-background/40 px-2.5 py-2 text-xs">
+                    <span className="text-[11px] font-medium text-text-muted">Signing secret:</span>
+                    <code className="flex-1 truncate font-mono text-[11px] text-text">
+                      {revealedSecrets[item.id] ? item.webhook_secret : "••••••••••••••••••••••••"}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRevealedSecrets((prev) => ({
+                          ...prev,
+                          [item.id]: !prev[item.id],
+                        }))
+                      }
+                      aria-label="Toggle webhook secret visibility"
+                      className="text-text-muted hover:text-text"
+                    >
+                      {revealedSecrets[item.id] ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-[11px]"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(item.webhook_secret);
+                        toast.success("Signing secret copied");
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-[11px] text-text-muted hover:text-text"
+                      onClick={() => handleToggleIntegration(item, { regenerate_secret: true })}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Regenerate
+                    </Button>
+                  </div>
+                )}
 
                 {item.provider === "slack" && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">

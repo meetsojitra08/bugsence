@@ -42,8 +42,8 @@ export const BENEFITS: BenefitItem[] = [
     icon: GitPullRequest,
     title: "GitHub and Slack built in",
     description:
-      "Open a pull request mentioning the ticket key to move it to In Review, merge to mark it Done, capture bugs from Slack with /bug, and notify reporters with your resolution note.",
-    detail: "PR webhooks · /bug · Email & Sentry ready",
+      "Open a pull request mentioning the ticket key to transition status via GitHub webhooks, accept signed Slack /bug or email-relay webhooks, and draft reporter resolution notes.",
+    detail: "GitHub webhooks · /bug · Email & Sentry",
   },
 ];
 

@@ -20,6 +20,8 @@ interface OnboardingFlowProps {
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [projectName, setProjectName] = useState("");
+  const [projectKey, setProjectKey] = useState("");
+  const [keyManuallyEdited, setKeyManuallyEdited] = useState(false);
   const [createdProject, setCreatedProject] = useState<Project | null>(null);
 
   // Step 2: Paste a real bug
@@ -45,8 +47,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       return;
     }
     try {
+      const normalizedKey = projectKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
       const proj = await createProject.mutateAsync({
         name: projectName.trim(),
+        ...(normalizedKey ? { key: normalizedKey } : {}),
       });
       setCreatedProject(proj);
       setCurrentProjectId(proj.id);
@@ -148,23 +152,50 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="onboard-project-name">Project name</Label>
-              <Input
-                id="onboard-project-name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="e.g. Billing API or Web App"
-                autoFocus
-                required
-              />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="onboard-project-name">Project name</Label>
+                <Input
+                  id="onboard-project-name"
+                  value={projectName}
+                  onChange={(e) => {
+                    const nextName = e.target.value;
+                    setProjectName(nextName);
+                    if (!keyManuallyEdited) {
+                      setProjectKey(nextName.trim() ? generateSuggestedKey(nextName) : "");
+                    }
+                  }}
+                  placeholder="e.g. Billing API or Web App"
+                  autoFocus
+                  required
+                />
+              </div>
+
               {projectName.trim() && (
-                <p className="text-[11px] text-text-muted">
-                  Issue keys will look like{" "}
-                  <span className="font-mono font-semibold text-text">
-                    {generateSuggestedKey(projectName)}-1
-                  </span>
-                </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="onboard-project-key">
+                    Project key <span className="font-normal text-text-muted">(editable)</span>
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="onboard-project-key"
+                      value={projectKey}
+                      onChange={(e) => {
+                        setKeyManuallyEdited(true);
+                        setProjectKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10));
+                      }}
+                      placeholder={generateSuggestedKey(projectName)}
+                      className="w-32 font-mono uppercase"
+                      maxLength={10}
+                    />
+                    <span className="text-[11px] text-text-muted">
+                      Issue keys will look like{" "}
+                      <span className="font-mono font-semibold text-text">
+                        {(projectKey || generateSuggestedKey(projectName))}-1
+                      </span>
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
 

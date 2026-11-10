@@ -160,7 +160,11 @@ describe("IssuesPage UI", () => {
     expect(screen.getByTestId("saved-view-recently_closed")).toBeInTheDocument();
 
     expect(screen.getByTestId("issues-search-input")).toBeInTheDocument();
-    expect(screen.getByTestId("create-issue-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("create-issue-btn")).toHaveTextContent("Capture");
+    expect(screen.getByTestId("status-chip-inbox")).toBeInTheDocument();
+    expect(screen.queryByTestId("overdue-filter-chip")).toBeNull();
+    expect(screen.getByTestId("issues-sort-select")).toBeInTheDocument();
+    expect(screen.getByTestId("issues-group-select")).toBeInTheDocument();
     expect(screen.getByTestId("issues-table")).toBeInTheDocument();
     expect(screen.getByText("BUG-1")).toBeInTheDocument();
 
@@ -211,6 +215,15 @@ describe("IssuesPage UI", () => {
     await waitFor(() => {
       expect(screen.getByTestId("activity-timeline")).toBeInTheDocument();
     });
+  });
+
+  it("groups issues in IssueTable when Group by Status is selected", () => {
+    renderWithProviders(<IssuesPage />);
+    fireEvent.change(screen.getByTestId("issues-group-select"), {
+      target: { value: "status" },
+    });
+    expect(screen.getByTestId("issue-group-in_progress")).toHaveTextContent("In Progress (1)");
+    expect(screen.getByTestId("issue-group-done")).toHaveTextContent("Done (1)");
   });
 });
 

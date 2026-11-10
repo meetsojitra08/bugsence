@@ -37,6 +37,7 @@ export function IssuesPage() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueListItem | null>(null);
+  const [groupBy, setGroupBy] = useState<"none" | "status" | "priority" | "assignee">("none");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -219,6 +220,42 @@ export function IssuesPage() {
             </div>
           )}
 
+          <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+            <label className="inline-flex items-center gap-1.5 text-text-muted">
+              <span>Sort:</span>
+              <select
+                aria-label="Sort issues"
+                value={filters.ordering || "-created_at"}
+                onChange={(e) => setFilter("ordering", e.target.value)}
+                className="h-7 rounded-md border border-border bg-surface px-2 text-xs text-text focus:border-accent focus:outline-none"
+                data-testid="issues-sort-select"
+              >
+                <option value="-created_at">Newest</option>
+                <option value="-updated_at">Recently updated</option>
+                <option value="priority">Highest priority</option>
+                <option value="due_date">Due date (soonest)</option>
+                <option value="-number">Issue key (desc)</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-1.5 text-text-muted">
+              <span>Group:</span>
+              <select
+                aria-label="Group issues"
+                value={groupBy}
+                onChange={(e) =>
+                  setGroupBy(e.target.value as "none" | "status" | "priority" | "assignee")
+                }
+                className="h-7 rounded-md border border-border bg-surface px-2 text-xs text-text focus:border-accent focus:outline-none"
+                data-testid="issues-group-select"
+              >
+                <option value="none">None</option>
+                <option value="status">Status</option>
+                <option value="priority">Priority</option>
+                <option value="assignee">Assignee</option>
+              </select>
+            </label>
+          </div>
+
           <IssueFilterBar
             filters={filters}
             onSetFilter={setFilter}
@@ -337,6 +374,7 @@ export function IssuesPage() {
               hasFilters={activeFilterCount > 0}
               onClearFilters={clearFilters}
               onCreateClick={() => setIsCreateModalOpen(true)}
+              groupBy={groupBy}
             />
           )}
 

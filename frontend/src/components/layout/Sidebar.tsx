@@ -23,7 +23,7 @@ export function Sidebar() {
       <div className="border-b border-border/60 p-3">
         <Button size="sm" onClick={openCaptureModal} className="w-full justify-center gap-1.5">
           <Plus className="h-3.5 w-3.5" />
-          Capture bug report
+          Capture
         </Button>
       </div>
 

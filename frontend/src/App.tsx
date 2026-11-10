@@ -9,6 +9,8 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LandingPage } from "@/features/landing/LandingPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
+import { ForgotPasswordPage } from "@/features/auth/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/features/auth/pages/ResetPasswordPage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { TodayPage } from "@/features/dashboard/TodayPage";
@@ -36,6 +38,8 @@ export function App() {
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/invite/:token" element={<InviteAcceptPage />} />
                 <Route path="/report/:projectKey" element={<PublicReportPage />} />
 

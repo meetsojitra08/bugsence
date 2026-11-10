@@ -355,7 +355,12 @@ export function LandingPage() {
 
               <div className="rounded-xl border border-accent/30 bg-surface p-5">
                 <div className="mb-3 flex items-center justify-between text-xs font-medium text-text">
-                  <span className="font-mono text-accent">{STRUCTURED_TICKET_SAMPLE.key}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-accent">{STRUCTURED_TICKET_SAMPLE.key}</span>
+                    <span className="text-[10px] font-normal text-text-muted">
+                      After · AI structured draft
+                    </span>
+                  </span>
                   <span className="inline-flex items-center gap-1 rounded bg-surface-subtle px-2 py-0.5 text-[11px] text-text">
                     <PriorityIcon priority="high" />
                     {STRUCTURED_TICKET_SAMPLE.priority}
@@ -366,7 +371,7 @@ export function LandingPage() {
                 </h3>
                 <div className="mt-3 space-y-2.5 text-xs text-text-muted">
                   <div>
-                    <span className="font-semibold text-text">Steps to reproduce:</span>
+                    <span className="font-semibold text-text">Drafted steps (editable):</span>
                     <ol className="mt-1 list-decimal space-y-0.5 pl-4">
                       {STRUCTURED_TICKET_SAMPLE.steps.map((s) => (
                         <li key={s}>{s}</li>

@@ -285,7 +285,7 @@ export function CommandPalette() {
                 onSelect={() => runAction(() => openCaptureModal())}
               >
                 <PlusCircle className="h-4 w-4 text-accent" />
-                <span>Capture bug report (C)</span>
+                <span>Capture (C)</span>
               </Command.Item>
 
               <Command.Item

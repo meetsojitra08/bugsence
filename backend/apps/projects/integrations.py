@@ -4,14 +4,15 @@ import hashlib
 import hmac
 import re
 import secrets
+import time
 from uuid import UUID
 
-from django.conf import settings as django_settings
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.ai.services.duplicates import find_duplicate_issues
@@ -44,7 +45,13 @@ def _get_or_init_integrations(project: Project) -> list[ProjectIntegration]:
         },
         IntegrationProvider.EMAIL_IN: {
             "enabled": True,
-            "config": {"inbound_address": f"bugs@{project.key.lower()}.bugsense.app"},
+            "config": {
+                "inbound_address": f"bugs@{project.key.lower()}.bugsense.app",
+                "relay_note": (
+                    "Point an inbound mail parser (Postmark/Mailgun/SendGrid) "
+                    "to this webhook with X-Webhook-Secret."
+                ),
+            },
         },
         IntegrationProvider.SENTRY: {
             "enabled": False,
@@ -74,6 +81,94 @@ def _get_or_init_integrations(project: Project) -> list[ProjectIntegration]:
     return records
 
 
+def _get_integration_or_forbid(project: Project, provider: str) -> ProjectIntegration:
+    _get_or_init_integrations(project)
+    integration = ProjectIntegration.objects.get(project=project, provider=provider)
+    if not integration.enabled:
+        raise PermissionDenied(f"{provider.replace('_', ' ').title()} integration is disabled.")
+    return integration
+
+
+def _extract_bearer_or_secret(request: Request) -> str:
+    header_secret = (request.META.get("HTTP_X_WEBHOOK_SECRET") or "").strip()
+    if header_secret:
+        return header_secret
+    auth = (request.META.get("HTTP_AUTHORIZATION") or "").strip()
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    data = request.data if isinstance(request.data, dict) else {}
+    return str(data.get("secret") or data.get("token") or "").strip()
+
+
+def _verify_shared_secret(request: Request, integration: ProjectIntegration) -> None:
+    expected = (integration.webhook_secret or "").strip()
+    if not expected:
+        raise PermissionDenied("Webhook secret not configured.")
+    supplied = _extract_bearer_or_secret(request)
+    if not supplied or not hmac.compare_digest(expected, supplied):
+        raise PermissionDenied("Missing or invalid webhook secret.")
+
+
+def _verify_github_signature(request: Request, integration: ProjectIntegration) -> None:
+    secret = (integration.webhook_secret or "").strip()
+    if not secret:
+        raise PermissionDenied("GitHub webhook secret not configured.")
+    sig_header = (request.META.get("HTTP_X_HUB_SIGNATURE_256") or "").strip()
+    if not sig_header.startswith("sha256="):
+        raise PermissionDenied("Missing GitHub X-Hub-Signature-256 header.")
+    expected = (
+        "sha256="
+        + hmac.new(
+            secret.encode("utf-8"),
+            request.body,
+            hashlib.sha256,
+        ).hexdigest()
+    )
+    if not hmac.compare_digest(expected, sig_header):
+        raise PermissionDenied("Invalid GitHub webhook signature.")
+
+
+def _verify_slack_signature(request: Request, integration: ProjectIntegration) -> None:
+    secret = (integration.webhook_secret or "").strip()
+    if not secret:
+        raise PermissionDenied("Slack webhook secret not configured.")
+    slack_sig = (request.META.get("HTTP_X_SLACK_SIGNATURE") or "").strip()
+    slack_ts = (request.META.get("HTTP_X_SLACK_REQUEST_TIMESTAMP") or "").strip()
+    if slack_sig and slack_ts:
+        try:
+            ts_int = int(slack_ts)
+        except ValueError as exc:
+            raise PermissionDenied("Invalid Slack request timestamp.") from exc
+        if abs(time.time() - ts_int) > 300:
+            raise PermissionDenied("Expired Slack request timestamp.")
+        base = f"v0:{slack_ts}:".encode() + request.body
+        expected = "v0=" + hmac.new(secret.encode("utf-8"), base, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, slack_sig):
+            raise PermissionDenied("Invalid Slack signature.")
+        return
+
+    # Allow X-Webhook-Secret / Bearer / Slack verification token fallback
+    _verify_shared_secret(request, integration)
+
+
+def _verify_sentry_signature(request: Request, integration: ProjectIntegration) -> None:
+    secret = (integration.webhook_secret or "").strip()
+    if not secret:
+        raise PermissionDenied("Sentry webhook secret not configured.")
+    sentry_sig = (request.META.get("HTTP_SENTRY_HOOK_SIGNATURE") or "").strip()
+    if sentry_sig:
+        expected = hmac.new(
+            secret.encode("utf-8"),
+            request.body,
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(expected, sentry_sig):
+            raise PermissionDenied("Invalid Sentry webhook signature.")
+        return
+
+    _verify_shared_secret(request, integration)
+
+
 def _ingest_to_inbox(
     *,
     project: Project,
@@ -87,9 +182,15 @@ def _ingest_to_inbox(
 ) -> Issue:
     """Runs optional AI triage (with deterministic fallback) and files into Inbox."""
     project_labels = list(Label.objects.filter(project=project).values_list("name", flat=True))
+    rules = project.ai_priority_rules if isinstance(project.ai_priority_rules, dict) else {}
+    default_priority = str(rules.get("default_priority") or IssuePriority.MEDIUM).lower()
+    if default_priority not in IssuePriority.values:
+        default_priority = IssuePriority.MEDIUM
+
     triage_title = title.strip()[:255]
-    priority = IssuePriority.MEDIUM
+    priority = default_priority
     severity = IssueSeverity.MINOR
+    issue_type = "bug"
     steps = ""
     actual = ""
     ai_meta: dict = {}
@@ -101,12 +202,7 @@ def _ingest_to_inbox(
                 project_labels=project_labels,
                 user=project.owner,
             )
-        except AIServiceUnavailable:
-            if getattr(django_settings, "GROQ_API_KEY", ""):
-                res = heuristic_triage(raw_text, project_labels)
-            else:
-                res = heuristic_triage(raw_text, project_labels)
-        except Exception:
+        except (AIServiceUnavailable, Exception):
             res = heuristic_triage(raw_text, project_labels)
 
         if not triage_title:
@@ -114,9 +210,21 @@ def _ingest_to_inbox(
         if res.confidence >= project.ai_confidence_threshold:
             priority = res.priority
         severity = res.severity
+        issue_type = res.type
         steps = "\n".join(res.steps_to_reproduce)
         actual = res.actual_behavior
+
+        urgent_keywords = [
+            str(k).strip().lower() for k in (rules.get("urgent_keywords") or []) if str(k).strip()
+        ]
+        combined_text = f"{triage_title}\n{raw_text}".lower()
+        if urgent_keywords and any(kw in combined_text for kw in urgent_keywords):
+            priority = IssuePriority.URGENT
+
         ai_meta = {
+            "suggested_type": res.type,
+            "suggested_priority": res.priority,
+            "suggested_labels": res.suggested_labels,
             "triage_confidence": res.confidence,
             "triage_reasoning": res.reasoning,
             "missing_info": res.missing_info,
@@ -133,6 +241,7 @@ def _ingest_to_inbox(
         status=IssueStatus.INBOX,
         priority=priority,
         severity=severity,
+        type=issue_type,
         source=source,
         external_reporter_name=external_reporter_name,
         external_reporter_email=external_reporter_email,
@@ -192,6 +301,46 @@ class ProjectIntegrationDetailView(APIView):
         return Response(ProjectIntegrationSerializer(integration).data)
 
 
+class ProjectIntegrationTestView(APIView):
+    """Verifies integration configuration readiness for owners/admins."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, project_id: UUID, provider: str) -> Response:
+        project = get_project_for_user(project_id=project_id, user=request.user)
+        if not project:
+            raise NotFound("Project not found.")
+
+        role = get_user_role_in_project(project_id=project.id, user=request.user)
+        if role not in [RoleChoices.ADMIN, RoleChoices.OWNER]:
+            raise PermissionDenied("Only project owners or admins can test integrations.")
+
+        if provider not in IntegrationProvider.values:
+            raise NotFound("Integration provider not found.")
+
+        _get_or_init_integrations(project)
+        integration = ProjectIntegration.objects.get(project=project, provider=provider)
+
+        if not integration.enabled:
+            raise ValidationError({"detail": f"Enable {provider.replace('_', ' ')} first."})
+
+        cfg = integration.config or {}
+        if provider == IntegrationProvider.SLACK and not (cfg.get("webhook_url") or "").strip():
+            raise ValidationError(
+                {"webhook_url": "Add a Slack Incoming Webhook URL to enable outbound alerts."}
+            )
+
+        return Response(
+            {
+                "ok": True,
+                "provider": provider,
+                "message": (
+                    f"{provider.replace('_', ' ').title()} is active and signature check is ready."
+                ),
+            }
+        )
+
+
 class GitHubWebhookView(APIView):
     """Receives GitHub pull_request & CI check webhooks and updates linked issues."""
 
@@ -202,24 +351,8 @@ class GitHubWebhookView(APIView):
         if not project:
             raise NotFound("Project not found.")
 
-        integration = ProjectIntegration.objects.filter(
-            project=project,
-            provider=IntegrationProvider.GITHUB,
-        ).first()
-
-        # Verify GitHub HMAC-SHA256 signature if configured & header sent
-        sig_header = request.META.get("HTTP_X_HUB_SIGNATURE_256", "")
-        if integration and integration.enabled and integration.webhook_secret and sig_header:
-            expected = (
-                "sha256="
-                + hmac.new(
-                    integration.webhook_secret.encode("utf-8"),
-                    request.body,
-                    hashlib.sha256,
-                ).hexdigest()
-            )
-            if not hmac.compare_digest(expected, sig_header):
-                raise PermissionDenied("Invalid GitHub webhook signature.")
+        integration = _get_integration_or_forbid(project, IntegrationProvider.GITHUB)
+        _verify_github_signature(request, integration)
 
         payload = request.data if isinstance(request.data, dict) else {}
         event_type = request.META.get("HTTP_X_GITHUB_EVENT", "pull_request")
@@ -245,7 +378,7 @@ class GitHubWebhookView(APIView):
                 return Response({"linked": 0, "message": "No matching issue keys found."})
 
             auto_close = True
-            if integration and isinstance(integration.config, dict):
+            if isinstance(integration.config, dict):
                 auto_close = integration.config.get("auto_close_on_merge", True)
 
             linked_keys = []
@@ -303,6 +436,9 @@ class SlackCommandWebhookView(APIView):
         if not project:
             raise NotFound("Project not found.")
 
+        integration = _get_integration_or_forbid(project, IntegrationProvider.SLACK)
+        _verify_slack_signature(request, integration)
+
         data = request.data if isinstance(request.data, dict) else {}
 
         # Slack Events API challenge
@@ -357,13 +493,15 @@ class EmailInboundWebhookView(APIView):
         if not project:
             raise NotFound("Project not found.")
 
+        integration = _get_integration_or_forbid(project, IntegrationProvider.EMAIL_IN)
+        _verify_shared_secret(request, integration)
+
         data = request.data if isinstance(request.data, dict) else {}
         subject = (data.get("subject") or "").strip()
         body = (data.get("text") or data.get("body-plain") or data.get("body") or "").strip()
         sender = (data.get("from") or data.get("sender") or "").strip()
         sender_name = (data.get("from_name") or "").strip()
 
-        # Extract email from "Name <email@example.com>"
         email_match = re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", sender)
         sender_email = email_match.group(0) if email_match else ""
         if not sender_name and "<" in sender:
@@ -395,6 +533,9 @@ class SentryWebhookView(APIView):
         if not project:
             raise NotFound("Project not found.")
 
+        integration = _get_integration_or_forbid(project, IntegrationProvider.SENTRY)
+        _verify_sentry_signature(request, integration)
+
         data = request.data if isinstance(request.data, dict) else {}
         sentry_issue = (data.get("data") or {}).get("issue") or data.get("event") or data
         title = (sentry_issue.get("title") or data.get("message") or "Error tracker alert").strip()
@@ -407,12 +548,14 @@ class SentryWebhookView(APIView):
 
         raw_text = "\n".join(filter(None, [title, culprit, web_url]))
 
-        # Deduplicate by external_ref or high title similarity
+        # Deduplicate by external_ref or high title/body similarity
         existing = None
         if fingerprint:
             existing = Issue.objects.filter(project=project, external_ref=fingerprint).first()
         if not existing:
-            matches = find_duplicate_issues(project=project, title=title, threshold=0.85, limit=1)
+            matches = find_duplicate_issues(
+                project=project, title=title, description=raw_text, threshold=0.85, limit=1
+            )
             if matches:
                 existing = Issue.objects.filter(id=matches[0]["id"]).first()
 
@@ -442,6 +585,8 @@ class PublicReportFormView(APIView):
     """Public unauthenticated bug submission form for QA and customers."""
 
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "public_report"
 
     def get(self, request: Request, project_key: str) -> Response:
         project = Project.objects.filter(key__iexact=project_key, archived=False).first()
@@ -480,6 +625,13 @@ class PublicReportFormView(APIView):
             raise PermissionDenied("Public bug submissions are disabled for this project.")
 
         data = request.data if isinstance(request.data, dict) else {}
+        # Silent honeypot rejection against bots filling hidden anti-spam fields
+        if (data.get("website") or data.get("_hp") or "").strip():
+            return Response(
+                {"message": "Report submitted to the team Inbox."},
+                status=status.HTTP_201_CREATED,
+            )
+
         description = (data.get("description") or "").strip()
         title = (data.get("title") or "").strip()
         reporter_name = (data.get("reporter_name") or "").strip()

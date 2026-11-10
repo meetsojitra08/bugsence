@@ -189,13 +189,26 @@ def create_issue(
         if labels:
             issue.labels.set(labels)
 
-        log_activity(
-            project=project,
-            issue=issue,
-            actor=reporter,
-            verb="created",
-            new_value=issue.title,
-        )
+        if source != IssueSource.MANUAL:
+            sender_label = (
+                external_reporter_name.strip() or external_reporter_email.strip() or source
+            )
+            log_activity(
+                project=project,
+                issue=issue,
+                actor=None,
+                verb="received",
+                field=source,
+                new_value=sender_label,
+            )
+        else:
+            log_activity(
+                project=project,
+                issue=issue,
+                actor=reporter,
+                verb="created",
+                new_value=issue.title,
+            )
 
         if status == IssueStatus.INBOX:
             notify_inbox_arrival(

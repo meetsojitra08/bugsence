@@ -8,6 +8,7 @@ import { AISummaryCard } from "./components/ai/AISummaryCard";
 import { aiApi } from "./api/aiApi";
 import * as issuesHooks from "./hooks/useIssues";
 import * as projectsHooks from "@/features/projects/hooks/useProjects";
+import { AuthContext } from "@/features/auth/context/AuthContext";
 
 describe("AI UI Features & Capture Trust Guarantees", () => {
   let queryClient: QueryClient;
@@ -198,6 +199,60 @@ describe("AI UI Features & Capture Trust Guarantees", () => {
 
       fireEvent.click(screen.getByTestId("duplicate-link-btn"));
       expect(banner).toHaveTextContent("Linked as duplicate of PROJ-5");
+    });
+
+    it("starts priority blank, displays capability strip, and defaults non-triagers to Inbox", () => {
+      vi.spyOn(projectsHooks, "useProjects").mockReturnValue({
+        data: [
+          {
+            id: "proj-1",
+            name: "Web App",
+            key: "PROJ",
+            description: "",
+            owner_id: "u-owner",
+            archived: false,
+            members_count: 2,
+            current_triager_id: "u-triager",
+            current_triager: { id: "u-triager", email: "sam@acme.dev", full_name: "Sam Triager" },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        isLoading: false,
+      } as unknown as ReturnType<typeof projectsHooks.useProjects>);
+
+      render(
+        <AuthContext.Provider
+          value={{
+            user: {
+              id: "u-non-triager",
+              email: "dev@acme.dev",
+              fullName: "Dev Member",
+              displayName: "Dev",
+              avatarUrl: "",
+            },
+            isAuthenticated: true,
+            isLoading: false,
+            login: vi.fn(),
+            register: vi.fn(),
+            startDemo: vi.fn(),
+            logout: vi.fn(),
+            updateUser: vi.fn(),
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
+              <CreateIssueModal isOpen={true} onClose={() => {}} projectId="proj-1" projectKey="PROJ" />
+            </BrowserRouter>
+          </QueryClientProvider>
+        </AuthContext.Provider>
+      );
+
+      const prioritySelect = screen.getByTestId("create-issue-priority-select") as HTMLSelectElement;
+      expect(prioritySelect.value).toBe("");
+      expect(screen.getByTestId("capture-capability-strip")).toBeInTheDocument();
+      const destSelect = document.getElementById("capture-destination") as HTMLSelectElement;
+      expect(destSelect.value).toBe("inbox");
     });
   });
 

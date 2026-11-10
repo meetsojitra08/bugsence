@@ -88,8 +88,8 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
             size="sm"
             onClick={openCaptureModal}
             className="h-8 gap-1 px-2.5 text-xs"
-            title="Capture bug report (C)"
-            aria-label="Capture bug report"
+            title="Capture (C)"
+            aria-label="Capture"
             data-testid="topbar-capture-button"
           >
             <Plus className="h-3.5 w-3.5" />

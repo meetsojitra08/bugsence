@@ -37,6 +37,10 @@ export interface Project {
   current_triager?: ProjectMemberUser | null;
   ai_auto_triage?: boolean;
   ai_confidence_threshold?: number;
+  ai_priority_rules?: {
+    default_priority?: string;
+    urgent_keywords?: string[];
+  };
   is_demo?: boolean;
   inbox_count?: number;
   total_issues_count?: number;
@@ -60,6 +64,10 @@ export interface UpdateProjectPayload {
   current_triager_id?: string | null;
   ai_auto_triage?: boolean;
   ai_confidence_threshold?: number;
+  ai_priority_rules?: {
+    default_priority?: string;
+    urgent_keywords?: string[];
+  };
 }
 
 export interface ProjectInvite {

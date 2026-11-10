@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from django.db import connection, transaction
+from django.db.models.functions import Greatest
 
 from apps.ai.models import AIRequestLog, AIRequestLogKind
 from apps.issues.models import Issue
@@ -33,26 +34,31 @@ def find_duplicate_issues(
     user: Any = None,
 ) -> list[dict[str, Any]]:
     """
-    Finds potential duplicate issues within the same project.
-    Strictly scoped to project.
+    Finds potential duplicate issues within the same project by comparing against
+    both issue titles and report bodies.
     Uses PostgreSQL trigram similarity (inside a savepoint), with an in-memory trigram fallback.
     """
     clean_title = title.strip()
-    query_text = f"{clean_title}\n{description.strip()}".strip()
+    clean_desc = description.strip()
+    query_text = f"{clean_title}\n{clean_desc}".strip()
+    body_probe = (clean_desc or clean_title)[:400]
     results: list[dict[str, Any]] = []
     is_postgres = connection.vendor == "postgresql"
     pg_succeeded = False
 
-    # Strategy 1: PostgreSQL trigram similarity (savepoint-guarded so a missing pg_trgm
-    # extension never poisons an enclosing transaction.atomic() block).
+    # Strategy 1: PostgreSQL trigram similarity against title AND description (savepoint-guarded).
     if is_postgres:
         try:
             from django.contrib.postgres.search import TrigramSimilarity
 
             with transaction.atomic():
+                similarity_expr = Greatest(
+                    TrigramSimilarity("title", clean_title),
+                    TrigramSimilarity("description", body_probe),
+                )
                 matched_issues = list(
                     Issue.objects.filter(project=project)
-                    .annotate(similarity=TrigramSimilarity("title", clean_title))
+                    .annotate(similarity=similarity_expr)
                     .filter(similarity__gte=threshold)
                     .order_by("-similarity")[:limit]
                 )
@@ -71,12 +77,26 @@ def find_duplicate_issues(
         except Exception as exc:
             logger.warning("Postgres trigram query failed, falling back to in-memory: %s", exc)
 
-    # Strategy 2: In-memory trigram fallback (SQLite or Postgres without pg_trgm)
+    # Strategy 2: In-memory trigram fallback across both title and report body
     if not pg_succeeded:
         candidates = Issue.objects.filter(project=project)
         scored_tri: list[tuple[Issue, float]] = []
         for issue in candidates:
-            sim = python_trigram_similarity(clean_title, issue.title)
+            sim_title = python_trigram_similarity(clean_title, issue.title)
+            sim_body = (
+                python_trigram_similarity(clean_desc[:400], issue.description[:400])
+                if (clean_desc and issue.description)
+                else 0.0
+            )
+            sim_title_vs_body = (
+                python_trigram_similarity(clean_title, issue.description[:400])
+                if issue.description
+                else 0.0
+            )
+            sim_body_vs_title = (
+                python_trigram_similarity(clean_desc[:400], issue.title) if clean_desc else 0.0
+            )
+            sim = max(sim_title, sim_body, sim_title_vs_body, sim_body_vs_title)
             if sim >= threshold:
                 scored_tri.append((issue, sim))
 

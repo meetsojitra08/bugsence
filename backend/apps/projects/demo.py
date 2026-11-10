@@ -8,6 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.issues.models import (
+    Issue,
     IssuePriority,
     IssueSeverity,
     IssueSource,
@@ -16,16 +17,27 @@ from apps.issues.models import (
     Label,
 )
 from apps.issues.services import create_comment, create_issue, link_pull_request
-from apps.projects.models import Membership, RoleChoices
+from apps.projects.models import Membership, Project, RoleChoices
 from apps.projects.services import create_project
 from apps.users.services import get_tokens_for_user
 
 User = get_user_model()
 
 
+def _derive_demo_project_key() -> str:
+    """Derives an authentic project key from Acme Checkout (ACME / CHK) without random hashes."""
+    for base in ("ACME", "CHK"):
+        if not Project.objects.filter(key=base).exists():
+            return base
+    suffix = 1
+    while Project.objects.filter(key=f"ACME{suffix}").exists():
+        suffix += 1
+    return f"ACME{suffix}"
+
+
 def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
     """
-    Creates an isolated demo user & sample engineering project ('ACME Checkout')
+    Creates an isolated demo user & sample engineering project ('Acme Checkout')
     so visitors can explore Inbox, Capture, Today, Board, and Issue Detail without signup.
     """
     suffix = uuid.uuid4().hex[:8]
@@ -50,12 +62,12 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             last_active_at=timezone.now() - timedelta(hours=3),
         )
 
-        project_key = f"DM{suffix[:4].upper()}"
+        project_key = _derive_demo_project_key()
         project = create_project(
             user=demo_user,
             name="Acme Checkout",
             key=project_key,
-            description="Sample small-team bug inbox & billing service workspace.",
+            description="Sample small-team bug inbox & billing service project.",
             is_demo=True,
         )
         project.triage_rotation_enabled = True
@@ -121,7 +133,7 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             auto_transition=False,
         )
 
-        create_issue(
+        i3 = create_issue(
             project=project,
             reporter=teammate_2,
             assignee=demo_user,
@@ -132,6 +144,9 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             type=IssueType.BUG,
             labels=[lbl_auth],
         )
+        # Backdate one active board card so aging badge (>3d) is immediately visible in demo
+        Issue.objects.filter(pk=i3.pk).update(updated_at=timezone.now() - timedelta(days=4))
+
         create_issue(
             project=project,
             reporter=demo_user,
@@ -140,9 +155,7 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             status=IssueStatus.IN_PROGRESS,
             priority=IssuePriority.MEDIUM,
             severity=IssueSeverity.MAJOR,
-            type=IssueType.PERFORMANCE
-            if hasattr(IssueType, "PERFORMANCE")
-            else IssueType.IMPROVEMENT,
+            type=IssueType.IMPROVEMENT,
             labels=[lbl_perf],
         )
         create_issue(
@@ -158,7 +171,7 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             external_reporter_email="priya@customer.example",
         )
 
-        # Inbox untriaged reports
+        # Inbox untriaged reports with rich AI suggestions & assign reasons
         create_issue(
             project=project,
             reporter=demo_user,
@@ -170,8 +183,23 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             status=IssueStatus.INBOX,
             priority=IssuePriority.HIGH,
             severity=IssueSeverity.MAJOR,
+            type=IssueType.BUG,
             source=IssueSource.SLACK,
             external_reporter_name="QA Bot",
+            ai_metadata={
+                "suggested_type": "bug",
+                "suggested_priority": "high",
+                "suggested_labels": ["checkout"],
+                "triage_confidence": 0.88,
+                "triage_reasoning": "Uncaught TypeError crashing /invoices view.",
+                "missing_info": [],
+                "suggested_assignee": {
+                    "id": str(teammate_1.id),
+                    "full_name": teammate_1.full_name,
+                    "email": teammate_1.email,
+                    "reason": "lightest active workload",
+                },
+            },
         )
         create_issue(
             project=project,
@@ -183,8 +211,17 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             status=IssueStatus.INBOX,
             priority=IssuePriority.URGENT,
             severity=IssueSeverity.CRITICAL,
+            type=IssueType.BUG,
             source=IssueSource.SENTRY,
             ai_metadata={
+                "suggested_type": "bug",
+                "suggested_priority": "urgent",
+                "suggested_labels": ["checkout"],
+                "triage_confidence": 0.94,
+                "triage_reasoning": (
+                    "Production webhook failures matching existing unicode HMAC bug."
+                ),
+                "missing_info": [],
                 "possible_duplicates": [
                     {
                         "id": str(i1.id),
@@ -199,7 +236,7 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
                     "id": str(demo_user.id),
                     "full_name": demo_user.full_name,
                     "email": demo_user.email,
-                    "reason": "Working on related webhook issue",
+                    "reason": "working on related webhook bug",
                 },
             },
         )
@@ -214,9 +251,24 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             status=IssueStatus.INBOX,
             priority=IssuePriority.MEDIUM,
             severity=IssueSeverity.MINOR,
+            type=IssueType.BUG,
             source=IssueSource.EMAIL,
             external_reporter_name="Elena",
             external_reporter_email="elena@example.com",
+            ai_metadata={
+                "suggested_type": "bug",
+                "suggested_priority": "medium",
+                "suggested_labels": ["performance"],
+                "triage_confidence": 0.52,
+                "triage_reasoning": "Timezone offset mismatch in PDF template.",
+                "missing_info": ["invoice locale setting", "expected timezone format"],
+                "suggested_assignee": {
+                    "id": str(teammate_2.id),
+                    "full_name": teammate_2.full_name,
+                    "email": teammate_2.email,
+                    "reason": "working on invoice PDF export",
+                },
+            },
         )
 
         create_comment(

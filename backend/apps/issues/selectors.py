@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q, QuerySet
+from django.db.models import Case, IntegerField, Q, QuerySet, Value, When
 from django.utils import timezone
 
 from apps.issues.models import Activity, Comment, Issue, IssueStatus, Label
@@ -102,14 +102,26 @@ def get_project_issues(
             ],
         )
 
+    # Logical weight ordering for priority (urgent > high > medium > low)
+    if ordering in ("priority", "-priority"):
+        priority_rank = Case(
+            When(priority="urgent", then=Value(0)),
+            When(priority="high", then=Value(1)),
+            When(priority="medium", then=Value(2)),
+            When(priority="low", then=Value(3)),
+            default=Value(4),
+            output_field=IntegerField(),
+        )
+        qs = qs.annotate(_priority_rank=priority_rank)
+        order_expr = "_priority_rank" if ordering == "-priority" else "-_priority_rank"
+        return qs.order_by(order_expr, "-created_at")
+
     # Valid ordering keys
     allowed_orderings = {
         "created_at": "created_at",
         "-created_at": "-created_at",
         "updated_at": "updated_at",
         "-updated_at": "-updated_at",
-        "priority": "priority",
-        "-priority": "-priority",
         "position": "position",
         "due_date": "due_date",
         "-due_date": "-due_date",

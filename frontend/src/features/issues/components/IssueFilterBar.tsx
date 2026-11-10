@@ -15,6 +15,7 @@ interface IssueFilterBarProps {
 
 const STATUS_CHIPS: { label: string; value?: IssueStatus; dot?: string }[] = [
   { label: "All", value: undefined },
+  { label: "Inbox", value: "inbox", dot: "bg-accent" },
   { label: "To Do", value: "todo", dot: "bg-status-todo" },
   { label: "In Progress", value: "in_progress", dot: "bg-status-in_progress" },
   { label: "In Review", value: "in_review", dot: "bg-status-in_review" },
@@ -124,7 +125,7 @@ export function IssueFilterBar({
             data-testid="create-issue-btn"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>New Issue</span>
+            <span>Capture</span>
             <kbd className="hidden rounded bg-primary-foreground/20 px-1 py-0.5 text-[10px] font-medium sm:inline-block">
               C
             </kbd>
@@ -158,21 +159,6 @@ export function IssueFilterBar({
             </button>
           );
         })}
-        <span className="ml-2 mr-1 text-[11px] font-medium text-text-muted">Due date:</span>
-        <button
-          type="button"
-          onClick={() => onSetFilter("overdue", filters.overdue ? undefined : "true")}
-          className={cn(
-            "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-all duration-150",
-            filters.overdue
-              ? "border-danger/40 bg-danger/10 text-danger shadow-xs"
-              : "border-border bg-background/50 text-text-muted hover:border-border/80 hover:bg-background hover:text-text"
-          )}
-          data-testid="overdue-filter-chip"
-          aria-pressed={Boolean(filters.overdue)}
-        >
-          Overdue
-        </button>
       </div>
     </div>
   );

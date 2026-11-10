@@ -90,6 +90,7 @@ def update_project(
     has_current_triager: bool = False,
     ai_auto_triage: bool | None = None,
     ai_confidence_threshold: float | None = None,
+    ai_priority_rules: dict | None = None,
 ) -> Project:
     """
     Updates mutable project attributes. Project key is intentionally immutable.
@@ -154,6 +155,10 @@ def update_project(
     if ai_confidence_threshold is not None:
         project.ai_confidence_threshold = ai_confidence_threshold
         update_fields.append("ai_confidence_threshold")
+
+    if ai_priority_rules is not None and isinstance(ai_priority_rules, dict):
+        project.ai_priority_rules = ai_priority_rules
+        update_fields.append("ai_priority_rules")
 
     project.save(update_fields=update_fields)
     return project

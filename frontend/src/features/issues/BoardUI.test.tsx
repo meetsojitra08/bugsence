@@ -180,4 +180,26 @@ describe("BoardPage UI", () => {
     expect(screen.getByTestId("quick-add-form-todo")).toBeInTheDocument();
     expect(screen.getByTestId("quick-add-input-todo")).toBeInTheDocument();
   });
+
+  it("displays Blocking release badge on release-blocking cards", () => {
+    const blockingBug: IssueListItem = { ...bug1, is_blocking_release: true };
+    vi.spyOn(issuesHook, "useBoard").mockReturnValue({
+      data: {
+        columns: {
+          inbox: [],
+          backlog: [],
+          todo: [blockingBug],
+          in_progress: [],
+          in_review: [],
+          done: [],
+          closed: [],
+        },
+        counts: { inbox: 0, backlog: 0, todo: 1, in_progress: 0, in_review: 0, done: 0, closed: 0 },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof issuesHook.useBoard>);
+
+    renderWithProviders(<BoardPage />);
+    expect(screen.getByTestId("kanban-card-BUG-1")).toHaveTextContent("Blocking");
+  });
 });

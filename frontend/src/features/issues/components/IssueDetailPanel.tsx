@@ -3,7 +3,6 @@ import {
   X,
   ExternalLink,
   Archive,
-  Calendar,
   User as UserIcon,
   Clock,
   History,
@@ -21,9 +20,11 @@ import { buildGitBranchName } from "@/lib/format";
 import {
   useIssue,
   useIssueActivities,
+  useLabels,
   useResolveIssue,
   useUpdateIssue,
 } from "../hooks/useIssues";
+import { DueDatePicker } from "@/components/common/DueDatePicker";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { IssueTimeline } from "./timeline/IssueTimeline";
 import { AISummaryCard } from "./ai/AISummaryCard";
@@ -43,8 +44,10 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
   const { data: detail } = useIssue(issue?.id || null);
   const { data: activities = [] } = useIssueActivities(issue?.id || null);
   const { data: members = [] } = useProjectMembers(projectId);
+  const { data: projectLabels = [] } = useLabels(projectId);
   const updateMutation = useUpdateIssue(issue?.id, projectId);
   const resolveMutation = useResolveIssue(projectId);
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
 
   // Lock the page behind the panel and close it with Escape.
   useEffect(() => {
@@ -250,41 +253,100 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
 
           {/* Due date */}
           <div className="space-y-1">
-            <span className="flex items-center gap-1 text-[11px] font-medium text-text-muted">
-              <Calendar className="h-3 w-3" /> Due Date
-            </span>
-            <div className="flex h-7 items-center px-2 text-xs text-text">
-              {current.due_date
-                ? new Date(`${current.due_date}T00:00:00`).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "No due date"}
-            </div>
+            <DueDatePicker
+              compact
+              id="panel-due-date"
+              value={current.due_date || ""}
+              onChange={(nextDate) =>
+                updateMutation.mutate(
+                  { id: current.id, payload: { due_date: nextDate || null } },
+                  { onSuccess: () => toast.success("Due date updated") }
+                )
+              }
+            />
           </div>
         </div>
 
         {/* Labels */}
-        {current.labels && current.labels.length > 0 && (
-          <div className="space-y-1.5">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
             <span className="text-[11px] font-medium text-text-muted">Labels</span>
-            <div className="flex flex-wrap gap-1.5">
-              {current.labels.map((lbl) => (
-                <span
-                  key={lbl.id}
-                  className="rounded px-2 py-0.5 text-xs font-medium"
-                  style={{
-                    backgroundColor: hexToRgba(lbl.color, 0.13),
-                    color: lbl.color,
-                  }}
-                >
-                  {lbl.name}
-                </span>
-              ))}
-            </div>
+            {projectLabels.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowLabelPicker((v) => !v)}
+                className="text-[11px] font-medium text-accent hover:underline"
+              >
+                {showLabelPicker ? "Done" : "+ Add label"}
+              </button>
+            )}
           </div>
-        )}
+          <div className="flex flex-wrap gap-1.5">
+            {(current.labels || []).map((lbl) => (
+              <span
+                key={lbl.id}
+                className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: hexToRgba(lbl.color, 0.13),
+                  color: lbl.color,
+                }}
+              >
+                {lbl.name}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIds = (current.labels || [])
+                      .filter((l) => l.id !== lbl.id)
+                      .map((l) => l.id);
+                    updateMutation.mutate(
+                      { id: current.id, payload: { label_ids: nextIds } },
+                      { onSuccess: () => toast.success("Labels updated") }
+                    );
+                  }}
+                  aria-label={`Remove label ${lbl.name}`}
+                  className="opacity-70 hover:opacity-100"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {(current.labels || []).length === 0 && !showLabelPicker && (
+              <span className="text-[11px] text-text-muted">No labels</span>
+            )}
+          </div>
+          {showLabelPicker && projectLabels.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 rounded border border-border bg-background/60 p-2">
+              {projectLabels.map((lbl) => {
+                const active = (current.labels || []).some((l) => l.id === lbl.id);
+                return (
+                  <button
+                    key={lbl.id}
+                    type="button"
+                    onClick={() => {
+                      const currentIds = (current.labels || []).map((l) => l.id);
+                      const nextIds = active
+                        ? currentIds.filter((id) => id !== lbl.id)
+                        : [...currentIds, lbl.id];
+                      updateMutation.mutate(
+                        { id: current.id, payload: { label_ids: nextIds } },
+                        { onSuccess: () => toast.success("Labels updated") }
+                      );
+                    }}
+                    className="rounded border px-2 py-0.5 text-[11px] font-medium"
+                    style={{
+                      borderColor: active ? lbl.color : "hsl(var(--border))",
+                      backgroundColor: active ? hexToRgba(lbl.color, 0.14) : "transparent",
+                      color: active ? lbl.color : "hsl(var(--text-muted))",
+                    }}
+                  >
+                    {active ? "✓ " : "+ "}
+                    {lbl.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Tabs: Details vs Activity History */}
         <div className="border-b border-border">

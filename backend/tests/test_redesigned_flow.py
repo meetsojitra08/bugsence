@@ -1,5 +1,8 @@
 """Tests for the redesigned small-team workflow backend endpoints."""
 
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 
 import pytest
@@ -8,8 +11,16 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 
-from apps.issues.models import Issue, IssuePriority, IssueSource, IssueStatus
-from apps.projects.models import InviteStatus, Membership, ProjectIntegration, RoleChoices
+from apps.ai.services.duplicates import find_duplicate_issues
+from apps.issues.models import Activity, Issue, IssuePriority, IssueSource, IssueStatus
+from apps.projects.integrations import _get_or_init_integrations
+from apps.projects.models import (
+    IntegrationProvider,
+    InviteStatus,
+    Membership,
+    ProjectIntegration,
+    RoleChoices,
+)
 from tests.factories import IssueFactory, LabelFactory, ProjectFactory, UserFactory
 
 
@@ -266,6 +277,17 @@ class TestInvitesIntegrationsAndDemo:
     def test_github_slack_email_sentry_public_webhooks(self, api_client):
         owner = UserFactory()
         project = ProjectFactory(owner=owner, key="INT")
+        integrations = {rec.provider: rec for rec in _get_or_init_integrations(project)}
+        gh_secret = integrations[IntegrationProvider.GITHUB].webhook_secret
+        slack_secret = integrations[IntegrationProvider.SLACK].webhook_secret
+        sentry_secret = integrations[IntegrationProvider.SENTRY].webhook_secret
+        integrations[IntegrationProvider.GITHUB].enabled = True
+        integrations[IntegrationProvider.GITHUB].save()
+        integrations[IntegrationProvider.SLACK].enabled = True
+        integrations[IntegrationProvider.SLACK].save()
+        integrations[IntegrationProvider.SENTRY].enabled = True
+        integrations[IntegrationProvider.SENTRY].save()
+
         issue = IssueFactory(
             project=project,
             reporter=owner,
@@ -273,10 +295,18 @@ class TestInvitesIntegrationsAndDemo:
             external_reporter_email="reporter@acme.test",
         )
 
-        # GitHub PR open -> moves to In Review
+        # Unsigned GitHub webhook must be rejected (403)
         gh_url = reverse("webhook-github", kwargs={"project_key": project.key})
-        open_resp = api_client.post(
+        forged_resp = api_client.post(
             gh_url,
+            {"action": "opened", "pull_request": {"number": 99}},
+            format="json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+        )
+        assert forged_resp.status_code == status.HTTP_403_FORBIDDEN
+
+        # Signed GitHub PR open -> moves to In Review
+        open_body = json.dumps(
             {
                 "action": "opened",
                 "pull_request": {
@@ -289,18 +319,25 @@ class TestInvitesIntegrationsAndDemo:
                     "head": {"ref": f"{issue.key.lower()}-fix"},
                 },
                 "repository": {"full_name": "org/repo"},
-            },
-            format="json",
+            }
+        ).encode("utf-8")
+        open_sig = (
+            "sha256=" + hmac.new(gh_secret.encode("utf-8"), open_body, hashlib.sha256).hexdigest()
+        )
+        open_resp = api_client.post(
+            gh_url,
+            data=open_body,
+            content_type="application/json",
             HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_HUB_SIGNATURE_256=open_sig,
         )
         assert open_resp.status_code == status.HTTP_200_OK
         issue.refresh_from_db()
         assert issue.status == IssueStatus.IN_REVIEW
 
-        # GitHub PR merge -> auto-closes to Done & notifies reporter
+        # Signed GitHub PR merge -> auto-closes to Done & notifies reporter
         mail.outbox.clear()
-        merge_resp = api_client.post(
-            gh_url,
+        merge_body = json.dumps(
             {
                 "action": "closed",
                 "pull_request": {
@@ -313,42 +350,70 @@ class TestInvitesIntegrationsAndDemo:
                     "head": {"ref": f"{issue.key.lower()}-fix"},
                 },
                 "repository": {"full_name": "org/repo"},
-            },
-            format="json",
+            }
+        ).encode("utf-8")
+        merge_sig = (
+            "sha256=" + hmac.new(gh_secret.encode("utf-8"), merge_body, hashlib.sha256).hexdigest()
+        )
+        merge_resp = api_client.post(
+            gh_url,
+            data=merge_body,
+            content_type="application/json",
             HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_HUB_SIGNATURE_256=merge_sig,
         )
         assert merge_resp.status_code == status.HTTP_200_OK
         issue.refresh_from_db()
         assert issue.status == IssueStatus.DONE
         assert len(mail.outbox) >= 1
 
-        # Slack /bug -> Inbox
+        # Unsigned Slack rejected; signed Slack /bug -> Inbox
+        slack_url = reverse("webhook-slack", kwargs={"project_key": project.key})
+        assert (
+            api_client.post(slack_url, {"text": "forged"}, format="json").status_code
+            == status.HTTP_403_FORBIDDEN
+        )
         slack_resp = api_client.post(
-            reverse("webhook-slack", kwargs={"project_key": project.key}),
+            slack_url,
             {"text": "Login button hangs on iOS Safari", "user_name": "sam"},
             format="json",
+            HTTP_X_WEBHOOK_SECRET=slack_secret,
         )
         assert slack_resp.status_code == status.HTTP_201_CREATED
         assert Issue.objects.filter(project=project, source=IssueSource.SLACK).exists()
 
-        # Sentry deduplication
+        # Sentry HMAC signature + deduplication
         sentry_url = reverse("webhook-sentry", kwargs={"project_key": project.key})
+        s_body = json.dumps(
+            {"data": {"issue": {"id": "SEN-99", "title": "ZeroDivisionError in billing"}}}
+        ).encode("utf-8")
+        s_sig = hmac.new(sentry_secret.encode("utf-8"), s_body, hashlib.sha256).hexdigest()
         s1 = api_client.post(
             sentry_url,
-            {"data": {"issue": {"id": "SEN-99", "title": "ZeroDivisionError in billing"}}},
-            format="json",
+            data=s_body,
+            content_type="application/json",
+            HTTP_SENTRY_HOOK_SIGNATURE=s_sig,
         )
         assert s1.status_code == status.HTTP_201_CREATED
         s2 = api_client.post(
             sentry_url,
-            {"data": {"issue": {"id": "SEN-99", "title": "ZeroDivisionError in billing"}}},
-            format="json",
+            data=s_body,
+            content_type="application/json",
+            HTTP_SENTRY_HOOK_SIGNATURE=s_sig,
         )
         assert s2.status_code == status.HTTP_200_OK
         assert s2.data["deduplicated"] is True
 
-        # Public report form
+        # Public report form + honeypot spam protection
         pub_url = reverse("public-report-form", kwargs={"project_key": project.key})
+        spam_resp = api_client.post(
+            pub_url,
+            {"description": "Buy cheap watches now", "website": "http://spam.example"},
+            format="json",
+        )
+        assert spam_resp.status_code == status.HTTP_201_CREATED
+        assert not Issue.objects.filter(project=project, source=IssueSource.PUBLIC_FORM).exists()
+
         pub_resp = api_client.post(
             pub_url,
             {
@@ -361,7 +426,7 @@ class TestInvitesIntegrationsAndDemo:
         assert pub_resp.status_code == status.HTTP_201_CREATED
         assert Issue.objects.filter(project=project, source=IssueSource.PUBLIC_FORM).exists()
 
-        # Integrations list & patch as owner
+        # Integrations list & test ping as owner
         api_client.force_authenticate(user=owner)
         int_list = api_client.get(
             reverse("project-integrations-list", kwargs={"project_id": project.id})
@@ -369,11 +434,31 @@ class TestInvitesIntegrationsAndDemo:
         assert int_list.status_code == status.HTTP_200_OK
         assert ProjectIntegration.objects.filter(project=project).count() == 5
 
+        test_resp = api_client.post(
+            reverse(
+                "project-integration-test",
+                kwargs={"project_id": project.id, "provider": "github"},
+            )
+        )
+        assert test_resp.status_code == status.HTTP_200_OK
+        assert test_resp.data["ok"] is True
+
     def test_demo_workspace_and_auto_key_generation(self, api_client):
         demo_resp = api_client.post(reverse("auth-demo"))
         assert demo_resp.status_code == status.HTTP_201_CREATED
         assert "access" in demo_resp.data
-        assert "project" in demo_resp.data
+        assert demo_resp.data["project"]["key"].startswith("ACME")
+
+        # External email report logs 'received' attribution rather than Alex Chen
+        elena_email_issue = Issue.objects.filter(
+            project_id=demo_resp.data["project"]["id"], source=IssueSource.EMAIL
+        ).first()
+        assert elena_email_issue is not None
+        first_act = Activity.objects.filter(issue=elena_email_issue).last()
+        assert first_act is not None
+        assert first_act.verb == "received"
+        assert first_act.field == IssueSource.EMAIL
+        assert first_act.new_value == "Elena"
 
         # Project creation with name only auto-generates key
         owner = UserFactory()
@@ -383,6 +468,31 @@ class TestInvitesIntegrationsAndDemo:
         )
         assert proj_resp.status_code == status.HTTP_201_CREATED
         assert proj_resp.data["key"]
+
+        # Duplicate search matches across report body (description), not just title
+        from apps.projects.models import Project
+
+        i_body = IssueFactory(
+            project=Project.objects.get(id=proj_resp.data["id"]),
+            reporter=owner,
+            title="Generic payment failure",
+            description="TypeError reading cardBrand in CheckoutForm.tsx line 142 on Safari 17",
+        )
+        body_dups = find_duplicate_issues(
+            project=i_body.project,
+            title="Checkout blank screen after applying gift card",
+            description="TypeError reading cardBrand in CheckoutForm.tsx line 142 on Safari 17",
+            threshold=0.55,
+        )
+        assert any(d["id"] == str(i_body.id) for d in body_dups)
+
+        # Password reset endpoint returns safe 200 & lets user confirm reset
+        mail.outbox.clear()
+        forgot_resp = api_client.post(
+            reverse("auth-forgot-password"), {"email": owner.email}, format="json"
+        )
+        assert forgot_resp.status_code == status.HTTP_200_OK
+        assert len(mail.outbox) == 1
 
         # Triage fallback when GROQ_API_KEY not set works with missing_info
         triage_resp = api_client.post(

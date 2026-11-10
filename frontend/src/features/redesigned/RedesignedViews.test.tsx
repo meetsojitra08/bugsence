@@ -29,6 +29,18 @@ const inboxItems: IssueListItem[] = [
     source: "email",
     external_reporter_name: "Pat Customer",
     external_reporter_email: "pat@customer.io",
+    ai_metadata: {
+      suggested_priority: "urgent",
+      suggested_type: "bug",
+      triage_confidence: 0.88,
+      triage_reasoning: "Production PDF 500 crash reported by customer.",
+      suggested_assignee: {
+        id: "u-1",
+        full_name: "Dev One",
+        email: "dev@team.dev",
+        reason: "Recent billing commits",
+      },
+    },
     reporter: { id: "u-1", email: "dev@team.dev", full_name: "Dev" },
     assignee: null,
     labels: [],
@@ -144,6 +156,13 @@ describe("Redesigned Workflows (Inbox, Onboarding, Public Report, Invite Accept)
     expect(screen.getByTestId("inbox-preview")).toBeInTheDocument();
     expect(screen.getByText(/triager:/i)).toBeInTheDocument();
 
+    // Never output "just now ago" and surface AI triage preview + assignee reason
+    expect(screen.getByTestId("inbox-preview")).not.toHaveTextContent("just now ago");
+    expect(screen.getByTestId("inbox-ai-suggestions")).toHaveTextContent("AI triage preview");
+    expect(screen.getByTestId("inbox-assign-suggested-btn")).toHaveTextContent(
+      "Recent billing commits"
+    );
+
     // Move selection down with 'J'
     fireEvent.keyDown(window, { key: "j" });
     expect(screen.getByTestId("inbox-preview")).toHaveTextContent(
@@ -174,6 +193,10 @@ describe("Redesigned Workflows (Inbox, Onboarding, Public Report, Invite Accept)
       target: { value: "Checkout Service" },
     });
     expect(screen.getByText(/CS-1|CHK-1|CH-1/i)).toBeInTheDocument();
+    const keyInput = screen.getByLabelText(/Project key/i) as HTMLInputElement;
+    expect(keyInput).toBeInTheDocument();
+    fireEvent.change(keyInput, { target: { value: "PAY" } });
+    expect(screen.getByText(/PAY-1/)).toBeInTheDocument();
   });
 
   it("submits public external bug report without login and shows key confirmation", async () => {

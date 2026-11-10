@@ -21,7 +21,7 @@ import { useInbox, useTriageInbox } from "../hooks/useIssues";
 import { useUiStore } from "@/stores/useUiStore";
 import { SafeMarkdown } from "../utils/markdown";
 import { PriorityIcon } from "../components/PriorityIcon";
-import { daysSince, formatRelativeAge, pluralize } from "@/lib/format";
+import { daysSince, formatRelativeAge, formatTimeAgo, pluralize } from "@/lib/format";
 import type { AIDuplicateCandidate, IssueListItem, IssueSource } from "../types";
 
 const SOURCE_BADGES: Record<IssueSource, { label: string; icon: React.ReactNode }> = {
@@ -66,6 +66,12 @@ export function InboxPage() {
   const aiMeta = (selectedItem?.ai_metadata || {}) as {
     possible_duplicates?: AIDuplicateCandidate[];
     suggested_assignee?: { id: string; full_name: string; email: string; reason: string };
+    suggested_type?: string;
+    suggested_priority?: string;
+    suggested_labels?: string[];
+    triage_confidence?: number;
+    triage_reasoning?: string;
+    missing_info?: string[];
   };
   const topDuplicate = aiMeta.possible_duplicates?.[0] ?? null;
   const suggestedPerson = aiMeta.suggested_assignee ?? null;
@@ -190,7 +196,7 @@ export function InboxPage() {
               Show snoozed
             </label>
             <Button size="sm" onClick={openCaptureModal}>
-              Capture (C)
+              Capture
             </Button>
           </div>
         }
@@ -307,7 +313,7 @@ export function InboxPage() {
                       {SOURCE_BADGES[selectedItem.source || "manual"].label}
                     </span>
                     <span className="text-xs text-text-muted">
-                      {formatRelativeAge(selectedItem.created_at)} ago
+                      {formatTimeAgo(selectedItem.created_at)}
                     </span>
                   </div>
                   <Link
@@ -332,6 +338,52 @@ export function InboxPage() {
                       selectedItem.external_reporter_name &&
                       ` (${selectedItem.external_reporter_email})`}
                   </p>
+                )}
+
+                {(aiMeta.suggested_priority ||
+                  aiMeta.suggested_type ||
+                  (aiMeta.suggested_labels?.length ?? 0) > 0 ||
+                  aiMeta.triage_reasoning ||
+                  (aiMeta.missing_info?.length ?? 0) > 0) && (
+                  <div
+                    className="rounded-lg border border-accent/25 bg-accent/5 p-3 text-xs space-y-1.5"
+                    data-testid="inbox-ai-suggestions"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-accent">AI triage preview</span>
+                      {typeof aiMeta.triage_confidence === "number" && (
+                        <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+                          {Math.round(aiMeta.triage_confidence * 100)}% confidence
+                        </span>
+                      )}
+                      {aiMeta.suggested_priority && (
+                        <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-medium capitalize text-text">
+                          Priority: {aiMeta.suggested_priority}
+                        </span>
+                      )}
+                      {aiMeta.suggested_type && (
+                        <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-medium capitalize text-text">
+                          Type: {aiMeta.suggested_type}
+                        </span>
+                      )}
+                      {aiMeta.suggested_labels?.map((lbl) => (
+                        <span
+                          key={lbl}
+                          className="rounded bg-surface-elevated px-1.5 py-0.5 text-[10px] text-text-muted"
+                        >
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
+                    {aiMeta.triage_reasoning && (
+                      <p className="text-[11px] text-text-muted">{aiMeta.triage_reasoning}</p>
+                    )}
+                    {aiMeta.missing_info && aiMeta.missing_info.length > 0 && (
+                      <p className="text-[11px] text-warning">
+                        Needs clarification: {aiMeta.missing_info.join(", ")}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {topDuplicate && (
@@ -402,10 +454,14 @@ export function InboxPage() {
                         }
                         disabled={triageMutation.isPending}
                         className="gap-1.5"
+                        title={suggestedPerson.reason}
                         data-testid="inbox-assign-suggested-btn"
                       >
                         <UserCheck className="h-3.5 w-3.5 text-accent" />
-                        Assign to {suggestedPerson.full_name.split(" ")[0]}{" "}
+                        <span>
+                          Assign to {suggestedPerson.full_name.split(" ")[0]}
+                          {suggestedPerson.reason ? ` (${suggestedPerson.reason})` : ""}
+                        </span>
                         <kbd className="font-mono text-[10px] text-text-muted">A</kbd>
                       </Button>
                     ) : (

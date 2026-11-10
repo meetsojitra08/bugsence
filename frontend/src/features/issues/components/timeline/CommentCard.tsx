@@ -23,7 +23,7 @@ export function CommentCard({
   const [editText, setEditText] = useState(item.body);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isAuthor = Boolean(currentUserId && item.actor.id === currentUserId);
+  const isAuthor = Boolean(currentUserId && item.actor?.id === currentUserId);
   const canModify = isAuthor || isProjectAdminOrOwner;
 
   const handleSave = async () => {
@@ -69,7 +69,7 @@ export function CommentCard({
       {/* Header */}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {item.actor.avatar_url ? (
+          {item.actor?.avatar_url ? (
             <img
               src={item.actor.avatar_url}
               alt={item.actor.full_name || item.actor.email}
@@ -82,7 +82,7 @@ export function CommentCard({
           )}
 
           <span className="text-xs font-semibold text-text">
-            {item.actor.full_name || item.actor.email}
+            {item.actor?.full_name || item.actor?.email || "System"}
           </span>
 
           <div className="flex items-center gap-1.5 text-text-muted">

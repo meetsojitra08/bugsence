@@ -28,7 +28,7 @@ import {
 import { projectsApi } from "../api/projectsApi";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { formatRelativeAge } from "@/lib/format";
+import { formatRelativeAge, formatTimeAgo } from "@/lib/format";
 import type { ProjectMembership, ProjectRole } from "../types";
 
 export function ProjectMembersPage() {
@@ -389,9 +389,10 @@ export function ProjectMembersPage() {
                             size="sm"
                             aria-label={`Remove member ${member.user.full_name || member.user.email}`}
                             onClick={() => setMemberToRemove(member)}
-                            className="text-text-muted hover:bg-danger/10 hover:text-danger"
+                            className="gap-1 text-text-muted hover:bg-danger/10 hover:text-danger"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Remove</span>
                           </Button>
                         ) : (
                           <span className="text-xs text-text-muted">–</span>
@@ -407,13 +408,18 @@ export function ProjectMembersPage() {
       </div>
 
       {/* Pending Invites */}
-      {canManageMembers && invites.length > 0 && (
+      {canManageMembers && (
         <div className="rounded-lg border border-border bg-surface" data-testid="pending-invites-list">
           <div className="border-b border-border px-5 py-3.5">
             <h2 className="text-[13px] font-semibold text-text">
               Pending invites ({invites.length})
             </h2>
           </div>
+          {invites.length === 0 ? (
+            <div className="px-5 py-4 text-xs text-text-muted">
+              No pending email or link invites.
+            </div>
+          ) : (
           <div className="divide-y divide-border text-xs">
             {invites.map((inv) => (
               <div
@@ -426,7 +432,7 @@ export function ProjectMembersPage() {
                   </p>
                   <p className="text-[11px] text-text-muted">
                     Role: <span className="capitalize">{inv.role}</span> · Created{" "}
-                    {formatRelativeAge(inv.created_at)} ago
+                    {formatTimeAgo(inv.created_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -471,6 +477,7 @@ export function ProjectMembersPage() {
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 

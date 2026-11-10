@@ -39,8 +39,8 @@ const HIGHLIGHTS = [
   },
   {
     icon: GitPullRequest,
-    title: "GitHub and Slack built in",
-    text: "Move issues from In Review to Done via PR webhooks and capture bugs directly with /bug.",
+    title: "GitHub and Slack webhooks",
+    text: "Transition issues via GitHub PR webhooks and ingest reports from signed Slack /bug or email relay webhooks.",
   },
 ];
 

@@ -1,4 +1,4 @@
-import { GitCommit, ArrowRight, UserCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import { GitCommit, ArrowRight, Inbox, UserCheck, CheckCircle2, AlertCircle } from "lucide-react";
 import { RelativeTime } from "./RelativeTime";
 import type { TimelineItem } from "../../types";
 
@@ -8,6 +8,8 @@ interface ActivityItemProps {
 
 function formatStatusLabel(status: string): string {
   switch (status.toLowerCase()) {
+    case "inbox":
+      return "Inbox";
     case "backlog":
       return "Backlog";
     case "todo":
@@ -25,8 +27,39 @@ function formatStatusLabel(status: string): string {
   }
 }
 
+function formatSourceLabel(source: string): string {
+  switch (source.toLowerCase()) {
+    case "email":
+      return "email";
+    case "slack":
+      return "Slack";
+    case "sentry":
+      return "Sentry";
+    case "public_form":
+      return "public report form";
+    default:
+      return source;
+  }
+}
+
 export function ActivityItem({ item }: ActivityItemProps) {
   const actorName = item.actor?.full_name || item.actor?.email?.split("@")[0] || "System";
+
+  const renderReceived = () => {
+    const channel = formatSourceLabel(item.field || "external");
+    const sender = item.new_value && item.new_value !== item.field ? item.new_value : null;
+    return (
+      <div className="truncate">
+        <span className="font-medium text-text">Received via {channel}</span>
+        {sender && (
+          <span className="text-text-muted">
+            {" "}
+            from <span className="font-medium text-text">{sender}</span>
+          </span>
+        )}
+      </div>
+    );
+  };
 
   const renderDescription = () => {
     switch (item.verb) {
@@ -77,6 +110,8 @@ export function ActivityItem({ item }: ActivityItemProps) {
 
   const getIcon = () => {
     switch (item.verb) {
+      case "received":
+        return <Inbox className="h-3.5 w-3.5 text-accent" />;
       case "created":
         return <GitCommit className="h-3.5 w-3.5 text-info" />;
       case "status_changed":
@@ -97,9 +132,13 @@ export function ActivityItem({ item }: ActivityItemProps) {
         <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface">
           {getIcon()}
         </span>
-        <div className="truncate">
-          <span className="font-semibold text-text">{actorName}</span> {renderDescription()}
-        </div>
+        {item.verb === "received" ? (
+          renderReceived()
+        ) : (
+          <div className="truncate">
+            <span className="font-semibold text-text">{actorName}</span> {renderDescription()}
+          </div>
+        )}
       </div>
       <RelativeTime dateString={item.created_at} className="flex-shrink-0" />
     </div>

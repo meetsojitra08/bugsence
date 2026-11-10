@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircle, Bug, Calendar, CheckCircle2, GitPullRequest, Sparkles } from "lucide-react";
+import { Bug, Calendar, CheckCircle2, GitPullRequest, Sparkles, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { daysSince } from "@/lib/format";
 import { PriorityIcon } from "./PriorityIcon";
@@ -17,7 +17,7 @@ const TYPE_ICONS: Record<IssueType, React.ReactNode> = {
   bug: <Bug className="h-3 w-3 text-danger" />,
   feature: <Sparkles className="h-3 w-3 text-info" />,
   task: <CheckCircle2 className="h-3 w-3 text-success" />,
-  improvement: <AlertCircle className="h-3 w-3 text-warning" />,
+  improvement: <TrendingUp className="h-3 w-3 text-info" />,
 };
 
 export function KanbanCard({ issue, onSelect, isOverlay = false }: KanbanCardProps) {
@@ -77,6 +77,11 @@ export function KanbanCard({ issue, onSelect, isOverlay = false }: KanbanCardPro
         </div>
 
         <div className="flex items-center gap-1.5">
+          {issue.is_blocking_release && (
+            <span className="rounded bg-danger/15 px-1.5 py-0.5 text-[9px] font-semibold text-danger">
+              Blocking
+            </span>
+          )}
           {showAging && (
             <span
               className="rounded bg-warning/15 px-1 py-0.5 font-mono text-[9px] font-medium text-warning"

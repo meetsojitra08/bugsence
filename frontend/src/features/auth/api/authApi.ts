@@ -137,4 +137,38 @@ export const authApi = {
       }),
     });
   },
+
+  async uploadAvatar(file: File): Promise<User> {
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const raw = await apiRequest<RawUser>("/users/me/avatar/", {
+      method: "POST",
+      body: formData,
+    });
+    return mapUser(raw);
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>("/auth/forgot-password/", {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async resetPassword(payload: {
+    uid: string;
+    token: string;
+    newPassword: string;
+  }): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>("/auth/reset-password/", {
+      method: "POST",
+      skipAuth: true,
+      body: JSON.stringify({
+        uid: payload.uid,
+        token: payload.token,
+        new_password: payload.newPassword,
+      }),
+    });
+  },
 };

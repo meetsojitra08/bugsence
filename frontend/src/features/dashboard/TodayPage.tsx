@@ -131,7 +131,7 @@ export function TodayPage() {
             )}
             <Button size="sm" onClick={openCaptureModal} className="gap-1.5" data-testid="today-capture-btn">
               <Plus className="h-3.5 w-3.5" />
-              <span>Capture bug</span>
+              <span>Capture</span>
               <kbd className="hidden rounded bg-primary-foreground/20 px-1 py-0.5 font-mono text-[10px] sm:inline">
                 C
               </kbd>
@@ -165,7 +165,7 @@ export function TodayPage() {
                 className="inline-flex items-center gap-1.5 font-medium hover:text-accent"
               >
                 <Inbox className="h-3.5 w-3.5 text-accent" />
-                <span>{pluralize(today.summary.inbox_count, "new")} in Inbox</span>
+                <span>{today.summary.inbox_count} new in Inbox</span>
               </Link>
               <span className="text-text-muted">·</span>
               <Link to="/my-issues" className="font-medium hover:text-accent">
@@ -234,7 +234,7 @@ export function TodayPage() {
                         className="flex min-w-0 flex-1 items-center gap-2.5 group"
                       >
                         <PriorityIcon priority={issue.priority} />
-                        <span className="font-mono text-[11px] font-semibold text-text-muted group-hover:text-accent">
+                        <span className="shrink-0 whitespace-nowrap font-mono text-[11px] font-semibold text-text-muted group-hover:text-accent">
                           {issue.key}
                         </span>
                         <span className="truncate text-[13px] font-medium text-text group-hover:text-accent">
@@ -311,7 +311,9 @@ export function TodayPage() {
                       >
                         <span className="flex min-w-0 items-center gap-2">
                           <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-accent" />
-                          <span className="font-mono text-[11px] text-text-muted">{issue.key}</span>
+                          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-text-muted">
+                            {issue.key}
+                          </span>
                           <span className="truncate font-medium text-text">{issue.title}</span>
                         </span>
                         <span className="shrink-0 text-[10px] text-text-muted">Review</span>
@@ -325,7 +327,9 @@ export function TodayPage() {
                       >
                         <span className="flex min-w-0 items-center gap-2">
                           <AtSign className="h-3.5 w-3.5 shrink-0 text-warning" />
-                          <span className="font-mono text-[11px] text-text-muted">{issue.key}</span>
+                          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-text-muted">
+                            {issue.key}
+                          </span>
                           <span className="truncate font-medium text-text">{issue.title}</span>
                         </span>
                         <span className="shrink-0 text-[10px] text-text-muted">@mentioned</span>
@@ -339,7 +343,9 @@ export function TodayPage() {
                       >
                         <span className="flex min-w-0 items-center gap-2">
                           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
-                          <span className="font-mono text-[11px] text-text-muted">{issue.key}</span>
+                          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-text-muted">
+                            {issue.key}
+                          </span>
                           <span className="truncate font-medium text-text">{issue.title}</span>
                         </span>
                         <span className="shrink-0 text-[10px] text-success">
@@ -389,7 +395,7 @@ export function TodayPage() {
                             to={issueHref(row.current_issue)}
                             className="flex min-w-0 items-center gap-1.5 truncate text-text-muted hover:text-accent"
                           >
-                            <span className="font-mono text-[10px] text-accent">
+                            <span className="shrink-0 whitespace-nowrap font-mono text-[10px] text-accent">
                               {row.current_issue.key}
                             </span>
                             <span className="truncate">{row.current_issue.title}</span>

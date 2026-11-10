@@ -17,11 +17,11 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
 
 DEFAULT_NOTIFICATION_PREFERENCES = {
-    "assigned": {"in_app": True, "email": True, "slack": True},
+    "assigned": {"in_app": True, "email": True, "slack": False},
     "mention": {"in_app": True, "email": True, "slack": False},
     "pr_status": {"in_app": True, "email": False, "slack": False},
-    "inbox_arrival": {"in_app": True, "email": False, "slack": True},
-    "resolved": {"in_app": True, "email": True, "slack": True},
+    "inbox_arrival": {"in_app": True, "email": False, "slack": False},
+    "resolved": {"in_app": True, "email": True, "slack": False},
 }
 
 
@@ -110,3 +110,13 @@ class LogoutRequestSerializer(serializers.Serializer):
     """Input serializer for logging out and blacklisting refresh token."""
 
     refresh = serializers.CharField()
+
+
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class ResetPasswordConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=8)

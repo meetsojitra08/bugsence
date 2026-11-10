@@ -224,7 +224,7 @@ export interface UpdateCommentPayload {
 export interface TimelineItem {
   id: string;
   type: "activity" | "comment";
-  actor: IssueUser;
+  actor: IssueUser | null;
   verb: string;
   field: string;
   old_value: string;

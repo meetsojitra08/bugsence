@@ -19,7 +19,7 @@ BugSense is a production-grade, developer-first bug tracking SaaS built to elimi
 
 ### Key Engineering Highlights
 - **AI Triage & Auto-Fill**: Parses raw error dumps and stack traces into structured Pydantic schemas, extracting concise titles, priorities, severities, and labels in under 2 seconds.
-- **Duplicate Detection**: Project-scoped trigram similarity search surfaces likely duplicate issue titles.
+- **Duplicate Detection**: Project-scoped trigram similarity search surfaces likely duplicates across both issue titles and descriptions.
 - **60 FPS Drag-and-Drop Kanban**: Interactive board built with `@dnd-kit` featuring optimistic state transitions, float midpoint positioning, and automatic column rebalancing under $10^{-6}$ epsilon.
 - **Executive Velocity Analytics**: Sub-second aggregated project overview, 7/30/90-day created vs. resolved burnup curves, and engineer workload distribution.
 - **Global Command Menu (⌘K)**: Sub-50ms live debounced search across issues, projects, and team members with full keyboard navigation.

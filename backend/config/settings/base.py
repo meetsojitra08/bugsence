@@ -155,6 +155,7 @@ REST_FRAMEWORK = {
         "user": "120/minute",
         "auth": "10/minute",
         "ai": "20/minute",
+        "public_report": "10/minute",
     },
 }
 

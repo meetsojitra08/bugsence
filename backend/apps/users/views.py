@@ -1,18 +1,33 @@
 """API views for user authentication and user profile management."""
 
+import os
+import uuid
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.files.storage import default_storage
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from apps.issues.notifications_dispatch import send_email_safely
 from apps.users.serializers import (
     ChangePasswordRequestSerializer,
+    ForgotPasswordRequestSerializer,
     LoginRequestSerializer,
     LogoutRequestSerializer,
     RegisterRequestSerializer,
+    ResetPasswordConfirmSerializer,
     TokenResponseSerializer,
     UserDetailSerializer,
 )
@@ -168,3 +183,100 @@ class DemoWorkspaceView(APIView):
         data = dict(output.data)
         data["project"] = project_info
         return Response(data, status=status.HTTP_201_CREATED)
+
+
+class UserAvatarUploadView(APIView):
+    """Uploads an avatar image for the authenticated user and updates avatar_url."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request: Request) -> Response:
+        uploaded = request.FILES.get("avatar") or request.FILES.get("file")
+        if not uploaded:
+            raise ValidationError({"avatar": "Attach an image file to upload."})
+        if uploaded.size > 2 * 1024 * 1024:
+            raise ValidationError({"avatar": "Avatar image must be 2 MB or smaller."})
+
+        content_type = getattr(uploaded, "content_type", "") or ""
+        if not content_type.startswith("image/"):
+            raise ValidationError({"avatar": "Only image files are supported."})
+
+        ext = os.path.splitext(uploaded.name or "")[1].lower() or ".png"
+        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            ext = ".png"
+
+        saved_path = default_storage.save(
+            f"avatars/{request.user.id}/{uuid.uuid4().hex}{ext}", uploaded
+        )
+        url = request.build_absolute_uri(default_storage.url(saved_path))
+        request.user.avatar_url = url
+        request.user.save(update_fields=["avatar_url", "updated_at"])
+        return Response(UserDetailSerializer(request.user).data, status=status.HTTP_200_OK)
+
+
+class ForgotPasswordView(APIView):
+    """Dispatches a password reset link without revealing whether the email exists."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    def post(self, request: Request) -> Response:
+        serializer = ForgotPasswordRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].strip().lower()
+
+        User = get_user_model()
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            origin = request.META.get("HTTP_ORIGIN") or request.build_absolute_uri("/").rstrip("/")
+            reset_url = f"{origin}/reset-password?uid={uid}&token={token}"
+            send_email_safely(
+                to_email=user.email,
+                subject="Reset your BugSense password",
+                body=(
+                    "We received a request to reset your BugSense password.\n\n"
+                    f"Use this link to choose a new password:\n{reset_url}\n\n"
+                    "If you did not request this, you can safely ignore this message."
+                ),
+            )
+
+        return Response(
+            {"message": "If an account exists for that email, reset instructions have been sent."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ResetPasswordView(APIView):
+    """Confirms a password reset token and sets the new password."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    def post(self, request: Request) -> Response:
+        serializer = ResetPasswordConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        User = get_user_model()
+        try:
+            uid = force_str(urlsafe_base64_decode(serializer.validated_data["uid"]))
+            user = User.objects.get(pk=uid, is_active=True)
+        except Exception as exc:
+            raise ValidationError({"token": ["Invalid or expired reset link."]}) from exc
+
+        if not default_token_generator.check_token(user, serializer.validated_data["token"]):
+            raise ValidationError({"token": ["Invalid or expired reset link."]})
+
+        new_password = serializer.validated_data["new_password"]
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as exc:
+            raise ValidationError({"new_password": exc.messages}) from exc
+
+        user.set_password(new_password)
+        user.save(update_fields=["password", "updated_at"])
+        return Response({"message": "Password has been reset."}, status=status.HTTP_200_OK)

@@ -62,6 +62,7 @@ class Project(models.Model):
     triage_rotation_updated_at = models.DateTimeField(null=True, blank=True)
     ai_auto_triage = models.BooleanField(default=True)
     ai_confidence_threshold = models.FloatField(default=0.6)
+    ai_priority_rules = models.JSONField(default=dict, blank=True)
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

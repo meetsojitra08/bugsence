@@ -28,10 +28,12 @@ import { issuesApi } from "../api/issuesApi";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { SafeMarkdown } from "../utils/markdown";
 import { hexToRgba } from "@/lib/color";
-import { buildGitBranchName, formatRelativeAge } from "@/lib/format";
+import { buildGitBranchName, formatTimeAgo } from "@/lib/format";
 import { IssueTimeline } from "../components/timeline/IssueTimeline";
 import { AISummaryCard } from "../components/ai/AISummaryCard";
 import { PriorityIcon } from "../components/PriorityIcon";
+import { DueDatePicker } from "@/components/common/DueDatePicker";
+import { useFindDuplicates } from "../hooks/useAI";
 import type { IssueChecklistItem, IssuePriority, IssueStatus, IssueType } from "../types";
 
 export function IssueDetailPage() {
@@ -58,6 +60,14 @@ export function IssueDetailPage() {
   const [newStepText, setNewStepText] = useState("");
   const [showResolveBox, setShowResolveBox] = useState(false);
   const [resolutionNote, setResolutionNote] = useState("");
+  const [notifyReporter, setNotifyReporter] = useState(true);
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const { data: similarIssues = [] } = useFindDuplicates(
+    issue?.project_id || "",
+    issue?.title || "",
+    issue?.description || "",
+    { enabled: Boolean(issue?.project_id && issue?.title), threshold: 0.55 }
+  );
   const [showPrForm, setShowPrForm] = useState(false);
   const [prUrl, setPrUrl] = useState("");
   const [prNumber, setPrNumber] = useState("");
@@ -186,9 +196,11 @@ export function IssueDetailPage() {
       await resolveMutation.mutateAsync({
         issueId: issue.id,
         resolution_note: resolutionNote.trim() || "Resolved",
-        notify_reporter: true,
+        notify_reporter: notifyReporter,
       });
-      toast.success(`Resolved ${issue.key} and notified reporter`);
+      toast.success(
+        notifyReporter ? `Resolved ${issue.key} and notified reporter` : `Resolved ${issue.key}`
+      );
       setShowResolveBox(false);
       setResolutionNote("");
       refreshIssue();
@@ -326,9 +338,22 @@ export function IssueDetailPage() {
               autoFocus
             />
             <Button type="submit" size="sm" disabled={resolveMutation.isPending}>
-              {resolveMutation.isPending ? "Resolving…" : "Resolve & notify"}
+              {resolveMutation.isPending
+                ? "Resolving…"
+                : notifyReporter
+                  ? "Resolve & notify"
+                  : "Resolve"}
             </Button>
           </div>
+          <label className="flex cursor-pointer items-center gap-2 text-[11px] text-text-muted">
+            <input
+              type="checkbox"
+              checked={notifyReporter}
+              onChange={(e) => setNotifyReporter(e.target.checked)}
+              className="rounded border-border text-accent"
+            />
+            Notify {issue.external_reporter_email || issue.reporter.full_name} when resolved
+          </label>
         </form>
       )}
 
@@ -348,7 +373,7 @@ export function IssueDetailPage() {
               {issue.external_reporter_name ||
                 issue.external_reporter_email ||
                 issue.reporter.full_name}{" "}
-              · {formatRelativeAge(issue.created_at)} ago
+              · {formatTimeAgo(issue.created_at)}
             </p>
             {issue.resolution_note && (
               <div className="mt-3 rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-xs text-text">
@@ -570,20 +595,13 @@ export function IssueDetailPage() {
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-medium text-text-muted">Due date</label>
-              <Input
-                type="date"
-                value={issue.due_date || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    { due_date: e.target.value || null },
-                    "Due date updated"
-                  )
-                }
-                className="h-8 bg-background text-xs"
-              />
-            </div>
+            <DueDatePicker
+              id="detail-due-date"
+              value={issue.due_date || ""}
+              onChange={(nextDate) =>
+                handleFieldChange({ due_date: nextDate || null }, "Due date updated")
+              }
+            />
 
             <label className="flex cursor-pointer items-center gap-2 border-t border-border/60 pt-2.5 text-xs text-text">
               <input
@@ -600,55 +618,136 @@ export function IssueDetailPage() {
               <span>Blocking release</span>
             </label>
 
-            <div className="space-y-1.5 border-t border-border/60 pt-2.5">
-              <span className="text-[11px] font-medium text-text-muted">Labels</span>
+            <div className="space-y-2 border-t border-border/60 pt-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-text-muted">Labels</span>
+                {projectLabels.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowLabelPicker((v) => !v)}
+                    className="text-[11px] font-medium text-accent hover:underline"
+                    data-testid="detail-add-label-toggle"
+                  >
+                    {showLabelPicker ? "Done" : "+ Add label"}
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1.5">
-                {projectLabels.map((lbl) => {
-                  const active = (issue.labels || []).some((l) => l.id === lbl.id);
-                  return (
+                {(issue.labels || []).map((lbl) => (
+                  <span
+                    key={lbl.id}
+                    className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium"
+                    style={{
+                      borderColor: lbl.color,
+                      backgroundColor: hexToRgba(lbl.color, 0.14),
+                      color: lbl.color,
+                    }}
+                  >
+                    {lbl.name}
                     <button
-                      key={lbl.id}
                       type="button"
                       onClick={() => toggleLabel(lbl.id)}
-                      className="rounded border px-2 py-0.5 text-[11px] font-medium transition-colors"
-                      style={{
-                        borderColor: active ? lbl.color : "hsl(var(--border))",
-                        backgroundColor: active ? hexToRgba(lbl.color, 0.14) : "transparent",
-                        color: active ? lbl.color : "hsl(var(--text-muted))",
-                      }}
+                      aria-label={`Remove label ${lbl.name}`}
+                      className="opacity-70 hover:opacity-100"
                     >
-                      {lbl.name}
+                      ×
                     </button>
-                  );
-                })}
-                {projectLabels.length === 0 && (
-                  <span className="text-[11px] text-text-muted">No labels in project</span>
+                  </span>
+                ))}
+                {(issue.labels || []).length === 0 && !showLabelPicker && (
+                  <span className="text-[11px] text-text-muted">
+                    {projectLabels.length === 0 ? "No labels in project" : "No labels applied"}
+                  </span>
                 )}
               </div>
+              {showLabelPicker && projectLabels.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 rounded-md border border-border bg-background/60 p-2">
+                  {projectLabels.map((lbl) => {
+                    const active = (issue.labels || []).some((l) => l.id === lbl.id);
+                    return (
+                      <button
+                        key={lbl.id}
+                        type="button"
+                        onClick={() => toggleLabel(lbl.id)}
+                        className="rounded border px-2 py-0.5 text-[11px] font-medium transition-colors"
+                        style={{
+                          borderColor: active ? lbl.color : "hsl(var(--border))",
+                          backgroundColor: active ? hexToRgba(lbl.color, 0.14) : "transparent",
+                          color: active ? lbl.color : "hsl(var(--text-muted))",
+                        }}
+                      >
+                        {active ? "✓ " : "+ "}
+                        {lbl.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {(issue.duplicate_of || (issue.sub_issues && issue.sub_issues.length > 0)) && (
-              <div className="space-y-1.5 border-t border-border/60 pt-2.5 text-xs">
-                <span className="text-[11px] font-medium text-text-muted">Related issues</span>
-                {issue.duplicate_of && (
-                  <Link
-                    to={`/p/${issue.project_key.toLowerCase()}/issues/${issue.duplicate_of.number}`}
-                    className="block truncate text-accent hover:underline"
-                  >
-                    Duplicate of {issue.duplicate_of.key}: {issue.duplicate_of.title}
-                  </Link>
-                )}
-                {issue.sub_issues?.map((sub) => (
-                  <Link
-                    key={sub.id}
-                    to={`/p/${issue.project_key.toLowerCase()}/issues/${sub.number}`}
-                    className="block truncate text-accent hover:underline"
-                  >
-                    Sub-issue {sub.key}: {sub.title}
-                  </Link>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const relatedCandidates = similarIssues.filter(
+                (c) => c.id !== issue.id && c.id !== issue.duplicate_of?.id
+              );
+              const hasRelated =
+                Boolean(issue.duplicate_of) ||
+                Boolean(issue.sub_issues && issue.sub_issues.length > 0) ||
+                relatedCandidates.length > 0;
+              if (!hasRelated) return null;
+              return (
+                <div
+                  className="space-y-1.5 border-t border-border/60 pt-2.5 text-xs"
+                  data-testid="detail-related-duplicates"
+                >
+                  <span className="text-[11px] font-medium text-text-muted">
+                    Related &amp; duplicates
+                  </span>
+                  {issue.duplicate_of && (
+                    <Link
+                      to={`/p/${issue.project_key.toLowerCase()}/issues/${issue.duplicate_of.number}`}
+                      className="block truncate text-accent hover:underline"
+                    >
+                      Duplicate of {issue.duplicate_of.key}: {issue.duplicate_of.title}
+                    </Link>
+                  )}
+                  {issue.sub_issues?.map((sub) => (
+                    <Link
+                      key={sub.id}
+                      to={`/p/${issue.project_key.toLowerCase()}/issues/${sub.number}`}
+                      className="block truncate text-accent hover:underline"
+                    >
+                      Sub-issue {sub.key}: {sub.title}
+                    </Link>
+                  ))}
+                  {!issue.duplicate_of &&
+                    relatedCandidates.slice(0, 3).map((cand) => (
+                      <div
+                        key={cand.id}
+                        className="flex items-center justify-between gap-2 rounded border border-border/60 bg-background/50 px-2 py-1 text-[11px]"
+                      >
+                        <Link
+                          to={`/p/${issue.project_key.toLowerCase()}/issues/${cand.number}`}
+                          className="min-w-0 flex-1 truncate text-text hover:text-accent"
+                        >
+                          <span className="font-mono text-text-muted">{cand.key}</span> {cand.title}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleFieldChange(
+                              { duplicate_of_id: cand.id },
+                              `Linked duplicate ${cand.key}`
+                            )
+                          }
+                          className="shrink-0 text-[10px] font-medium text-accent hover:underline"
+                        >
+                          Link dup
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* GitHub Branch & Linked PRs Block */}
