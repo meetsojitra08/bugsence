@@ -394,3 +394,27 @@ class TestInvitesIntegrationsAndDemo:
         assert "missing_info" in triage_resp.data
         assert triage_resp.data["confidence"] < 0.6
         assert timezone.now() > timezone.now() - timedelta(minutes=1)
+
+    def test_demo_workspace_survives_postgres_trigram_failure_and_loads_today(
+        self, api_client, monkeypatch
+    ):
+        from django.contrib.postgres.search import TrigramSimilarity
+        from django.db import ProgrammingError, connection
+
+        monkeypatch.setattr(connection, "vendor", "postgresql")
+
+        def broken_trigram(*args, **kwargs):
+            raise ProgrammingError("function similarity(character varying, unknown) does not exist")
+
+        monkeypatch.setattr(TrigramSimilarity, "__init__", broken_trigram, raising=False)
+
+        # Should recover via savepoint + in-memory fallback without TransactionManagementError
+        demo_resp = api_client.post(reverse("auth-demo"))
+        assert demo_resp.status_code == status.HTTP_201_CREATED
+        assert len(mail.outbox) == 0  # demo addresses do not dispatch outbound emails
+
+        project_id = demo_resp.data["project"]["id"]
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {demo_resp.data['access']}")
+        today_resp = api_client.get(reverse("project-today", kwargs={"project_id": project_id}))
+        assert today_resp.status_code == status.HTTP_200_OK
+        assert today_resp.data["summary"]["inbox_count"] >= 3

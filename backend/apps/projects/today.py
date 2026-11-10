@@ -101,17 +101,19 @@ class ProjectTodayView(APIView):
             .order_by("-updated_at")[:10]
         )
 
-        # 2) @mentions for this user in this project
-        mention_issue_ids = list(
+        # 2) @mentions for this user in this project (avoid SELECT DISTINCT + Meta.ordering on PG)
+        raw_mention_ids = (
             Notification.objects.filter(
                 recipient=request.user,
                 kind=NotificationKind.MENTION,
                 issue__project=project,
                 read_at__isnull=True,
+                issue_id__isnull=False,
             )
-            .values_list("issue_id", flat=True)
-            .distinct()[:10]
+            .order_by("-created_at")
+            .values_list("issue_id", flat=True)[:25]
         )
+        mention_issue_ids = list(dict.fromkeys(raw_mention_ids))[:10]
         mentioned_issues = (
             Issue.objects.filter(id__in=mention_issue_ids)
             .select_related("project", "reporter", "assignee")

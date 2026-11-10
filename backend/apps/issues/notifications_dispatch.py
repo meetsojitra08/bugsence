@@ -75,7 +75,7 @@ def user_wants_channel(user: Any, event_key: str, channel: str) -> bool:
 
 
 def send_email_safely(*, to_email: str, subject: str, body: str) -> None:
-    if not to_email:
+    if not to_email or to_email.endswith("@demo.bugsense.app"):
         return
     try:
         from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@bugsense.app")
@@ -176,9 +176,7 @@ def notify_issue_resolved(*, issue: Any, actor: Any, resolution_note: str) -> No
 
     # 2. Notify external reporter via email if provided
     if issue.external_reporter_email:
-        greeting = (
-            f"Hi {issue.external_reporter_name}," if issue.external_reporter_name else "Hi,"
-        )
+        greeting = f"Hi {issue.external_reporter_name}," if issue.external_reporter_name else "Hi,"
         send_email_safely(
             to_email=issue.external_reporter_email,
             subject=f"[{issue.key}] Update on your bug report: {issue.title}",

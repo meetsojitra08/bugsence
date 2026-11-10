@@ -178,8 +178,7 @@ def create_demo_workspace_session() -> tuple[User, dict[str, str], dict]:
             reporter=demo_user,
             title="Webhook HMAC signature mismatch on customer names with accents",
             description=(
-                "Sentry spike: 14 events in production over the last hour on "
-                "`/api/stripe/webhook`."
+                "Sentry spike: 14 events in production over the last hour on `/api/stripe/webhook`."
             ),
             status=IssueStatus.INBOX,
             priority=IssuePriority.URGENT,

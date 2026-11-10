@@ -893,8 +893,7 @@ def triage_inbox_issue(
                     to_email=issue.external_reporter_email,
                     subject=f"[{issue.key}] Closed: {issue.title}",
                     body=(
-                        f"Your report ({issue.key}: {issue.title}) "
-                        f"was reviewed and closed: {note}"
+                        f"Your report ({issue.key}: {issue.title}) was reviewed and closed: {note}"
                     ),
                 )
 
