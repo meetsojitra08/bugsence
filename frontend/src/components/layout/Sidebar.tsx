@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { Bug, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "@/components/common/BrandMark";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useUiStore } from "@/stores/useUiStore";
@@ -14,11 +15,8 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-border bg-surface">
       <div className="flex h-16 items-center gap-2.5 border-b border-border px-4">
-        <NavLink to="/today" className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-xs">
-            <Bug className="h-4 w-4" />
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight text-text">BugSense</span>
+        <NavLink to="/today">
+          <BrandMark />
         </NavLink>
       </div>
 

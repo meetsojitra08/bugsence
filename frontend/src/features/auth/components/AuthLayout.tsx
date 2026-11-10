@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  Bug,
   GitPullRequest,
   Inbox,
   Layers,
@@ -13,6 +12,7 @@ import {
   Sun,
 } from "lucide-react";
 import { toast } from "sonner";
+import { BrandMark } from "@/components/common/BrandMark";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { useProjectStore } from "@/stores/useProjectStore";
@@ -86,11 +86,8 @@ export function AuthLayout({
         />
 
         <div className="relative flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-xs">
-              <Bug className="h-4 w-4" />
-            </span>
-            <span className="text-[15px] font-semibold tracking-tight text-text">BugSense</span>
+          <Link to="/">
+            <BrandMark size="md" />
           </Link>
           <span className="rounded-full border border-border bg-background/70 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
             For teams of 2–15
@@ -167,11 +164,8 @@ export function AuthLayout({
       <main className="flex flex-col justify-between px-4 py-6 sm:px-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 lg:hidden">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-xs">
-                <Bug className="h-4 w-4" />
-              </span>
-              <span className="text-[14px] font-semibold tracking-tight text-text">BugSense</span>
+            <Link to="/" className="lg:hidden">
+              <BrandMark />
             </Link>
             <Link
               to="/"

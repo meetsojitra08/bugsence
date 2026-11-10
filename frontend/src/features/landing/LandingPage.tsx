@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useTheme } from "@/hooks/useTheme";
+import { BrandMark } from "@/components/common/BrandMark";
 import { PriorityIcon } from "@/features/issues/components/PriorityIcon";
 import {
   BENEFITS,
@@ -25,17 +26,6 @@ import {
   RAW_REPORT_SAMPLE,
   STRUCTURED_TICKET_SAMPLE,
 } from "./content";
-
-function BrandMark() {
-  return (
-    <span className="inline-flex items-center gap-2 font-sans text-[14px] font-semibold tracking-tight text-text">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[11px] font-bold text-white shadow-xs">
-        B
-      </span>
-      BugSense
-    </span>
-  );
-}
 
 function InteractiveTriageDemo() {
   const [stageIndex, setStageIndex] = useState(0);

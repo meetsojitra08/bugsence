@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { Bug, LogOut, Menu, Moon, Plus, Search, Sun } from "lucide-react";
+import { LogOut, Menu, Moon, Plus, Search, Sun } from "lucide-react";
 import { useUiStore } from "@/stores/useUiStore";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { BrandMark } from "@/components/common/BrandMark";
 import { Button } from "@/components/ui/button";
 import { ProjectSwitcher } from "@/features/projects/components/ProjectSwitcher";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
@@ -40,11 +41,8 @@ export function Topbar({ onMobileMenuToggle }: TopbarProps) {
           </Button>
         )}
 
-        <NavLink to="/today" className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-xs">
-            <Bug className="h-4 w-4" />
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight">BugSense</span>
+        <NavLink to="/today">
+          <BrandMark />
         </NavLink>
 
         <nav className="ml-6 hidden h-16 items-stretch lg:flex" aria-label="Main navigation">
