@@ -30,7 +30,25 @@ class HealthCheckView(APIView):
         )
 
 
+class APIRootView(APIView):
+    """Provide a useful landing response for the API base URL."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(
+            {
+                "service": "BugSense AI API",
+                "version": "1.0.0",
+                "message": "The API is available.",
+                "health_check": "/api/v1/health/",
+                "documentation": "/api/docs/",
+            }
+        )
+
+
 urlpatterns = [
+    path("", APIRootView.as_view(), name="api_root"),
     path("admin/", admin.site.urls),
     # Health check
     path("api/v1/health/", HealthCheckView.as_view(), name="health_check"),
