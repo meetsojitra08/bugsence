@@ -8,6 +8,9 @@ import {
   UserCheck,
   AtSign,
   ArrowRightCircle,
+  Inbox,
+  GitPullRequest,
+  CheckCircle2,
 } from "lucide-react";
 import {
   useNotifications,
@@ -81,6 +84,12 @@ export function NotificationBell() {
         return <AtSign className="h-3.5 w-3.5 text-warning" />;
       case "status_changed":
         return <ArrowRightCircle className="h-3.5 w-3.5 text-success" />;
+      case "inbox_arrival":
+        return <Inbox className="h-3.5 w-3.5 text-accent" />;
+      case "pr_status":
+        return <GitPullRequest className="h-3.5 w-3.5 text-accent" />;
+      case "resolved":
+        return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
       case "comment":
       case "comment_created":
       default:

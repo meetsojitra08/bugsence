@@ -45,7 +45,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       return;
     }
 
-    if (!key.trim() || key.trim().length < 2) {
+    if (key.trim() && key.trim().length < 2) {
       setError("Project key must be at least 2 alphanumeric characters.");
       return;
     }
@@ -53,7 +53,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     try {
       const created = await createMutation.mutateAsync({
         name: name.trim(),
-        key: key.trim().toUpperCase(),
+        key: key.trim() ? key.trim().toUpperCase() : undefined,
         description: description.trim() || undefined,
       });
 
@@ -78,7 +78,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       isOpen={isOpen}
       onClose={onClose}
       title="Create New Project"
-      description="Create a workspace to track issues, plan boards, and invite team members."
+      description="Create a project to track issues, manage boards, and invite members."
     >
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         {error && (
@@ -101,22 +101,23 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="project-key">Project Key</Label>
+            <Label htmlFor="project-key">
+              Project Key <span className="text-xs font-normal text-text-muted">(Optional)</span>
+            </Label>
             <span className="text-xs text-text-muted">
               Used as prefix for issues (e.g. {key || "BUG"}-1)
             </span>
           </div>
           <Input
             id="project-key"
-            placeholder="e.g. BUG"
+            placeholder="Auto-generated if blank (e.g. BUG)"
             value={key}
             onChange={handleKeyChange}
             maxLength={10}
-            required
             className="font-mono uppercase tracking-wider"
           />
           <p className="text-xs text-text-muted">
-            Must be 2–10 uppercase letters or numbers. Immutable once created.
+            Auto-generated from project name, or choose 2–10 uppercase letters/numbers.
           </p>
         </div>
 

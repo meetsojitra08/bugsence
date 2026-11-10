@@ -17,6 +17,7 @@ class AITriageResponse(BaseModel):
     possible_root_cause: str = Field(default="")
     confidence: float = Field(default=0.7, ge=0.0, le=1.0)
     reasoning: str = Field(default="", max_length=200)
+    missing_info: list[str] = Field(default_factory=list)
 
 
 class AISummaryResponse(BaseModel):

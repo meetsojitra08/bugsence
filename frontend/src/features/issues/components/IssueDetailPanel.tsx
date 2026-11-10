@@ -2,17 +2,28 @@ import { useEffect, useState } from "react";
 import {
   X,
   ExternalLink,
-  Trash2,
+  Archive,
   Calendar,
   User as UserIcon,
   Clock,
   History,
   FileText,
+  Copy,
+  Check,
+  GitBranch,
+  CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { SafeMarkdown } from "../utils/markdown";
 import { hexToRgba } from "@/lib/color";
-import { useIssue, useIssueActivities, useUpdateIssue } from "../hooks/useIssues";
+import { buildGitBranchName } from "@/lib/format";
+import {
+  useIssue,
+  useIssueActivities,
+  useResolveIssue,
+  useUpdateIssue,
+} from "../hooks/useIssues";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
 import { IssueTimeline } from "./timeline/IssueTimeline";
 import { AISummaryCard } from "./ai/AISummaryCard";
@@ -27,11 +38,13 @@ interface IssueDetailPanelProps {
 
 export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const { data: detail } = useIssue(issue?.id || null);
   const { data: activities = [] } = useIssueActivities(issue?.id || null);
   const { data: members = [] } = useProjectMembers(projectId);
   const updateMutation = useUpdateIssue(issue?.id, projectId);
+  const resolveMutation = useResolveIssue(projectId);
 
   // Lock the page behind the panel and close it with Escape.
   useEffect(() => {
@@ -97,6 +110,47 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
         </div>
 
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              const url = `${window.location.origin}/p/${issue.project_key.toLowerCase()}/issues/${issue.number}`;
+              navigator.clipboard?.writeText(url);
+              setCopiedLink(true);
+              toast.success("Link copied");
+              setTimeout(() => setCopiedLink(false), 1800);
+            }}
+            className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-text"
+            title="Copy link"
+          >
+            {copiedLink ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const branch = buildGitBranchName(issue.key, current.title);
+              navigator.clipboard?.writeText(`git checkout -b ${branch}`);
+              toast.success(`Copied branch ${branch}`);
+            }}
+            className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-text"
+            title="Copy git branch"
+          >
+            <GitBranch className="h-4 w-4" />
+          </button>
+          {current.status !== "done" && current.status !== "closed" && (
+            <button
+              type="button"
+              onClick={() => {
+                resolveMutation.mutate(
+                  { issueId: issue.id, resolution_note: "Resolved", notify_reporter: true },
+                  { onSuccess: () => toast.success(`Resolved ${issue.key}`) }
+                );
+              }}
+              className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-success"
+              title="Resolve issue"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+          )}
           <Link
             to={`/p/${issue.project_key.toLowerCase()}/issues/${issue.number}`}
             className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-text"
@@ -108,10 +162,10 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
           <button
             onClick={() => onDelete(issue)}
             className="rounded-md p-1.5 text-text-muted hover:bg-background hover:text-danger"
-            title="Delete issue"
+            title="Archive issue"
             data-testid="panel-delete-issue-btn"
           >
-            <Trash2 className="h-4 w-4" />
+            <Archive className="h-4 w-4" />
           </button>
           <button
             onClick={onClose}
@@ -264,8 +318,10 @@ export function IssueDetailPanel({ issue, onClose, onDelete, projectId }: IssueD
 
         {activeTab === "details" ? (
           <div className="space-y-5">
-            {/* AI Summary Card */}
-            <AISummaryCard issueId={issue.id} initialSummary={detail?.ai_summary} />
+            {/* AI Summary Card (shown only for 5+ comment threads) */}
+            {(detail?.comments_count ?? 0) >= 5 && (
+              <AISummaryCard issueId={issue.id} initialSummary={detail?.ai_summary} />
+            )}
 
             {/* Description */}
             <div className="space-y-1.5">

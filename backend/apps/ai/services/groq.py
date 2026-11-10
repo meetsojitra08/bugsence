@@ -28,11 +28,21 @@ TRIAGE_RESPONSE_SCHEMA = {
         "possible_root_cause": {"type": "string"},
         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
         "reasoning": {"type": "string"},
+        "missing_info": {"type": "array", "items": {"type": "string"}},
     },
     "required": [
-        "title", "type", "priority", "severity", "steps_to_reproduce",
-        "expected_behavior", "actual_behavior", "suggested_labels",
-        "possible_root_cause", "confidence", "reasoning",
+        "title",
+        "type",
+        "priority",
+        "severity",
+        "steps_to_reproduce",
+        "expected_behavior",
+        "actual_behavior",
+        "suggested_labels",
+        "possible_root_cause",
+        "confidence",
+        "reasoning",
+        "missing_info",
     ],
     "additionalProperties": False,
 }
@@ -185,7 +195,7 @@ class GroqService:
             success = True
             return result
         except TimeoutError as exc:
-            error_msg = str(exc)
+            error_msg = f"Request timed out: {exc}"
             logger.error("Groq triage request timed out: %s", exc)
             raise AITimeoutError() from exc
         except Exception as exc:
@@ -198,20 +208,23 @@ class GroqService:
                 type(exc).__name__,
             )
             if "timeout" in type(exc).__name__.lower():
+                error_msg = f"Request timed out: {exc}"
                 raise AITimeoutError() from exc
             if status_code in (401, 403):
                 raise AIServiceUnavailable(
-                    "Groq authentication failed. Check the server GROQ_API_KEY and model access."
+                    "AI authentication failed. Check the server AI API key configuration."
                 ) from exc
             if status_code == 429:
                 raise AIServiceUnavailable(
-                    "Groq rate limit or quota reached. Check the Groq project limits and retry."
+                    "AI rate limit or quota reached. Please wait a moment and retry."
                 ) from exc
             if status_code in (400, 404, 422):
                 raise AIServiceUnavailable(
-                    "Groq rejected the model request. Check GROQ_MODEL and the backend log for details."
+                    "AI service rejected the model request. Check the server configuration."
                 ) from exc
-            raise AIServiceUnavailable("Groq could not triage this report right now.") from exc
+            raise AIServiceUnavailable(
+                "AI triage could not process this report right now."
+            ) from exc
         finally:
             self._log_request(
                 user=user,
@@ -266,7 +279,7 @@ class GroqService:
             success = True
             return result
         except TimeoutError as exc:
-            error_msg = str(exc)
+            error_msg = f"Request timed out: {exc}"
             logger.error("Groq summary request timed out: %s", exc)
             raise AITimeoutError() from exc
         except Exception as exc:
@@ -279,20 +292,21 @@ class GroqService:
                 type(exc).__name__,
             )
             if "timeout" in type(exc).__name__.lower():
+                error_msg = f"Request timed out: {exc}"
                 raise AITimeoutError() from exc
             if status_code in (401, 403):
                 raise AIServiceUnavailable(
-                    "Groq authentication failed. Check the server GROQ_API_KEY and model access."
+                    "AI authentication failed. Check the server AI API key configuration."
                 ) from exc
             if status_code == 429:
                 raise AIServiceUnavailable(
-                    "Groq rate limit or quota reached. Check the Groq project limits and retry."
+                    "AI rate limit or quota reached. Please wait a moment and retry."
                 ) from exc
             if status_code in (400, 404, 422):
                 raise AIServiceUnavailable(
-                    "Groq rejected the model request. Check GROQ_MODEL and the backend log for details."
+                    "AI service rejected the model request. Check the server configuration."
                 ) from exc
-            raise AIServiceUnavailable("Groq could not summarize this issue right now.") from exc
+            raise AIServiceUnavailable("AI summary is unavailable right now.") from exc
         finally:
             self._log_request(
                 user=user,

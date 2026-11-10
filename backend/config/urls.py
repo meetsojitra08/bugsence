@@ -1,5 +1,7 @@
 """BugSense URL Configuration."""
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -85,3 +87,6 @@ urlpatterns = [
 
 handler404 = "common.exceptions.page_not_found_view"
 handler500 = "common.exceptions.server_error_view"
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

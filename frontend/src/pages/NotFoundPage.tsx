@@ -17,18 +17,18 @@ export function NotFoundPage() {
       <div className="mt-4 font-mono text-xs font-semibold text-accent">ERROR 404</div>
       <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-text">Page Not Found</h1>
       <p className="mt-2 max-w-md text-xs text-text-muted">
-        The workspace route or resource you requested could not be located. It might have been
+        The project route or resource you requested could not be located. It might have been
         renamed, deleted, or you may need permission from the project owner.
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
         <Button
           size="sm"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/today")}
           className="flex items-center gap-2 text-xs"
         >
           <Home className="h-3.5 w-3.5" />
-          <span>Return to Dashboard</span>
+          <span>Return to Today</span>
         </Button>
 
         <Button

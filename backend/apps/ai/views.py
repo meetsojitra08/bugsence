@@ -20,7 +20,12 @@ from apps.ai.serializers import (
     AITriageResponseSerializer,
 )
 from apps.ai.services.duplicates import find_duplicate_issues
-from apps.ai.services.groq import groq_service
+from apps.ai.services.fallback import (
+    compute_missing_info,
+    heuristic_triage,
+    suggest_assignee_for_report,
+)
+from apps.ai.services.groq import AIServiceUnavailable, groq_service
 from apps.ai.throttling import AIUserRateThrottle
 from apps.issues.models import Issue, Label
 from apps.projects.models import Membership, Project
@@ -59,14 +64,36 @@ class AITriageView(APIView):
 
         project_labels = list(Label.objects.filter(project=project).values_list("name", flat=True))
 
-        triage_result = groq_service.triage_issue(
+        try:
+            triage_result = groq_service.triage_issue(
+                raw_text=raw_text,
+                project_labels=project_labels,
+                user=request.user,
+            )
+        except AIServiceUnavailable:
+            # In environments without a configured AI key, fall back to deterministic triage
+            # so single-screen capture & inbox auto-triage still operate smoothly.
+            from django.conf import settings as django_settings
+
+            if getattr(django_settings, "GROQ_API_KEY", ""):
+                raise
+            triage_result = heuristic_triage(raw_text, project_labels)
+
+        payload = triage_result.model_dump()
+        if not payload.get("missing_info") and payload.get("confidence", 1.0) < 0.75:
+            payload["missing_info"] = compute_missing_info(
+                raw_text,
+                payload.get("steps_to_reproduce") or [],
+                payload.get("actual_behavior") or "",
+            )
+        payload["suggested_assignee"] = suggest_assignee_for_report(
+            project=project,
             raw_text=raw_text,
-            project_labels=project_labels,
-            user=request.user,
+            title=payload.get("title", ""),
         )
 
         return Response(
-            AITriageResponseSerializer(triage_result.model_dump()).data,
+            AITriageResponseSerializer(payload).data,
             status=status.HTTP_200_OK,
         )
 

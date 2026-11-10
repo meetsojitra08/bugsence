@@ -3,6 +3,7 @@
 from typing import Any
 
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,7 +31,11 @@ def register_user(
     validate_password(password, user=user_dummy)
 
     user = User.objects.create_user(
-        email=email, password=password, full_name=full_name, **extra_fields
+        email=email,
+        password=password,
+        full_name=full_name,
+        last_active_at=timezone.now(),
+        **extra_fields,
     )
     tokens = get_tokens_for_user(user)
     return user, tokens
@@ -52,6 +57,8 @@ def authenticate_user(*, email: str, password: str) -> tuple[User, dict[str, str
     if not user.check_password(password):
         raise AuthenticationFailed(generic_error)
 
+    user.last_active_at = timezone.now()
+    user.save(update_fields=["last_active_at"])
     tokens = get_tokens_for_user(user)
     return user, tokens
 

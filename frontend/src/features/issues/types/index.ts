@@ -1,10 +1,49 @@
-export type IssueStatus = "backlog" | "todo" | "in_progress" | "in_review" | "done" | "closed";
+export type IssueStatus =
+  | "inbox"
+  | "backlog"
+  | "todo"
+  | "in_progress"
+  | "in_review"
+  | "done"
+  | "closed";
+
+export type IssueSource = "manual" | "slack" | "email" | "sentry" | "public_form";
 
 export type IssuePriority = "low" | "medium" | "high" | "urgent";
 
 export type IssueSeverity = "trivial" | "minor" | "major" | "critical";
 
 export type IssueType = "bug" | "feature" | "task" | "improvement";
+
+export interface PullRequestLink {
+  id: string;
+  pr_number: number;
+  title: string;
+  url: string;
+  branch: string;
+  repo_full_name: string;
+  state: "open" | "merged" | "closed";
+  ci_status: "pending" | "success" | "failure" | "unknown";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IssueSummaryRef {
+  id: string;
+  number: number;
+  key: string;
+  title: string;
+  status: IssueStatus;
+  priority: IssuePriority;
+}
+
+export interface IssueChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+  sub_issue_id?: string | null;
+  sub_issue_key?: string | null;
+}
 
 export interface Label {
   id: string;
@@ -26,15 +65,25 @@ export interface IssueListItem {
   key: string;
   project_key: string;
   title: string;
+  description?: string;
   status: IssueStatus;
   priority: IssuePriority;
   severity: IssueSeverity;
   type: IssueType;
+  source?: IssueSource;
   reporter: IssueUser;
   assignee: IssueUser | null;
+  external_reporter_name?: string;
+  external_reporter_email?: string;
   labels: Label[];
   due_date: string | null;
   position: number;
+  is_blocking_release?: boolean;
+  snoozed_until?: string | null;
+  resolved_at?: string | null;
+  ai_metadata?: Record<string, unknown>;
+  duplicate_of_id?: string | null;
+  pull_requests?: PullRequestLink[];
   created_at: string;
   updated_at: string;
 }
@@ -47,9 +96,17 @@ export interface IssueDetail extends IssueListItem {
   expected: string;
   actual: string;
   environment: string;
+  external_ref?: string;
+  resolution_note?: string;
+  checklist?: IssueChecklistItem[];
   ai_summary: string;
   ai_metadata: Record<string, unknown>;
   duplicate_of_id: string | null;
+  duplicate_of?: IssueSummaryRef | null;
+  parent_id?: string | null;
+  parent?: IssueSummaryRef | null;
+  sub_issues?: IssueSummaryRef[];
+  comments_count?: number;
 }
 
 export interface CreateIssuePayload {
@@ -63,9 +120,16 @@ export interface CreateIssuePayload {
   priority?: IssuePriority;
   severity?: IssueSeverity;
   type?: IssueType;
+  source?: IssueSource;
   assignee_id?: string | null;
   label_ids?: string[];
   due_date?: string | null;
+  external_reporter_name?: string;
+  external_reporter_email?: string;
+  is_blocking_release?: boolean;
+  duplicate_of_id?: string | null;
+  parent_id?: string | null;
+  checklist?: IssueChecklistItem[];
 }
 
 export interface UpdateIssuePayload {
@@ -83,6 +147,14 @@ export interface UpdateIssuePayload {
   label_ids?: string[];
   due_date?: string | null;
   position?: number;
+  external_reporter_name?: string;
+  external_reporter_email?: string;
+  is_blocking_release?: boolean;
+  duplicate_of_id?: string | null;
+  parent_id?: string | null;
+  checklist?: IssueChecklistItem[];
+  resolution_note?: string;
+  snoozed_until?: string | null;
 }
 
 export interface IssueActivity {
@@ -105,6 +177,9 @@ export interface IssueFilters {
   search?: string;
   ordering?: string;
   overdue?: boolean;
+  exclude_inbox?: boolean;
+  recently_closed?: boolean;
+  blocking?: boolean;
   page?: number;
   page_size?: number;
 }
@@ -160,6 +235,13 @@ export interface TimelineItem {
   created_at: string;
 }
 
+export interface SuggestedAssignee {
+  id: string;
+  full_name: string;
+  email: string;
+  reason: string;
+}
+
 export interface AITriageResult {
   title: string;
   type: IssueType;
@@ -172,6 +254,35 @@ export interface AITriageResult {
   possible_root_cause: string;
   confidence: number;
   reasoning: string;
+  missing_info?: string[];
+  suggested_assignee?: SuggestedAssignee | null;
+}
+
+export interface InboxTriagePayload {
+  action: "accept" | "assign" | "merge" | "snooze" | "reject";
+  assignee_id?: string | null;
+  priority?: IssuePriority;
+  target_issue_id?: string | null;
+  snooze_hours?: number;
+  reason?: string;
+}
+
+export interface BulkIssueActionPayload {
+  issue_ids: string[];
+  action: "assign" | "status" | "add_label" | "archive";
+  assignee_id?: string | null;
+  status?: IssueStatus;
+  label_id?: string | null;
+}
+
+export interface ChangelogEntry {
+  id: string;
+  key: string;
+  number: number;
+  title: string;
+  resolution_note: string;
+  resolved_at: string;
+  assignee: { full_name: string } | null;
 }
 
 export interface AIDuplicateCandidate {

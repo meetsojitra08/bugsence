@@ -11,6 +11,13 @@ class AITriageRequestSerializer(serializers.Serializer):
     )
 
 
+class SuggestedAssigneeSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    full_name = serializers.CharField()
+    email = serializers.EmailField()
+    reason = serializers.CharField()
+
+
 class AITriageResponseSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)
     type = serializers.CharField()
@@ -29,6 +36,11 @@ class AITriageResponseSerializer(serializers.Serializer):
     possible_root_cause = serializers.CharField(allow_blank=True, default="")
     confidence = serializers.FloatField()
     reasoning = serializers.CharField(allow_blank=True, default="")
+    missing_info = serializers.ListField(
+        child=serializers.CharField(),
+        default=list,
+    )
+    suggested_assignee = SuggestedAssigneeSerializer(allow_null=True, required=False, default=None)
 
 
 class AIDuplicatesRequestSerializer(serializers.Serializer):

@@ -53,6 +53,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    timezone = models.CharField(max_length=64, default="UTC")
+    notification_preferences = models.JSONField(default=dict, blank=True)
+    last_active_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

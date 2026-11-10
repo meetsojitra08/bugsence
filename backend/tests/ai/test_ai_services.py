@@ -250,7 +250,10 @@ class TestDuplicateDetectionService:
         returned_ids = [r["id"] for r in results]
         assert str(issue_other_proj.id) not in returned_ids
         assert str(issue1.id) in returned_ids
-        assert all(results[index]["similarity"] >= results[index + 1]["similarity"] for index in range(len(results) - 1))
+        assert all(
+            results[index]["similarity"] >= results[index + 1]["similarity"]
+            for index in range(len(results) - 1)
+        )
 
     def test_duplicate_detection_uses_trigram_similarity(self):
         project = ProjectFactory()

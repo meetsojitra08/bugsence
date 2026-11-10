@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle2, Clock, Flame, Layers } from "lucide-react";
+import { formatDurationDays } from "@/lib/format";
 import type { ProjectAnalyticsOverview } from "@/features/projects/types";
 
 interface DashboardKpisProps {
@@ -42,8 +43,8 @@ export function DashboardKpis({ overview }: DashboardKpisProps) {
     },
     {
       label: "Avg resolution",
-      value: overview.avg_resolution_days > 0 ? `${overview.avg_resolution_days}d` : "0d",
-      hint: "From creation to close",
+      value: formatDurationDays(overview.avg_resolution_days, overview.closed_issues),
+      hint: overview.closed_issues > 0 ? "From creation to close" : "No resolved issues yet",
       icon: Clock,
       testId: "kpi-avg-resolution",
     },

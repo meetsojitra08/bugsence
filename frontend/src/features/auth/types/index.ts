@@ -1,8 +1,25 @@
+export type NotificationChannelMap = {
+  in_app: boolean;
+  email: boolean;
+  slack: boolean;
+};
+
+export type NotificationPreferences = {
+  assigned: NotificationChannelMap;
+  mention: NotificationChannelMap;
+  pr_status: NotificationChannelMap;
+  inbox_arrival: NotificationChannelMap;
+  resolved: NotificationChannelMap;
+};
+
 export interface User {
   id: string;
   email: string;
   fullName: string;
   avatarUrl: string;
+  timezone?: string;
+  notificationPreferences?: NotificationPreferences;
+  lastActiveAt?: string | null;
   displayName: string;
   createdAt?: string;
   updatedAt?: string;
@@ -17,6 +34,7 @@ export interface AuthResponse {
   access: string;
   refresh: string;
   user: User;
+  project?: { id: string; key: string; name: string };
 }
 
 export interface LoginPayload {
@@ -38,4 +56,6 @@ export interface ChangePasswordPayload {
 export interface UpdateProfilePayload {
   fullName?: string;
   avatarUrl?: string;
+  timezone?: string;
+  notificationPreferences?: NotificationPreferences;
 }

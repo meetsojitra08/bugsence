@@ -11,7 +11,12 @@ import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { TodayPage } from "@/features/dashboard/TodayPage";
+import { InsightsPage } from "@/features/dashboard/InsightsPage";
+import { InboxPage } from "@/features/issues/pages/InboxPage";
 import { ProjectMembersPage } from "@/features/projects/pages/ProjectMembersPage";
+import { InviteAcceptPage } from "@/features/projects/pages/InviteAcceptPage";
+import { PublicReportPage } from "@/features/issues/pages/PublicReportPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { IssuesPage } from "@/features/issues/pages/IssuesPage";
 import { IssueDetailPage } from "@/features/issues/pages/IssueDetailPage";
@@ -26,11 +31,13 @@ export function App() {
           <AuthProvider>
             <BrowserRouter>
               <Routes>
-                {/* Public Marketing Landing & Auth Routes */}
+                {/* Public Marketing, Auth, Invite & External Bug Report Routes */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/invite/:token" element={<InviteAcceptPage />} />
+                <Route path="/report/:projectKey" element={<PublicReportPage />} />
 
                 {/* Protected App Shell Routes */}
                 <Route
@@ -40,8 +47,14 @@ export function App() {
                     </ProtectedRoute>
                   }
                 >
+                  <Route path="today" element={<TodayPage />} />
+                  <Route path="p/:key/today" element={<TodayPage />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="p/:key/dashboard" element={<DashboardPage />} />
+                  <Route path="inbox" element={<InboxPage />} />
+                  <Route path="p/:key/inbox" element={<InboxPage />} />
+                  <Route path="insights" element={<InsightsPage />} />
+                  <Route path="p/:key/insights" element={<InsightsPage />} />
                   <Route path="issues" element={<IssuesPage />} />
                   <Route path="my-issues" element={<IssuesPage />} />
                   <Route path="board" element={<BoardPage />} />

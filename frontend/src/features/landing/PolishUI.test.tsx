@@ -29,7 +29,7 @@ describe("Product Polish UI Components", () => {
 
       expect(screen.getByTestId("not-found-page")).toBeInTheDocument();
       expect(screen.getByText("Page Not Found")).toBeInTheDocument();
-      expect(screen.getByText("Return to Dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Return to Today")).toBeInTheDocument();
       expect(screen.getByText(/Browse Issues/i)).toBeInTheDocument();
     });
   });
@@ -79,7 +79,8 @@ describe("Product Polish UI Components", () => {
 
       expect(screen.getByTestId("shortcuts-modal-dialog")).toBeInTheDocument();
       expect(screen.getByText("Global Navigation")).toBeInTheDocument();
-      expect(screen.getByText("Issues & AI Actions")).toBeInTheDocument();
+      expect(screen.getByText("Capture & Issues")).toBeInTheDocument();
+      expect(screen.getByText("Inbox Triage")).toBeInTheDocument();
 
       // Close modal
       const closeBtn = screen.getByTestId("close-shortcuts-modal");
@@ -110,7 +111,7 @@ describe("Product Polish UI Components", () => {
       );
 
       expect(screen.getByTestId("onboarding-checklist")).toBeInTheDocument();
-      expect(screen.getByText("Workspace Setup Guide")).toBeInTheDocument();
+      expect(screen.getByText("Project Setup Guide")).toBeInTheDocument();
       expect(screen.getByTestId("checklist-item-project")).toBeInTheDocument();
       expect(screen.getByTestId("checklist-item-issue")).toBeInTheDocument();
     });

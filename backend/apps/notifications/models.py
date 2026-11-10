@@ -9,6 +9,9 @@ class NotificationKind(models.TextChoices):
     ASSIGNED = "assigned", "Assigned"
     STATUS_CHANGED = "status_changed", "Status Changed"
     COMMENT = "comment", "Comment"
+    INBOX_ARRIVAL = "inbox_arrival", "Inbox Arrival"
+    PR_STATUS = "pr_status", "PR Status"
+    RESOLVED = "resolved", "Resolved"
 
 
 class Notification(models.Model):

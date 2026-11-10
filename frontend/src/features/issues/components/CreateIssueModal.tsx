@@ -1,16 +1,26 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ImagePlus,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  UserCheck,
+} from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateIssue, useLabels } from "../hooks/useIssues";
+import { issuesApi } from "../api/issuesApi";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
-import { AITriageCard } from "./ai/AITriageCard";
 import { AIDuplicateBanner } from "./ai/AIDuplicateBanner";
-import { useFindDuplicates } from "../hooks/useAI";
+import { useAITriage, useFindDuplicates } from "../hooks/useAI";
+import { formatShortcut } from "@/lib/format";
 import type {
+  AIDuplicateCandidate,
   AITriageResult,
   IssueDetail,
   IssuePriority,
@@ -25,7 +35,10 @@ interface CreateIssueModalProps {
   onCreated?: (issue: IssueDetail) => void;
   projectId: string;
   projectKey?: string;
+  defaultStatus?: IssueStatus;
 }
+
+const LOW_CONFIDENCE_THRESHOLD = 0.6;
 
 export function CreateIssueModal({
   isOpen,
@@ -33,27 +46,38 @@ export function CreateIssueModal({
   onCreated,
   projectId,
   projectKey,
+  defaultStatus = "todo",
 }: CreateIssueModalProps) {
+  const [rawPaste, setRawPaste] = useState("");
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [step, setStep] = useState<1 | 2>(1);
   const [type, setType] = useState<IssueType>("bug");
-  const [priority, setPriority] = useState<IssuePriority>("medium");
+  // Blank string when AI confidence is low so user explicitly chooses or confirms Medium
+  const [priority, setPriority] = useState<IssuePriority | "">("medium");
   const [severity, setSeverity] = useState<IssueSeverity>("minor");
-  const status: IssueStatus = "todo";
+  const [destination, setDestination] = useState<"todo" | "inbox">(
+    defaultStatus === "inbox" ? "inbox" : "todo"
+  );
   const [assigneeId, setAssigneeId] = useState("");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
+  const [showRepro, setShowRepro] = useState(false);
   const [stepsToReproduce, setStepsToReproduce] = useState("");
   const [expected, setExpected] = useState("");
   const [actual, setActual] = useState("");
   const [environment, setEnvironment] = useState("");
+  const [showReporter, setShowReporter] = useState(false);
+  const [reporterName, setReporterName] = useState("");
+  const [reporterEmail, setReporterEmail] = useState("");
+  const [isBlockingRelease, setIsBlockingRelease] = useState(false);
+
   const [isDuplicateDismissed, setIsDuplicateDismissed] = useState(false);
+  const [linkedDuplicate, setLinkedDuplicate] = useState<AIDuplicateCandidate | null>(null);
+  const [triageResult, setTriageResult] = useState<AITriageResult | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [previousDraft, setPreviousDraft] = useState<{
     title: string;
     type: IssueType;
-    priority: IssuePriority;
+    priority: IssuePriority | "";
     severity: IssueSeverity;
     stepsToReproduce: string;
     expected: string;
@@ -61,53 +85,173 @@ export function CreateIssueModal({
     selectedLabels: string[];
   } | null>(null);
 
+  const lastTriagedTextRef = useRef("");
+  const pasteInputRef = useRef<HTMLTextAreaElement>(null);
+
   const { data: members = [] } = useProjectMembers(projectId);
   const { data: labels = [] } = useLabels(projectId);
   const createMutation = useCreateIssue(projectId);
-  const { data: duplicates = [] } = useFindDuplicates(projectId, title, description, {
-    enabled: !isDuplicateDismissed && title.trim().length >= 10,
+  const triageMutation = useAITriage();
+
+  const duplicateQueryText = title.trim() || rawPaste.trim().slice(0, 140);
+  const { data: duplicates = [] } = useFindDuplicates(projectId, duplicateQueryText, rawPaste, {
+    enabled: isOpen && !isDuplicateDismissed && duplicateQueryText.length >= 10,
+    debounceMs: 600,
+    threshold: 0.55,
   });
 
-  const handleTriageApplied = (result: AITriageResult) => {
-    setPreviousDraft({
-      title,
-      type,
-      priority,
-      severity,
-      stepsToReproduce,
-      expected,
-      actual,
-      selectedLabels,
-    });
-    setTitle(result.title);
-    setType(result.type);
-    setPriority(result.priority);
-    setSeverity(result.severity);
+  const resetForm = useCallback(() => {
+    setRawPaste("");
+    setTitle("");
+    setType("bug");
+    setPriority("medium");
+    setSeverity("minor");
+    setDestination(defaultStatus === "inbox" ? "inbox" : "todo");
+    setAssigneeId("");
+    setSelectedLabels([]);
+    setDueDate("");
+    setShowRepro(false);
+    setStepsToReproduce("");
+    setExpected("");
+    setActual("");
+    setEnvironment("");
+    setShowReporter(false);
+    setReporterName("");
+    setReporterEmail("");
+    setIsBlockingRelease(false);
+    setIsDuplicateDismissed(false);
+    setLinkedDuplicate(null);
+    setTriageResult(null);
+    setPreviousDraft(null);
+    lastTriagedTextRef.current = "";
+  }, [defaultStatus]);
 
-    if (result.steps_to_reproduce?.length) {
-      setStepsToReproduce(result.steps_to_reproduce.join("\n"));
-      setShowDetails(true);
+  // Ensure modal opens clean and focuses the Paste anything field
+  useEffect(() => {
+    if (isOpen) {
+      const timer = window.setTimeout(() => {
+        pasteInputRef.current?.focus();
+      }, 30);
+      return () => window.clearTimeout(timer);
     }
-    if (result.expected_behavior) {
-      setExpected(result.expected_behavior);
-      setShowDetails(true);
-    }
-    if (result.actual_behavior) {
-      setActual(result.actual_behavior);
-      setShowDetails(true);
-    }
-    if (result.suggested_labels?.length && labels.length) {
-      const matchedIds = labels
-        .filter((label) =>
-          result.suggested_labels.some(
-            (suggested) => suggested.trim().toLowerCase() === label.name.trim().toLowerCase()
+  }, [isOpen]);
+
+  const applyTriageResult = useCallback(
+    (result: AITriageResult) => {
+      setPreviousDraft({
+        title,
+        type,
+        priority,
+        severity,
+        stepsToReproduce,
+        expected,
+        actual,
+        selectedLabels,
+      });
+      setTriageResult(result);
+
+      if (!title.trim() || title.trim() === previousDraft?.title || lastTriagedTextRef.current) {
+        setTitle(result.title);
+      }
+      setType(result.type);
+      setSeverity(result.severity);
+
+      // Confidence handling: do NOT pre-fill priority below 60%; leave blank with a nudge
+      if (result.confidence < LOW_CONFIDENCE_THRESHOLD) {
+        setPriority("");
+      } else {
+        setPriority(result.priority);
+      }
+
+      if (result.steps_to_reproduce?.length) {
+        setStepsToReproduce(result.steps_to_reproduce.join("\n"));
+      }
+      if (result.expected_behavior) {
+        setExpected(result.expected_behavior);
+      }
+      if (result.actual_behavior) {
+        setActual(result.actual_behavior);
+      }
+      if (result.suggested_labels?.length && labels.length) {
+        const matchedIds = labels
+          .filter((label) =>
+            result.suggested_labels.some(
+              (suggested) => suggested.trim().toLowerCase() === label.name.trim().toLowerCase()
+            )
           )
-        )
-        .map((label) => label.id);
-      if (matchedIds.length)
-        setSelectedLabels((current) => Array.from(new Set([...current, ...matchedIds])));
+          .map((label) => label.id);
+        if (matchedIds.length) {
+          setSelectedLabels((current) => Array.from(new Set([...current, ...matchedIds])));
+        }
+      }
+    },
+    [title, type, priority, severity, stepsToReproduce, expected, actual, selectedLabels, labels, previousDraft?.title]
+  );
+
+  const runTriage = useCallback(
+    async (text: string) => {
+      const cleaned = text.trim();
+      if (cleaned.length < 10 || !projectId || triageMutation.isPending) return;
+      lastTriagedTextRef.current = cleaned;
+      try {
+        const res = await triageMutation.mutateAsync({
+          projectId,
+          rawText: cleaned,
+        });
+        applyTriageResult(res);
+      } catch {
+        // Error surfaced inline without blocking manual issue creation
+      }
+    },
+    [projectId, triageMutation, applyTriageResult]
+  );
+
+  // Automatic triage ~1 second after pasting or typing into "Paste anything"
+  useEffect(() => {
+    if (!isOpen) return;
+    const cleaned = rawPaste.trim();
+    if (cleaned.length < 15 || cleaned === lastTriagedTextRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      runTriage(cleaned);
+    }, 950);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, rawPaste, runTriage]);
+
+  // Keyboard shortcuts inside Capture: Cmd/Ctrl+J to re-run triage, Cmd/Ctrl+Enter to create
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        if (rawPaste.trim().length >= 5) {
+          runTriage(rawPaste);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, rawPaste, runTriage]);
+
+  const handlePasteImage = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageItem = items.find((it) => it.type.startsWith("image/"));
+    if (!imageItem || !projectId) return;
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    setIsUploadingImage(true);
+    try {
+      const uploaded = await issuesApi.uploadAttachment(projectId, file);
+      const snippet = `\n![${uploaded.filename}](${uploaded.url})\n`;
+      setRawPaste((prev) => `${prev}${snippet}`.trimStart());
+      toast.success("Screenshot attached");
+    } catch {
+      toast.error("Could not upload pasted screenshot");
+    } finally {
+      setIsUploadingImage(false);
     }
-    toast.success("Suggestions added. Review them before saving.");
   };
 
   const handleUndoTriage = () => {
@@ -120,53 +264,34 @@ export function CreateIssueModal({
     setExpected(previousDraft.expected);
     setActual(previousDraft.actual);
     setSelectedLabels(previousDraft.selectedLabels);
-    setPreviousDraft(null);
-    toast.info("Reverted AI suggestions");
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setStep(1);
-    setType("bug");
-    setPriority("medium");
-    setSeverity("minor");
-    setAssigneeId("");
-    setSelectedLabels([]);
-    setDueDate("");
-    setShowDetails(false);
-    setStepsToReproduce("");
-    setExpected("");
-    setActual("");
-    setEnvironment("");
-    setIsDuplicateDismissed(false);
+    setTriageResult(null);
     setPreviousDraft(null);
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (step === 1) {
-      if (!title.trim()) {
-        toast.error("Add an issue title before continuing.");
-        return;
-      }
-      setStep(2);
+  const submitIssue = async (addAnother: boolean) => {
+    const effectiveTitle =
+      title.trim() ||
+      rawPaste
+        .trim()
+        .split("\n")[0]
+        ?.slice(0, 100) ||
+      "";
+    if (!effectiveTitle) {
+      toast.error("Paste a bug report or enter a title first.");
       return;
     }
-    if (!title.trim()) {
-      toast.error("Add an issue title before creating it.");
-      setStep(1);
-      return;
-    }
+
+    // If low-confidence left priority blank, prompt clearly unless user picks one
+    const finalPriority: IssuePriority = priority || "medium";
 
     try {
-      const createdIssue = await createMutation.mutateAsync({
-        title: title.trim(),
-        description: description.trim(),
+      const created = await createMutation.mutateAsync({
+        title: effectiveTitle,
+        description: rawPaste.trim(),
         type,
-        priority,
+        priority: finalPriority,
         severity,
-        status,
+        status: destination,
         assignee_id: assigneeId || null,
         label_ids: selectedLabels,
         due_date: dueDate || null,
@@ -174,437 +299,508 @@ export function CreateIssueModal({
         expected: expected.trim(),
         actual: actual.trim(),
         environment: environment.trim(),
+        external_reporter_name: reporterName.trim(),
+        external_reporter_email: reporterEmail.trim(),
+        is_blocking_release: isBlockingRelease,
+        duplicate_of_id: linkedDuplicate?.id || null,
       });
-      toast.success(`Created ${createdIssue.key}`);
+
+      toast.success(`Created ${created.key}`);
       resetForm();
-      onClose();
-      onCreated?.(createdIssue);
+
+      if (addAnother) {
+        window.setTimeout(() => pasteInputRef.current?.focus(), 30);
+      } else {
+        onClose();
+        onCreated?.(created);
+      }
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to create issue");
     }
   };
 
-  const handleClose = () => onClose();
-  const handleCancel = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitIssue(false);
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      submitIssue(false);
+    }
+  };
+
+  const handleClose = () => {
     resetForm();
     onClose();
   };
+
   const toggleLabel = (labelId: string) => {
     setSelectedLabels((current) =>
       current.includes(labelId) ? current.filter((id) => id !== labelId) : [...current, labelId]
     );
   };
 
+  const isLowConfidence = Boolean(
+    triageResult && triageResult.confidence < LOW_CONFIDENCE_THRESHOLD
+  );
+  const missingHints = triageResult?.missing_info?.length
+    ? triageResult.missing_info.join(" and ")
+    : "browser and steps";
+
+  const reproCount = [stepsToReproduce, expected, actual, environment].filter((v) =>
+    v.trim()
+  ).length;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Create an issue"
-      description="Capture the report first. Review and route it before it enters the board."
-      className="max-h-[90vh] max-w-2xl overflow-y-auto"
+      title="Capture bug"
+      description="Paste a stack trace, Slack message, or screenshot. Fields fill automatically."
+      className="max-h-[92vh] max-w-2xl overflow-y-auto"
     >
-      <div className="space-y-5">
-        <ol aria-label="Issue creation steps" className="grid grid-cols-2 gap-2">
-          {[
-            { number: 1, title: "Report", subtitle: "Capture and triage" },
-            { number: 2, title: "Review", subtitle: "Assign and create" },
-          ].map((item) => {
-            const current = step === item.number;
-            const complete = step > item.number;
-            return (
-              <li
-                key={item.number}
-                aria-current={current ? "step" : undefined}
-                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 ${current ? "border-accent/40 bg-accent/10" : complete ? "border-success/30 bg-success/5" : "border-border bg-background/40"}`}
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={handleFormKeyDown}
+        autoComplete="off"
+        className="space-y-4"
+        data-testid="create-issue-form"
+      >
+        {/* Giant Paste Anything Field */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="capture-raw-paste" className="text-xs font-medium text-text">
+              Paste anything
+            </Label>
+            <div className="flex items-center gap-2 text-[11px] text-text-muted">
+              {triageMutation.isPending && (
+                <span className="inline-flex items-center gap-1 text-accent">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Triaging report…
+                </span>
+              )}
+              {isUploadingImage && (
+                <span className="inline-flex items-center gap-1 text-accent">
+                  <ImagePlus className="h-3 w-3" />
+                  Uploading screenshot…
+                </span>
+              )}
+              {previousDraft && (
+                <button
+                  type="button"
+                  onClick={handleUndoTriage}
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-text-muted hover:bg-surface-elevated hover:text-text"
+                  data-testid="ai-undo-button"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Undo auto-fill
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => runTriage(rawPaste)}
+                disabled={rawPaste.trim().length < 5 || triageMutation.isPending}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-accent hover:bg-accent/10 disabled:opacity-40"
+                data-testid="ai-autofill-button"
               >
-                <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${current ? "bg-accent text-white" : complete ? "bg-success/15 text-success" : "bg-surface-elevated text-text-muted"}`}
-                >
-                  {complete ? <Check className="h-3.5 w-3.5" /> : item.number}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-text">{item.title}</span>
-                  <span className="block text-[10px] text-text-muted">{item.subtitle}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+                <Sparkles className="h-3 w-3" />
+                Auto-fill
+              </button>
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-issue-form">
-          {step === 1 ? (
-            <section aria-labelledby="issue-report-heading" className="space-y-4">
-              <div>
-                <h3 id="issue-report-heading" className="text-sm font-semibold text-text">
-                  Start with the report
-                </h3>
-                <p className="mt-1 text-xs text-text-muted">
-                  Paste a QA note, customer report, or error log. AI suggestions are optional and
-                  editable.
-                </p>
-              </div>
+          <textarea
+            ref={pasteInputRef}
+            id="capture-raw-paste"
+            value={rawPaste}
+            onChange={(e) => setRawPaste(e.target.value)}
+            onPaste={handlePasteImage}
+            placeholder={`Paste a stack trace, Slack thread, customer email, or screenshot (${formatShortcut("V")})…`}
+            rows={4}
+            autoFocus
+            className="w-full rounded-lg border border-border bg-background p-3 text-sm leading-relaxed text-text placeholder:text-text-muted/60 focus:border-accent focus:outline-none"
+            data-testid="ai-triage-raw-input"
+          />
 
-              <AITriageCard
-                projectId={projectId}
-                report={description}
-                onReportChange={setDescription}
-                onTriageApplied={handleTriageApplied}
-                onUndo={handleUndoTriage}
-                canUndo={!!previousDraft}
-              />
-
-              <div className="space-y-1.5">
-                <Label htmlFor="issue-title" className="text-xs font-medium text-text">
-                  Issue title <span className="text-danger">*</span>
-                </Label>
-                <Input
-                  id="issue-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Summarize the problem in one line"
-                  autoFocus
-                  required
-                  className="h-10 bg-background text-sm"
-                  data-testid="create-issue-title-input"
+          {/* Confidence / Missing Context Guidance (never bare percentage) */}
+          {triageResult && (
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
+                isLowConfidence
+                  ? "border-warning/35 bg-warning/10 text-text"
+                  : "border-accent/25 bg-accent/5 text-text"
+              }`}
+              data-testid="ai-confidence-chip"
+            >
+              <div className="flex items-start gap-2">
+                <Sparkles
+                  className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                    isLowConfidence ? "text-warning" : "text-accent"
+                  }`}
                 />
-                <p className="text-[11px] text-text-muted">
-                  AI suggestions can be reviewed and changed before saving.
-                </p>
-              </div>
-
-              {!isDuplicateDismissed && duplicates.length > 0 && (
-                <AIDuplicateBanner
-                  candidates={duplicates}
-                  onDismiss={() => setIsDuplicateDismissed(true)}
-                  projectKey={projectKey}
-                />
-              )}
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label htmlFor="issue-type" className="text-xs font-medium text-text-muted">
-                    Type
-                  </Label>
-                  <select
-                    id="issue-type"
-                    value={type}
-                    onChange={(event) => setType(event.target.value as IssueType)}
-                    className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
-                    data-testid="create-issue-type-select"
-                  >
-                    <option value="bug">Bug</option>
-                    <option value="feature">Feature</option>
-                    <option value="task">Task</option>
-                    <option value="improvement">Improvement</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="issue-priority" className="text-xs font-medium text-text-muted">
-                    Priority
-                  </Label>
-                  <select
-                    id="issue-priority"
-                    value={priority}
-                    onChange={(event) => setPriority(event.target.value as IssuePriority)}
-                    className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
-                    data-testid="create-issue-priority-select"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="issue-severity" className="text-xs font-medium text-text-muted">
-                    Severity
-                  </Label>
-                  <select
-                    id="issue-severity"
-                    value={severity}
-                    onChange={(event) => setSeverity(event.target.value as IssueSeverity)}
-                    className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
-                  >
-                    <option value="trivial">Trivial</option>
-                    <option value="minor">Minor</option>
-                    <option value="major">Major</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
-              </div>
-
-              {description.trim() && (
-                <div className="flex items-start gap-2 rounded-lg border border-border bg-background/50 p-3">
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium text-text">
-                      Original report will be saved with the issue
-                    </p>
-                    <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-text-muted">
-                      {description}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between border-t border-border pt-4">
-                <Button type="button" variant="outline" size="sm" onClick={handleCancel}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!title.trim()}
-                  onClick={() => setStep(2)}
-                  className="gap-1.5"
-                >
-                  Review issue <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </section>
-          ) : (
-            <section aria-labelledby="issue-review-heading" className="space-y-4">
-              <div>
-                <h3 id="issue-review-heading" className="text-sm font-semibold text-text">
-                  Review and route
-                </h3>
-                <p className="mt-1 text-xs text-text-muted">
-                  Confirm the report, assign an owner, and add any extra reproduction context.
-                </p>
-              </div>
-
-              {description.trim() && (
-                <div className="rounded-lg border border-border bg-background/50 px-3 py-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[11px] font-medium text-text">Original report</span>
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="text-[11px] font-medium text-accent hover:underline"
-                    >
-                      Edit report
-                    </button>
-                  </div>
-                  <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-text-muted">
-                    {description}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="review-issue-title" className="text-xs font-medium text-text">
-                  Issue title <span className="text-danger">*</span>
-                </Label>
-                <Input
-                  id="review-issue-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  required
-                  className="h-9 bg-background text-sm"
-                  data-testid="create-issue-title-input"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2 text-[11px]">
-                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-text-muted">
-                  {type}
-                </span>
-                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-text-muted">
-                  {priority} priority
-                </span>
-                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-text-muted">
-                  {severity} severity
-                </span>
-                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-text-muted">
-                  Starts in To do
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="font-medium text-accent hover:underline"
-                >
-                  Edit triage
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="issue-assignee" className="text-xs font-medium text-text-muted">
-                    Assignee <span className="font-normal">(optional)</span>
-                  </Label>
-                  <select
-                    id="issue-assignee"
-                    value={assigneeId}
-                    onChange={(event) => setAssigneeId(event.target.value)}
-                    className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs text-text focus:border-accent focus:outline-none"
-                  >
-                    <option value="">Leave unassigned</option>
-                    {members.map((member) => (
-                      <option key={member.id} value={member.user.id}>
-                        {member.user.full_name} ({member.user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="issue-due-date" className="text-xs font-medium text-text-muted">
-                    Due date <span className="font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="issue-due-date"
-                    type="date"
-                    value={dueDate}
-                    onChange={(event) => setDueDate(event.target.value)}
-                    className="h-9 bg-background text-xs"
-                  />
-                </div>
-              </div>
-
-              {labels.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-text-muted">
-                    Labels <span className="font-normal">(optional)</span>
-                  </Label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {labels.map((label) => {
-                      const selected = selectedLabels.includes(label.id);
-                      return (
-                        <button
-                          key={label.id}
-                          type="button"
-                          onClick={() => toggleLabel(label.id)}
-                          aria-pressed={selected}
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-all"
-                          style={{
-                            borderColor: selected ? label.color : "hsl(var(--border))",
-                            backgroundColor: selected ? `${label.color}22` : "transparent",
-                            color: selected ? label.color : "hsl(var(--text-muted))",
-                          }}
-                        >
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: label.color }}
-                          />
-                          {label.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="border-t border-border/60 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDetails(!showDetails)}
-                  aria-expanded={showDetails}
-                  className="flex items-center gap-1 text-xs font-medium text-accent hover:underline"
-                >
-                  {showDetails ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
+                <span>
+                  {isLowConfidence ? (
+                    <>
+                      <strong>Needs more context:</strong> Add the {missingHints} to improve this.
+                    </>
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <>
+                      <strong>Fields auto-filled</strong>
+                      {triageResult.reasoning ? ` · ${triageResult.reasoning}` : ""}
+                    </>
                   )}
-                  {showDetails
-                    ? "Hide reproduction details"
-                    : "Add reproduction steps and environment"}
-                </button>
-                {showDetails && (
-                  <div className="mt-3 space-y-3 rounded-lg border border-border bg-background/40 p-3">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor="steps-input"
-                          className="text-xs font-medium text-text-muted"
-                        >
-                          Steps to reproduce
-                        </Label>
-                        <textarea
-                          id="steps-input"
-                          value={stepsToReproduce}
-                          onChange={(event) => setStepsToReproduce(event.target.value)}
-                          placeholder={"1. Go to…\n2. Click…"}
-                          rows={3}
-                          className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor="environment-input"
-                          className="text-xs font-medium text-text-muted"
-                        >
-                          Environment
-                        </Label>
-                        <Input
-                          id="environment-input"
-                          value={environment}
-                          onChange={(event) => setEnvironment(event.target.value)}
-                          placeholder="OS, browser, device…"
-                          className="h-9 bg-background text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor="expected-input"
-                          className="text-xs font-medium text-text-muted"
-                        >
-                          Expected behavior
-                        </Label>
-                        <textarea
-                          id="expected-input"
-                          value={expected}
-                          onChange={(event) => setExpected(event.target.value)}
-                          placeholder="What should happen?"
-                          rows={2}
-                          className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor="actual-input"
-                          className="text-xs font-medium text-text-muted"
-                        >
-                          Actual behavior
-                        </Label>
-                        <textarea
-                          id="actual-input"
-                          value={actual}
-                          onChange={(event) => setActual(event.target.value)}
-                          placeholder="What actually happens?"
-                          rows={2}
-                          className="w-full rounded-lg border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </span>
               </div>
-
-              <div className="flex justify-between border-t border-border pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setStep(1)}
-                  className="gap-1.5"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back to report
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={createMutation.isPending || !title.trim()}
-                  data-testid="submit-issue-btn"
-                >
-                  {createMutation.isPending ? "Creating issue…" : "Create issue"}
-                </Button>
-              </div>
-            </section>
+            </div>
           )}
-        </form>
-      </div>
+
+          {triageResult?.possible_root_cause && (
+            <p
+              className="rounded-md border border-border bg-surface-elevated/60 px-2.5 py-1.5 text-[11px] text-text-muted"
+              data-testid="ai-root-cause-hint"
+            >
+              <strong className="text-text">Possible cause:</strong>{" "}
+              {triageResult.possible_root_cause}
+            </p>
+          )}
+        </div>
+
+        {/* Inline Duplicate Check */}
+        {!isDuplicateDismissed && duplicates.length > 0 && (
+          <AIDuplicateBanner
+            candidates={duplicates}
+            linkedDuplicate={linkedDuplicate}
+            onSelectDuplicate={(cand) => {
+              setLinkedDuplicate(cand);
+              toast.success(`Linked to ${cand.key}`);
+            }}
+            onDismiss={() => {
+              setLinkedDuplicate(null);
+              setIsDuplicateDismissed(true);
+            }}
+            projectKey={projectKey}
+          />
+        )}
+
+        {/* Live-Filling Title */}
+        <div className="space-y-1">
+          <Label htmlFor="capture-title" className="text-xs font-medium text-text">
+            Title <span className="text-danger">*</span>
+          </Label>
+          <Input
+            id="capture-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Human-readable summary (auto-fills from report)"
+            autoComplete="off"
+            className="h-9 bg-background text-sm"
+            data-testid="create-issue-title-input"
+          />
+        </div>
+
+        {/* Inline Editable Fields Grid */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="capture-type" className="text-[11px] text-text-muted">
+              Type
+            </Label>
+            <select
+              id="capture-type"
+              value={type}
+              onChange={(e) => setType(e.target.value as IssueType)}
+              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-text focus:border-accent focus:outline-none"
+              data-testid="create-issue-type-select"
+            >
+              <option value="bug">Bug</option>
+              <option value="feature">Feature</option>
+              <option value="task">Task</option>
+              <option value="improvement">Improvement</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="capture-priority" className="text-[11px] text-text-muted">
+              Priority
+            </Label>
+            <select
+              id="capture-priority"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as IssuePriority | "")}
+              className={`h-8 w-full rounded-md border bg-background px-2 text-xs text-text focus:border-accent focus:outline-none ${
+                priority === "" ? "border-warning/60" : "border-border"
+              }`}
+              data-testid="create-issue-priority-select"
+            >
+              {priority === "" && <option value="">Pick priority…</option>}
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+            {priority === "" && (
+              <p className="text-[10px] text-warning" data-testid="priority-low-confidence-nudge">
+                Pick priority (defaults to Medium)
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="capture-assignee" className="text-[11px] text-text-muted">
+              Assignee
+            </Label>
+            <select
+              id="capture-assignee"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              autoComplete="off"
+              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-text focus:border-accent focus:outline-none"
+              data-testid="create-issue-assignee-select"
+            >
+              <option value="">Leave unassigned</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.user.id}>
+                  {m.user.full_name || m.user.email}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="capture-destination" className="text-[11px] text-text-muted">
+              Route to
+            </Label>
+            <select
+              id="capture-destination"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value as "todo" | "inbox")}
+              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-text focus:border-accent focus:outline-none"
+            >
+              <option value="todo">Todo (Ready)</option>
+              <option value="inbox">Inbox (Needs triage)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Suggested Assignee 1-Click Chip (never auto-selected silently) */}
+        {triageResult?.suggested_assignee &&
+          assigneeId !== triageResult.suggested_assignee.id && (
+            <div className="flex items-center justify-between rounded-md border border-border bg-surface-elevated/50 px-2.5 py-1.5 text-xs">
+              <span className="flex items-center gap-1.5 text-text-muted">
+                <UserCheck className="h-3.5 w-3.5 text-accent" />
+                Suggested owner:{" "}
+                <strong className="text-text">{triageResult.suggested_assignee.full_name}</strong>
+                <span className="hidden text-[11px] sm:inline">
+                  ({triageResult.suggested_assignee.reason})
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setAssigneeId(triageResult.suggested_assignee!.id)}
+                className="rounded bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent/20"
+                data-testid="apply-suggested-assignee"
+              >
+                Assign
+              </button>
+            </div>
+          )}
+
+        {/* Labels + Due date + Blocking release */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {labels.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {labels.map((label) => {
+                const selected = selectedLabels.includes(label.id);
+                return (
+                  <button
+                    key={label.id}
+                    type="button"
+                    onClick={() => toggleLabel(label.id)}
+                    aria-pressed={selected}
+                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors"
+                    style={{
+                      borderColor: selected ? label.color : "hsl(var(--border))",
+                      backgroundColor: selected ? `${label.color}20` : "transparent",
+                      color: selected ? label.color : "hsl(var(--text-muted))",
+                    }}
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: label.color }}
+                    />
+                    {label.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div />
+          )}
+
+          <div className="flex items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-text-muted">
+              <input
+                type="checkbox"
+                checked={isBlockingRelease}
+                onChange={(e) => setIsBlockingRelease(e.target.checked)}
+                className="rounded border-border text-danger focus:ring-danger"
+              />
+              <span>Blocking release</span>
+            </label>
+
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              aria-label="Due date"
+              autoComplete="off"
+              className="h-7 w-36 bg-background text-[11px]"
+              data-testid="create-issue-due-date"
+            />
+          </div>
+        </div>
+
+        {/* Collapsed Reproduction Details & Optional Reporter */}
+        <div className="flex flex-wrap items-center gap-4 border-t border-border/60 pt-2.5">
+          <button
+            type="button"
+            onClick={() => setShowRepro((v) => !v)}
+            aria-expanded={showRepro}
+            className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+          >
+            {showRepro ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            Reproduction details{reproCount > 0 ? ` (${reproCount} filled)` : ""}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowReporter((v) => !v)}
+            aria-expanded={showReporter}
+            className="inline-flex items-center gap-1 text-xs font-medium text-text-muted hover:text-text"
+          >
+            {showReporter ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            Who reported this?
+          </button>
+        </div>
+
+        {showRepro && (
+          <div className="space-y-2.5 rounded-lg border border-border bg-background/50 p-3">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="steps-input" className="text-[11px] text-text-muted">
+                  Steps to reproduce
+                </Label>
+                <textarea
+                  id="steps-input"
+                  value={stepsToReproduce}
+                  onChange={(e) => setStepsToReproduce(e.target.value)}
+                  rows={2}
+                  placeholder="1. Open… 2. Click…"
+                  className="w-full rounded-md border border-border bg-background p-2 text-xs text-text focus:border-accent focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="environment-input" className="text-[11px] text-text-muted">
+                  Browser / Environment
+                </Label>
+                <Input
+                  id="environment-input"
+                  value={environment}
+                  onChange={(e) => setEnvironment(e.target.value)}
+                  placeholder="e.g. Chrome 129, macOS"
+                  className="h-8 bg-background text-xs"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="expected-input" className="text-[11px] text-text-muted">
+                  Expected
+                </Label>
+                <Input
+                  id="expected-input"
+                  value={expected}
+                  onChange={(e) => setExpected(e.target.value)}
+                  placeholder="What should happen"
+                  className="h-8 bg-background text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="actual-input" className="text-[11px] text-text-muted">
+                  Actual
+                </Label>
+                <Input
+                  id="actual-input"
+                  value={actual}
+                  onChange={(e) => setActual(e.target.value)}
+                  placeholder="What actually happened"
+                  className="h-8 bg-background text-xs"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showReporter && (
+          <div className="grid grid-cols-1 gap-2.5 rounded-lg border border-border bg-background/50 p-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="reporter-name" className="text-[11px] text-text-muted">
+                Reporter name (optional)
+              </Label>
+              <Input
+                id="reporter-name"
+                value={reporterName}
+                onChange={(e) => setReporterName(e.target.value)}
+                placeholder="e.g. Sarah from QA"
+                className="h-8 bg-background text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="reporter-email" className="text-[11px] text-text-muted">
+                Reporter email (notify when fixed)
+              </Label>
+              <Input
+                id="reporter-email"
+                type="email"
+                value={reporterEmail}
+                onChange={(e) => setReporterEmail(e.target.value)}
+                placeholder="sarah@customer.com"
+                className="h-8 bg-background text-xs"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Footer Buttons */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+          <Button type="button" variant="ghost" size="sm" onClick={handleClose}>
+            Cancel
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={createMutation.isPending || (!title.trim() && !rawPaste.trim())}
+              onClick={() => submitIssue(true)}
+              data-testid="submit-and-add-another-btn"
+            >
+              Create and add another
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={createMutation.isPending || (!title.trim() && !rawPaste.trim())}
+              data-testid="submit-issue-btn"
+            >
+              {createMutation.isPending
+                ? "Creating…"
+                : `Create (${formatShortcut("Enter")})`}
+            </Button>
+          </div>
+        </div>
+      </form>
     </Modal>
   );
 }

@@ -7,7 +7,7 @@ from rest_framework.response import Response
 class StandardPageNumberPagination(PageNumberPagination):
     """Standard pagination supporting page_size with max limit of 100."""
 
-    page_size = 20
+    page_size = 25
     page_size_query_param = "page_size"
     max_page_size = 100
 

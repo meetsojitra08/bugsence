@@ -1,13 +1,24 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { CommandPalette } from "./CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/common/KeyboardShortcutsModal";
+import { CreateIssueModal } from "@/features/issues/components/CreateIssueModal";
+import { useProjects } from "@/features/projects/hooks/useProjects";
+import { useProjectStore } from "@/stores/useProjectStore";
+import { useUiStore } from "@/stores/useUiStore";
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+
+  const { isCaptureModalOpen, setCaptureModalOpen, openCaptureModal, isCommandPaletteOpen } =
+    useUiStore();
+  const { data: projects = [] } = useProjects();
+  const getActiveProject = useProjectStore((s) => s.getActiveProject);
+  const activeProject = getActiveProject(projects);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -28,6 +39,44 @@ export function AppLayout() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (isCaptureModalOpen && projects.length > 0 && !activeProject) {
+      setCaptureModalOpen(false);
+    }
+  }, [isCaptureModalOpen, activeProject, projects.length, setCaptureModalOpen]);
+
+  // Global 'C' shortcut opens the Capture modal from anywhere when not typing in a field or dialog.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() !== "c") return;
+      if (isCommandPaletteOpen || isCaptureModalOpen) return;
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (document.querySelector('[role="dialog"]')) return;
+
+      event.preventDefault();
+      if (!activeProject) {
+        toast.info("Create or select a project first before capturing an issue.");
+        return;
+      }
+      openCaptureModal();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeProject, isCaptureModalOpen, isCommandPaletteOpen, openCaptureModal]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-text">
@@ -61,6 +110,15 @@ export function AppLayout() {
 
       <CommandPalette />
       <KeyboardShortcutsModal />
+
+      {activeProject && (
+        <CreateIssueModal
+          isOpen={isCaptureModalOpen}
+          onClose={() => setCaptureModalOpen(false)}
+          projectId={activeProject.id}
+          projectKey={activeProject.key}
+        />
+      )}
     </div>
   );
 }

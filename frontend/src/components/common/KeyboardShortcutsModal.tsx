@@ -1,33 +1,51 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Keyboard, X } from "lucide-react";
+import { modKeyLabel } from "@/lib/format";
 
-const SHORTCUT_GROUPS = [
-  {
-    title: "Global Navigation",
-    shortcuts: [
-      { keys: ["⌘", "K"], description: "Open Command Palette and Global Search" },
-      { keys: ["?"], description: "Toggle this Keyboard Shortcuts cheat sheet" },
-      { keys: ["G", "D"], description: "Navigate to Dashboard" },
-      { keys: ["G", "I"], description: "Navigate to Issues List" },
-      { keys: ["G", "B"], description: "Navigate to Kanban Board" },
-      { keys: ["G", "M"], description: "Navigate to Team Members" },
-    ],
-  },
-  {
-    title: "Issues & AI Actions",
-    shortcuts: [
-      { keys: ["C"], description: "Create a new issue from anywhere" },
-      { keys: ["⌘", "J"], description: "Run AI Triage auto-fill in creation form" },
-      { keys: ["ESC"], description: "Close modal, popover or side drawer" },
-    ],
-  },
-];
+function buildShortcutGroups(modKey: string) {
+  return [
+    {
+      title: "Global Navigation",
+      shortcuts: [
+        { keys: [modKey, "K"], description: "Open Command Palette and Global Search" },
+        { keys: ["?"], description: "Toggle this Keyboard Shortcuts cheat sheet" },
+        { keys: ["G", "T"], description: "Navigate to Today" },
+        { keys: ["G", "N"], description: "Navigate to Inbox" },
+        { keys: ["G", "I"], description: "Navigate to Issues" },
+        { keys: ["G", "B"], description: "Navigate to Board" },
+        { keys: ["G", "M"], description: "Navigate to Members" },
+      ],
+    },
+    {
+      title: "Capture & Issues",
+      shortcuts: [
+        { keys: ["C"], description: "Open Capture modal from anywhere" },
+        { keys: [modKey, "Enter"], description: "Create issue from Capture" },
+        { keys: ["ESC"], description: "Close modal, popover or side drawer" },
+      ],
+    },
+    {
+      title: "Inbox Triage",
+      shortcuts: [
+        { keys: ["J", "K"], description: "Select next / previous report in Inbox" },
+        { keys: ["E"], description: "Accept selected report to Todo" },
+        { keys: ["A"], description: "Assign selected report" },
+        { keys: ["M"], description: "Merge selected report into duplicate" },
+        { keys: ["X"], description: "Mark selected report invalid" },
+      ],
+    },
+  ];
+}
 
 export function KeyboardShortcutsModal() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const shortcutGroups = useMemo(
+    () => buildShortcutGroups(modKeyLabel().replace(/\+$/, "")),
+    []
+  );
 
   useEffect(() => {
     if (isOpen) closeRef.current?.focus();
@@ -43,6 +61,7 @@ export function KeyboardShortcutsModal() {
       if (
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
         target.isContentEditable
       ) {
         return;
@@ -59,12 +78,15 @@ export function KeyboardShortcutsModal() {
         return;
       }
 
-      // Handle two-key sequences (e.g. G then D)
+      // Handle two-key sequences (e.g. G then T/N/I/B/M)
       const now = Date.now();
       if (lastKey.toLowerCase() === "g" && now - lastKeyTime < 1000) {
         const k = e.key.toLowerCase();
-        if (k === "d") {
-          navigate("/dashboard");
+        if (k === "t" || k === "d") {
+          navigate("/today");
+          setIsOpen(false);
+        } else if (k === "n") {
+          navigate("/inbox");
           setIsOpen(false);
         } else if (k === "i") {
           navigate("/issues");
@@ -128,7 +150,7 @@ export function KeyboardShortcutsModal() {
         </div>
 
         <div className="max-h-[70vh] space-y-6 overflow-y-auto p-5">
-          {SHORTCUT_GROUPS.map((group) => (
+          {shortcutGroups.map((group) => (
             <div key={group.title} className="space-y-2.5">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {group.title}

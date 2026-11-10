@@ -9,6 +9,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  startDemo: () => Promise<{ id: string; key: string; name: string } | undefined>;
   logout: () => Promise<void>;
   updateUser: (updated: User) => void;
 }
@@ -63,6 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user);
   };
 
+  const startDemo = async () => {
+    const response = await authApi.startDemo();
+    setUser(response.user);
+    return response.project;
+  };
+
   const logout = async () => {
     const refresh = getRefreshToken();
     if (refresh) {
@@ -88,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         register,
+        startDemo,
         logout,
         updateUser,
       }}

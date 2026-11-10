@@ -18,28 +18,36 @@ import type { BoardData, IssueListItem, IssueStatus, MoveIssuePayload } from "..
 interface KanbanBoardProps {
   boardData: BoardData;
   isLoading: boolean;
+  showBacklog?: boolean;
+  showClosed?: boolean;
   onSelectIssue: (issue: IssueListItem) => void;
   onMoveIssue: (issueId: string, payload: MoveIssuePayload) => void;
   onQuickAdd: (title: string, status: IssueStatus) => void;
 }
 
-const BOARD_COLUMNS: { status: IssueStatus; title: string }[] = [
-  { status: "backlog", title: "Backlog" },
+const DEFAULT_COLUMNS: { status: IssueStatus; title: string }[] = [
   { status: "todo", title: "To Do" },
   { status: "in_progress", title: "In Progress" },
   { status: "in_review", title: "In Review" },
   { status: "done", title: "Done" },
-  { status: "closed", title: "Closed" },
 ];
 
 export function KanbanBoard({
   boardData,
   isLoading,
+  showBacklog = false,
+  showClosed = false,
   onSelectIssue,
   onMoveIssue,
   onQuickAdd,
 }: KanbanBoardProps) {
   const [activeIssue, setActiveIssue] = useState<IssueListItem | null>(null);
+
+  const visibleColumns: { status: IssueStatus; title: string }[] = [
+    ...(showBacklog ? [{ status: "backlog" as IssueStatus, title: "Backlog" }] : []),
+    ...DEFAULT_COLUMNS,
+    ...(showClosed ? [{ status: "closed" as IssueStatus, title: "Closed" }] : []),
+  ];
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -117,11 +125,11 @@ export function KanbanBoard({
 
   if (isLoading) {
     return (
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((col) => (
           <div
             key={col}
-            className="h-[480px] w-[300px] flex-shrink-0 animate-pulse rounded-lg border border-border bg-surface/50 p-3"
+            className="h-[460px] animate-pulse rounded-lg border border-border bg-surface/50 p-3"
           >
             <div className="h-5 w-24 rounded bg-surface-elevated" />
             <div className="mt-4 space-y-3">
@@ -134,6 +142,13 @@ export function KanbanBoard({
     );
   }
 
+  const gridColsClass =
+    visibleColumns.length === 4
+      ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      : visibleColumns.length === 5
+        ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"
+        : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
+
   return (
     <DndContext
       sensors={sensors}
@@ -141,8 +156,8 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-3 overflow-x-auto pb-6" data-testid="kanban-board">
-        {BOARD_COLUMNS.map((col) => (
+      <div className={gridColsClass} data-testid="kanban-board">
+        {visibleColumns.map((col) => (
           <KanbanColumn
             key={col.status}
             status={col.status}

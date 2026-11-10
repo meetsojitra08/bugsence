@@ -16,6 +16,10 @@ interface KanbanColumnProps {
 }
 
 const COLUMN_CONFIG: Record<IssueStatus, { icon: React.ReactNode; dotColor: string }> = {
+  inbox: {
+    icon: <Circle className="h-3 w-3 text-accent" />,
+    dotColor: "bg-accent",
+  },
   backlog: {
     icon: <Circle className="h-3 w-3 text-status-backlog" />,
     dotColor: "bg-status-backlog",
@@ -59,7 +63,7 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-[300px] flex-shrink-0 flex-col rounded-lg border border-border bg-surface/50 p-2.5 transition-colors duration-150",
+        "flex min-w-0 flex-col rounded-lg border border-border bg-surface/50 p-2.5 transition-colors duration-150",
         isOver && "border-accent/50 bg-accent/5 ring-1 ring-accent/20"
       )}
       data-testid={`kanban-column-${status}`}

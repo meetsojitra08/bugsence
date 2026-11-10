@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import { useNavigate } from "react-router-dom";
 import {
+  BarChart3,
   LayoutDashboard,
+  LayoutGrid,
+  Inbox,
   CheckSquare,
   FolderGit2,
   Settings,
@@ -19,7 +22,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { searchApi, type GlobalSearchResponse } from "@/features/projects/api/searchApi";
 
 export function CommandPalette() {
-  const { isCommandPaletteOpen, setCommandPaletteOpen } = useUiStore();
+  const { isCommandPaletteOpen, setCommandPaletteOpen, openCaptureModal, showInsightsNav } =
+    useUiStore();
   const { logout } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -221,24 +225,47 @@ export function CommandPalette() {
             >
               <Command.Item
                 className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
-                onSelect={() => runAction(() => navigate("/dashboard"))}
+                onSelect={() => runAction(() => navigate("/today"))}
               >
                 <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span>Today</span>
               </Command.Item>
               <Command.Item
                 className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
-                onSelect={() => runAction(() => navigate("/my-issues"))}
+                onSelect={() => runAction(() => navigate("/inbox"))}
+              >
+                <Inbox className="h-4 w-4" />
+                <span>Inbox</span>
+              </Command.Item>
+              <Command.Item
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
+                onSelect={() => runAction(() => navigate("/issues"))}
               >
                 <CheckSquare className="h-4 w-4" />
-                <span>My Issues</span>
+                <span>Issues</span>
               </Command.Item>
+              <Command.Item
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
+                onSelect={() => runAction(() => navigate("/board"))}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span>Board</span>
+              </Command.Item>
+              {showInsightsNav && (
+                <Command.Item
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
+                  onSelect={() => runAction(() => navigate("/insights"))}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Insights</span>
+                </Command.Item>
+              )}
               <Command.Item
                 className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
                 onSelect={() => runAction(() => navigate("/settings/members"))}
               >
                 <Users className="h-4 w-4" />
-                <span>Team Members</span>
+                <span>Members</span>
               </Command.Item>
               <Command.Item
                 className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
@@ -255,10 +282,10 @@ export function CommandPalette() {
             >
               <Command.Item
                 className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-text transition-colors hover:bg-surface-elevated aria-selected:bg-surface-elevated aria-selected:text-text"
-                onSelect={() => runAction(() => navigate("/issues"))}
+                onSelect={() => runAction(() => openCaptureModal())}
               >
                 <PlusCircle className="h-4 w-4 text-accent" />
-                <span>Create New Issue (C)</span>
+                <span>Capture bug report (C)</span>
               </Command.Item>
 
               <Command.Item

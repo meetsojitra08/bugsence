@@ -9,6 +9,11 @@ const STATUS_CONFIG: Record<
   IssueStatus,
   { label: string; color: string; bg: string }
 > = {
+  inbox: {
+    label: "Inbox",
+    color: "hsl(var(--accent))",
+    bg: "bg-accent",
+  },
   backlog: {
     label: "Backlog",
     color: "hsl(var(--status-backlog))",

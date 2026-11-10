@@ -1,10 +1,11 @@
 import React, { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircle, Bug, Calendar, CheckCircle2, Circle, Flame, Sparkles } from "lucide-react";
+import { AlertCircle, Bug, Calendar, CheckCircle2, GitPullRequest, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { hexToRgba } from "@/lib/color";
-import type { IssueListItem, IssuePriority, IssueType } from "../types";
+import { daysSince } from "@/lib/format";
+import { PriorityIcon } from "./PriorityIcon";
+import type { IssueListItem, IssueType } from "../types";
 
 interface KanbanCardProps {
   issue: IssueListItem;
@@ -17,13 +18,6 @@ const TYPE_ICONS: Record<IssueType, React.ReactNode> = {
   feature: <Sparkles className="h-3 w-3 text-info" />,
   task: <CheckCircle2 className="h-3 w-3 text-success" />,
   improvement: <AlertCircle className="h-3 w-3 text-warning" />,
-};
-
-const PRIORITY_ICONS: Record<IssuePriority, React.ReactNode> = {
-  urgent: <Flame className="h-3 w-3 text-priority-urgent" />,
-  high: <Flame className="h-3 w-3 text-priority-high" />,
-  medium: <Circle className="h-2.5 w-2.5 text-priority-medium" />,
-  low: <Circle className="h-2.5 w-2.5 text-priority-low" />,
 };
 
 export function KanbanCard({ issue, onSelect, isOverlay = false }: KanbanCardProps) {
@@ -43,6 +37,12 @@ export function KanbanCard({ issue, onSelect, isOverlay = false }: KanbanCardPro
     issue.status !== "done" &&
     issue.status !== "closed";
 
+  const ageInDays = daysSince(issue.updated_at);
+  const showAging =
+    ageInDays > 3 && issue.status !== "done" && issue.status !== "closed";
+
+  const linkedPr = issue.pull_requests?.[0] ?? null;
+
   return (
     <div
       ref={setNodeRef}
@@ -55,7 +55,6 @@ export function KanbanCard({ issue, onSelect, isOverlay = false }: KanbanCardPro
       onClick={(e) => {
         const start = pointerStart.current;
         pointerStart.current = null;
-        // Ignore the click that follows a drag gesture.
         if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 4) return;
         if (!isDragging) {
           e.stopPropagation();
@@ -70,70 +69,74 @@ export function KanbanCard({ issue, onSelect, isOverlay = false }: KanbanCardPro
       )}
       data-testid={`kanban-card-${issue.key}`}
     >
-      {/* Top Header: Key, Type, Priority */}
+      {/* Top Header: Key, Type, Aging, Priority */}
       <div className="flex items-center justify-between gap-1 text-[10px]">
         <div className="flex items-center gap-1.5 font-mono font-semibold text-text-muted transition-colors group-hover:text-accent">
           <span>{TYPE_ICONS[issue.type] || TYPE_ICONS.bug}</span>
           <span>{issue.key}</span>
         </div>
 
-        <div className="flex items-center gap-1">
-          <span title={`Priority: ${issue.priority}`}>{PRIORITY_ICONS[issue.priority]}</span>
+        <div className="flex items-center gap-1.5">
+          {showAging && (
+            <span
+              className="rounded bg-warning/15 px-1 py-0.5 font-mono text-[9px] font-medium text-warning"
+              title={`Unchanged for ${ageInDays} days`}
+            >
+              {ageInDays}d
+            </span>
+          )}
+          <span title={`Priority: ${issue.priority}`}>
+            <PriorityIcon priority={issue.priority} className="h-3 w-3" />
+          </span>
         </div>
       </div>
 
       {/* Title */}
       <p className="line-clamp-2 text-[12px] font-medium leading-snug text-text">{issue.title}</p>
 
-      {/* Labels */}
-      {issue.labels && issue.labels.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {issue.labels.slice(0, 2).map((lbl) => (
-            <span
-              key={lbl.id}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium"
-              style={{
-                backgroundColor: hexToRgba(lbl.color, 0.13),
-                color: lbl.color,
-              }}
+      {/* Bottom Footer: Due Date (only if set), Linked PR CI state, Assignee Avatar */}
+      <div className="flex items-center justify-between border-t border-border/60 pt-1.5 text-[10px]">
+        <div className="flex items-center gap-2">
+          {issue.due_date && (
+            <div
+              className={cn(
+                "flex items-center gap-1 font-medium",
+                isOverdue ? "font-semibold text-danger" : "text-text-muted"
+              )}
+              title={isOverdue ? "Overdue" : "Due date"}
             >
-              {lbl.name}
+              <Calendar className="h-3 w-3" />
+              <span>
+                {new Date(issue.due_date).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+
+          {linkedPr && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded px-1 py-0.5 font-mono text-[9px] font-medium",
+                linkedPr.ci_status === "success"
+                  ? "bg-success/15 text-success"
+                  : linkedPr.ci_status === "failure"
+                    ? "bg-danger/15 text-danger"
+                    : "bg-warning/15 text-warning"
+              )}
+              title={`PR #${linkedPr.pr_number} (${linkedPr.ci_status})`}
+            >
+              <GitPullRequest className="h-2.5 w-2.5" />
+              #{linkedPr.pr_number}
             </span>
-          ))}
-          {issue.labels.length > 2 && (
-            <span className="text-[9px] text-text-muted">+{issue.labels.length - 2}</span>
           )}
         </div>
-      )}
 
-      {/* Bottom Footer: Due Date & Assignee Avatar */}
-      <div className="flex items-center justify-between border-t border-border/60 pt-1.5 text-[10px]">
-        {/* Due date */}
-        {issue.due_date ? (
-          <div
-            className={cn(
-              "flex items-center gap-1 font-medium",
-              isOverdue ? "font-semibold text-danger" : "text-text-muted"
-            )}
-            title={isOverdue ? "Overdue" : "Due date"}
-          >
-            <Calendar className="h-3 w-3" />
-            <span>
-              {new Date(issue.due_date).toLocaleDateString([], {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-        ) : (
-          <div />
-        )}
-
-        {/* Assignee Avatar */}
         {issue.assignee ? (
           <div
             title={`Assigned to ${issue.assignee.full_name}`}
-            className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[9px] font-semibold text-accent"
+            className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/15 text-[9px] font-semibold text-accent"
           >
             {issue.assignee.full_name?.[0] || "U"}
           </div>

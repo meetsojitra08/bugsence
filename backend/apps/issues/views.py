@@ -4,25 +4,33 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.issues import selectors, services
-from apps.issues.models import Issue, Label
+from apps.issues.models import Issue, IssueAttachment, IssueStatus, Label
 from apps.issues.serializers import (
+    ChecklistConvertSerializer,
     CommentCreateSerializer,
     CommentSerializer,
     CommentUpdateSerializer,
+    IssueAttachmentSerializer,
+    IssueBulkActionSerializer,
     IssueCreateSerializer,
     IssueDetailSerializer,
+    IssueInboxTriageSerializer,
     IssueListSerializer,
     IssueMoveSerializer,
+    IssueResolveSerializer,
     IssueUpdateSerializer,
     LabelCreateSerializer,
     LabelSerializer,
     ProjectBoardSerializer,
+    PullRequestCreateSerializer,
+    PullRequestLinkSerializer,
     TimelineItemSerializer,
 )
 from apps.projects.models import Membership, Project, RoleChoices
@@ -109,6 +117,9 @@ class ProjectIssueViewSet(viewsets.GenericViewSet):
             search=request.query_params.get("search"),
             ordering=request.query_params.get("ordering"),
             overdue=request.query_params.get("overdue") == "true",
+            exclude_inbox=request.query_params.get("exclude_inbox") == "true",
+            recently_closed=request.query_params.get("recently_closed") == "true",
+            blocking=request.query_params.get("blocking") == "true",
         )
         page = self.paginate_queryset(issues)
         if page is not None:
@@ -148,6 +159,22 @@ class ProjectIssueViewSet(viewsets.GenericViewSet):
                     {"label_ids": "One or more labels do not belong to this project."}
                 )
 
+        duplicate_of = None
+        if data.get("duplicate_of_id"):
+            duplicate_of = Issue.objects.filter(
+                project_id=project.id, id=data["duplicate_of_id"]
+            ).first()
+            if not duplicate_of:
+                raise ValidationError(
+                    {"duplicate_of_id": "Duplicate issue not found in this project."}
+                )
+
+        parent = None
+        if data.get("parent_id"):
+            parent = Issue.objects.filter(project_id=project.id, id=data["parent_id"]).first()
+            if not parent:
+                raise ValidationError({"parent_id": "Parent issue not found in this project."})
+
         try:
             issue = services.create_issue(
                 project=project,
@@ -162,9 +189,16 @@ class ProjectIssueViewSet(viewsets.GenericViewSet):
                 priority=data.get("priority"),
                 severity=data.get("severity"),
                 type=data.get("type"),
+                source=data.get("source"),
                 assignee=assignee,
                 labels=labels,
                 due_date=data.get("due_date"),
+                external_reporter_name=data.get("external_reporter_name", ""),
+                external_reporter_email=data.get("external_reporter_email", ""),
+                is_blocking_release=data.get("is_blocking_release", False),
+                duplicate_of=duplicate_of,
+                parent=parent,
+                checklist=data.get("checklist", []),
             )
         except DjangoValidationError as exc:
             raise ValidationError(
@@ -237,9 +271,37 @@ class IssueDetailViewSet(viewsets.GenericViewSet):
             "type",
             "due_date",
             "position",
+            "external_reporter_name",
+            "external_reporter_email",
+            "is_blocking_release",
+            "checklist",
+            "resolution_note",
+            "snoozed_until",
         ]:
             if field in data:
                 update_kwargs[field] = data[field]
+
+        if "duplicate_of_id" in data:
+            if data["duplicate_of_id"] is None:
+                update_kwargs["duplicate_of"] = None
+            else:
+                dup = Issue.objects.filter(
+                    project_id=issue.project_id, id=data["duplicate_of_id"]
+                ).first()
+                if not dup or dup.id == issue.id:
+                    raise ValidationError({"duplicate_of_id": "Invalid duplicate target."})
+                update_kwargs["duplicate_of"] = dup
+
+        if "parent_id" in data:
+            if data["parent_id"] is None:
+                update_kwargs["parent"] = None
+            else:
+                par = Issue.objects.filter(
+                    project_id=issue.project_id, id=data["parent_id"]
+                ).first()
+                if not par or par.id == issue.id:
+                    raise ValidationError({"parent_id": "Invalid parent issue."})
+                update_kwargs["parent"] = par
 
         if "assignee_id" in data:
             if data["assignee_id"] is None:
@@ -754,3 +816,300 @@ class ProjectIssueCommentsByNumberView(APIView):
             ) from exc
 
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
+
+
+class ProjectInboxView(APIView):
+    """Lists untriaged Inbox reports for a project."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, project_id: UUID) -> Response:
+        project = get_project_for_user(project_id=project_id, user=request.user)
+        if not project:
+            raise NotFound("Project not found.")
+
+        include_snoozed = request.query_params.get("include_snoozed") == "true"
+        inbox_issues = selectors.get_project_inbox_issues(
+            project_id=project.id,
+            user=request.user,
+            include_snoozed=include_snoozed,
+        )
+        return Response(IssueListSerializer(inbox_issues, many=True).data)
+
+
+class IssueTriageView(APIView):
+    """Performs one-click triage on an Inbox issue."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: UUID) -> Response:
+        issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot triage issues.")
+
+        serializer = IssueInboxTriageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        assignee = None
+        if data.get("assignee_id"):
+            membership = (
+                Membership.objects.filter(project_id=issue.project_id, user_id=data["assignee_id"])
+                .select_related("user")
+                .first()
+            )
+            if not membership:
+                raise ValidationError({"assignee_id": "Assignee must be a project member."})
+            assignee = membership.user
+
+        target_issue = None
+        if data.get("target_issue_id"):
+            target_issue = Issue.objects.filter(
+                project_id=issue.project_id, id=data["target_issue_id"]
+            ).first()
+            if not target_issue:
+                raise ValidationError({"target_issue_id": "Target issue not found in project."})
+
+        try:
+            updated = services.triage_inbox_issue(
+                issue=issue,
+                actor=request.user,
+                action=data["action"],
+                assignee=assignee,
+                priority=data.get("priority"),
+                target_issue=target_issue,
+                snooze_hours=data.get("snooze_hours", 24),
+                reason=data.get("reason", ""),
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(IssueDetailSerializer(updated).data)
+
+
+class IssueResolveView(APIView):
+    """Resolves an issue with a 'What fixed it?' note and notifies the reporter."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: UUID) -> Response:
+        issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot resolve issues.")
+
+        serializer = IssueResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        resolved = services.resolve_issue(
+            issue=issue,
+            actor=request.user,
+            resolution_note=serializer.validated_data.get("resolution_note", ""),
+            notify_reporter=serializer.validated_data.get("notify_reporter", True),
+        )
+        return Response(IssueDetailSerializer(resolved).data)
+
+
+class IssueChecklistConvertView(APIView):
+    """Converts a checklist item ('Next steps') into a tracked sub-issue."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: UUID) -> Response:
+        issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot create sub-issues.")
+
+        serializer = ChecklistConvertSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            updated_parent, sub_issue = services.convert_checklist_item_to_sub_issue(
+                issue=issue,
+                item_id=serializer.validated_data["item_id"],
+                actor=request.user,
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(
+            {
+                "parent": IssueDetailSerializer(updated_parent).data,
+                "sub_issue": IssueDetailSerializer(sub_issue).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProjectIssuesBulkView(APIView):
+    """Performs bulk assign, status, label, or archive operations."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, project_id: UUID) -> Response:
+        project = get_project_for_user(project_id=project_id, user=request.user)
+        if not project:
+            raise NotFound("Project not found.")
+
+        user_role = get_user_role_in_project(project_id=project.id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot modify issues.")
+
+        serializer = IssueBulkActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        assignee = None
+        if data["action"] == "assign" and data.get("assignee_id"):
+            membership = (
+                Membership.objects.filter(project=project, user_id=data["assignee_id"])
+                .select_related("user")
+                .first()
+            )
+            if not membership:
+                raise ValidationError({"assignee_id": "Assignee must be a project member."})
+            assignee = membership.user
+
+        label = None
+        if data["action"] == "add_label":
+            if not data.get("label_id"):
+                raise ValidationError({"label_id": "Label is required."})
+            label = Label.objects.filter(project=project, id=data["label_id"]).first()
+            if not label:
+                raise ValidationError({"label_id": "Label not found in project."})
+
+        count = services.bulk_update_issues(
+            project=project,
+            actor=request.user,
+            issue_ids=data["issue_ids"],
+            action=data["action"],
+            assignee=assignee,
+            status_val=data.get("status"),
+            label=label,
+        )
+        return Response({"updated_count": count})
+
+
+class IssuePullRequestView(APIView):
+    """Links a Pull Request to an issue manually or from tooling."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: UUID) -> Response:
+        issue = selectors.get_issue_for_user(issue_id=pk, user=request.user)
+        if not issue:
+            raise NotFound("Issue not found.")
+
+        user_role = get_user_role_in_project(project_id=issue.project_id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot link pull requests.")
+
+        serializer = PullRequestCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        pr_link = services.link_pull_request(
+            issue=issue,
+            pr_number=data["pr_number"],
+            title=data.get("title", ""),
+            url=data["url"],
+            branch=data.get("branch", ""),
+            repo_full_name=data.get("repo_full_name", ""),
+            state=data.get("state", "open"),
+            ci_status=data.get("ci_status", "unknown"),
+            actor=request.user,
+            auto_transition=True,
+        )
+        return Response(PullRequestLinkSerializer(pr_link).data, status=status.HTTP_201_CREATED)
+
+
+class ProjectChangelogView(APIView):
+    """Lists recently resolved issues with resolution notes as a project changelog."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, project_id: UUID) -> Response:
+        project = get_project_for_user(project_id=project_id, user=request.user)
+        if not project:
+            raise NotFound("Project not found.")
+
+        resolved = (
+            Issue.objects.filter(
+                project=project,
+                status__in=[IssueStatus.DONE, IssueStatus.CLOSED],
+            )
+            .exclude(resolution_note="")
+            .select_related("project", "reporter", "assignee")
+            .prefetch_related("labels", "pull_requests")
+            .order_by("-resolved_at", "-updated_at")[:50]
+        )
+        return Response(
+            [
+                {
+                    "id": str(item.id),
+                    "key": item.key,
+                    "number": item.number,
+                    "title": item.title,
+                    "resolution_note": item.resolution_note,
+                    "resolved_at": item.resolved_at or item.updated_at,
+                    "assignee": (
+                        {"full_name": item.assignee.full_name or item.assignee.display_name}
+                        if item.assignee
+                        else None
+                    ),
+                }
+                for item in resolved
+            ]
+        )
+
+
+class ProjectAttachmentUploadView(APIView):
+    """Uploads an image/screenshot attachment for Capture or Comment paste."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def post(self, request: Request, project_id: UUID) -> Response:
+        project = get_project_for_user(project_id=project_id, user=request.user)
+        if not project:
+            raise NotFound("Project not found.")
+
+        user_role = get_user_role_in_project(project_id=project.id, user=request.user)
+        if user_role == RoleChoices.VIEWER:
+            raise PermissionDenied("Viewers cannot upload attachments.")
+
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            raise ValidationError({"file": "Select an image file to upload."})
+        if uploaded_file.size > 5 * 1024 * 1024:
+            raise ValidationError({"file": "Attachment size must be under 5 MB."})
+
+        issue = None
+        issue_id = request.data.get("issue_id")
+        if issue_id:
+            issue = Issue.objects.filter(project=project, id=issue_id).first()
+
+        attachment = IssueAttachment.objects.create(
+            project=project,
+            issue=issue,
+            uploaded_by=request.user,
+            filename=uploaded_file.name[:255],
+            content_type=getattr(uploaded_file, "content_type", "image/png")[:120],
+            file=uploaded_file,
+        )
+        return Response(
+            IssueAttachmentSerializer(attachment, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )

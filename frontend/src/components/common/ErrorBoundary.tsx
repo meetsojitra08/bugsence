@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h1>
           <p className="mt-2 max-w-md text-xs text-text-muted">
-            BugSense encountered an unexpected runtime error. Your workspace data is safe and
+            BugSense encountered an unexpected runtime error. Your project data is safe and
             preserved on the server.
           </p>
 

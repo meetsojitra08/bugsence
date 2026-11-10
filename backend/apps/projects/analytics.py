@@ -53,6 +53,7 @@ def get_project_analytics_overview(project: Project) -> dict[str, Any]:
     ]
 
     total_issues = issues_qs.count()
+    inbox_issues = status_counts.get(IssueStatus.INBOX, 0)
     closed_issues = sum(status_counts.get(s, 0) for s in closed_statuses)
     open_issues = sum(status_counts.get(s, 0) for s in open_statuses)
 
@@ -78,6 +79,7 @@ def get_project_analytics_overview(project: Project) -> dict[str, Any]:
 
     result = {
         "total_issues": total_issues,
+        "inbox_issues": inbox_issues,
         "open_issues": open_issues,
         "closed_issues": closed_issues,
         "overdue_issues": overdue_issues,

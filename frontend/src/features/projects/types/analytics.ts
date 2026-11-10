@@ -3,7 +3,7 @@ export interface ProjectAnalyticsOverview {
   open_issues: number;
   closed_issues: number;
   overdue_issues: number;
-  avg_resolution_days: number;
+  avg_resolution_days: number | null;
   by_status: Record<string, number>;
   by_priority: Record<string, number>;
   by_severity: Record<string, number>;

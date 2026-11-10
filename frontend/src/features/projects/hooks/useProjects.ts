@@ -11,6 +11,9 @@ export const PROJECT_KEYS = {
   all: ["projects"] as const,
   detail: (id: string | null) => ["projects", id] as const,
   members: (projectId: string | null) => ["projects", projectId, "members"] as const,
+  invites: (projectId: string | null) => ["projects", projectId, "invites"] as const,
+  integrations: (projectId: string | null) => ["projects", projectId, "integrations"] as const,
+  today: (projectId: string | null) => ["projects", projectId, "today"] as const,
 };
 
 export function useProjects() {
@@ -104,5 +107,34 @@ export function useRemoveMember(projectId: string) {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.members(projectId) });
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.all });
     },
+  });
+}
+
+export function useProjectToday(projectId: string | null) {
+  return useQuery({
+    queryKey: PROJECT_KEYS.today(projectId),
+    queryFn: () =>
+      projectId ? projectsApi.getToday(projectId) : Promise.reject(new Error("No project ID")),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useProjectInvites(projectId: string | null) {
+  return useQuery({
+    queryKey: PROJECT_KEYS.invites(projectId),
+    queryFn: () =>
+      projectId ? projectsApi.listInvites(projectId) : Promise.reject(new Error("No project ID")),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useProjectIntegrations(projectId: string | null) {
+  return useQuery({
+    queryKey: PROJECT_KEYS.integrations(projectId),
+    queryFn: () =>
+      projectId
+        ? projectsApi.listIntegrations(projectId)
+        : Promise.reject(new Error("No project ID")),
+    enabled: Boolean(projectId),
   });
 }

@@ -1,7 +1,10 @@
 import { useState, useRef, KeyboardEvent, ChangeEvent, useEffect } from "react";
-import { Send, Eye, Edit3, AtSign } from "lucide-react";
+import { Send, Eye, Edit3, AtSign, ImagePlus } from "lucide-react";
+import { toast } from "sonner";
 import { SafeMarkdown } from "../../utils/markdown";
 import { useProjectMembers } from "@/features/projects/hooks/useProjects";
+import { issuesApi } from "../../api/issuesApi";
+import { formatShortcut } from "@/lib/format";
 import type { ProjectMembership } from "@/features/projects/types";
 
 interface CommentComposerProps {
@@ -18,6 +21,7 @@ export function CommentComposer({
   const [text, setText] = useState("");
   const [tab, setTab] = useState<"write" | "preview">("write");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Mention autocomplete state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -140,6 +144,26 @@ export function CommentComposer({
     }
   };
 
+  const handlePasteImage = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageItem = items.find((it) => it.type.startsWith("image/"));
+    if (!imageItem || !projectId) return;
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    setIsUploadingImage(true);
+    try {
+      const uploaded = await issuesApi.uploadAttachment(projectId, file);
+      setText((prev) => `${prev}${prev ? "\n" : ""}![${uploaded.filename}](${uploaded.url})`);
+      toast.success("Image pasted");
+    } catch {
+      toast.error("Could not upload pasted image");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   return (
     <div
       className="relative rounded-xl border border-border bg-surface p-3 shadow-sm transition-all focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/20"
@@ -177,8 +201,17 @@ export function CommentComposer({
         </div>
 
         <span className="flex items-center gap-1 text-[11px] text-text-muted">
-          <AtSign className="h-3 w-3" />
-          Markdown & Mentions
+          {isUploadingImage ? (
+            <>
+              <ImagePlus className="h-3 w-3 text-accent" />
+              Uploading image…
+            </>
+          ) : (
+            <>
+              <AtSign className="h-3 w-3" />
+              @mentions · Paste images
+            </>
+          )}
         </span>
       </div>
 
@@ -190,6 +223,7 @@ export function CommentComposer({
             value={text}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePasteImage}
             placeholder={placeholder}
             disabled={isSubmitting}
             rows={3}
@@ -249,7 +283,7 @@ export function CommentComposer({
       {/* Action Footer */}
       <div className="mt-2 flex items-center justify-between pt-1">
         <span className="text-[10px] text-text-muted">
-          Press <kbd className="rounded border border-border px-1">⌘+Enter</kbd> to submit
+          Press <kbd className="rounded border border-border px-1">{formatShortcut("Enter")}</kbd> to submit
         </span>
 
         <button

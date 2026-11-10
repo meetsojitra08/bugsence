@@ -4,8 +4,10 @@ import { useSearchParams } from "react-router-dom";
 import { issuesApi } from "../api/issuesApi";
 import type {
   BoardData,
+  BulkIssueActionPayload,
   CreateCommentPayload,
   CreateIssuePayload,
+  InboxTriagePayload,
   IssueFilters,
   IssueListItem,
   IssueStatus,
@@ -19,6 +21,8 @@ export const ISSUE_KEYS = {
   all: ["issues"] as const,
   list: (projectId: string | null, filters?: IssueFilters) =>
     ["issues", "list", projectId, filters] as const,
+  inbox: (projectId: string | null, includeSnoozed = false) =>
+    ["issues", "inbox", projectId, includeSnoozed] as const,
   board: (projectId: string | null, filters?: IssueFilters) =>
     ["issues", "board", projectId, filters] as const,
   detail: (issueId: string | null) => ["issues", "detail", issueId] as const,
@@ -28,6 +32,7 @@ export const ISSUE_KEYS = {
   activities: (issueId: string | null) => ["issues", "activities", issueId] as const,
   timeline: (issueIdOrKey: string | null) => ["issues", "timeline", issueIdOrKey] as const,
   comments: (issueId: string | null) => ["issues", "comments", issueId] as const,
+  changelog: (projectId: string | null) => ["issues", "changelog", projectId] as const,
 };
 
 export function useIssues(projectId: string | null, filters?: IssueFilters) {
@@ -204,6 +209,7 @@ export function useMoveIssue(projectId: string | null) {
 
         let targetItem: IssueListItem | null = null;
         const newColumns: Record<IssueStatus, IssueListItem[]> = {
+          inbox: [...(old.columns.inbox || [])],
           backlog: [...old.columns.backlog],
           todo: [...old.columns.todo],
           in_progress: [...old.columns.in_progress],
@@ -246,6 +252,7 @@ export function useMoveIssue(projectId: string | null) {
         }
 
         const newCounts: Record<IssueStatus, number> = {
+          inbox: newColumns.inbox.length,
           backlog: newColumns.backlog.length,
           todo: newColumns.todo.length,
           in_progress: newColumns.in_progress.length,
@@ -300,6 +307,9 @@ export function useIssueUrlFilters() {
     if (orderingParam) res.ordering = orderingParam;
 
     if (searchParams.get("overdue") === "true") res.overdue = true;
+    if (searchParams.get("recently_closed") === "true") res.recently_closed = true;
+    if (searchParams.get("blocking") === "true") res.blocking = true;
+    if (searchParams.get("exclude_inbox") === "true") res.exclude_inbox = true;
 
     const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
     if (Number.isFinite(pageParam) && pageParam > 1) res.page = pageParam;
@@ -342,9 +352,19 @@ export function useIssueUrlFilters() {
   const clearFilters = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      ["status", "priority", "assignee", "label", "search", "ordering", "overdue", "page"].forEach(
-        (k) => next.delete(k)
-      );
+      [
+        "status",
+        "priority",
+        "assignee",
+        "label",
+        "search",
+        "ordering",
+        "overdue",
+        "recently_closed",
+        "blocking",
+        "exclude_inbox",
+        "page",
+      ].forEach((k) => next.delete(k));
       return next;
     });
   }, [setSearchParams]);
@@ -357,6 +377,8 @@ export function useIssueUrlFilters() {
     if (filters.label) count++;
     if (filters.search) count++;
     if (filters.overdue) count++;
+    if (filters.recently_closed) count++;
+    if (filters.blocking) count++;
     return count;
   }, [filters]);
 
@@ -508,5 +530,87 @@ export function useDeleteComment(issueId: string) {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.timeline(issueId) });
     },
+  });
+}
+
+export function useInbox(projectId: string | null, includeSnoozed = false) {
+  return useQuery({
+    queryKey: ISSUE_KEYS.inbox(projectId, includeSnoozed),
+    queryFn: () =>
+      projectId
+        ? issuesApi.listInbox(projectId, includeSnoozed)
+        : Promise.reject(new Error("No active project ID")),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useTriageInbox(projectId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ issueId, payload }: { issueId: string; payload: InboxTriagePayload }) =>
+      issuesApi.triageInbox(issueId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.all });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["projects", projectId, "today"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+    },
+  });
+}
+
+export function useResolveIssue(projectId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      issueId,
+      resolution_note,
+      notify_reporter = true,
+    }: {
+      issueId: string;
+      resolution_note: string;
+      notify_reporter?: boolean;
+    }) => issuesApi.resolve(issueId, { resolution_note, notify_reporter }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.all });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.detail(data.id) });
+        queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.timeline(data.id) });
+      }
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["projects", projectId, "today"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+    },
+  });
+}
+
+export function useBulkIssueAction(projectId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: BulkIssueActionPayload) => {
+      if (!projectId) throw new Error("No active project ID");
+      return issuesApi.bulkAction(projectId, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.all });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["projects", projectId, "today"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+    },
+  });
+}
+
+export function useChangelog(projectId: string | null) {
+  return useQuery({
+    queryKey: ISSUE_KEYS.changelog(projectId),
+    queryFn: () =>
+      projectId ? issuesApi.listChangelog(projectId) : Promise.reject(new Error("No project ID")),
+    enabled: Boolean(projectId),
   });
 }

@@ -1,12 +1,16 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { LoginPage } from "./LoginPage";
 import { RegisterPage } from "./RegisterPage";
 import { AuthProvider } from "../context/AuthContext";
 
 describe("LoginPage UI", () => {
-  it("renders login form and inputs correctly", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders redesigned login form, product preview, and demo workspace CTA", () => {
     render(
       <MemoryRouter>
         <AuthProvider>
@@ -19,6 +23,28 @@ describe("LoginPage UI", () => {
     expect(screen.getByLabelText(/email/i)).toBeDefined();
     expect(screen.getByLabelText(/^password$/i, { selector: "input" })).toBeDefined();
     expect(screen.getByRole("button", { name: /sign in/i })).toBeDefined();
+    expect(screen.getByText(/Messy bug report in\. Clear ticket out\./i)).toBeDefined();
+    expect(screen.getByTestId("auth-try-demo-btn")).toBeDefined();
+    expect(screen.queryByText(/Sarah Chen/i)).toBeNull();
+  });
+
+  it("preserves ?next= invite parameter across sign up link and shows invite banner", () => {
+    render(
+      <MemoryRouter initialEntries={["/login?next=%2Finvite%2Ftok-99"]}>
+        <AuthProvider>
+          <LoginPage />
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/Sign in to your account to accept the project invitation\./i)
+    ).toBeDefined();
+    expect(screen.getByRole("link", { name: /sign up/i })).toHaveAttribute(
+      "href",
+      "/register?next=%2Finvite%2Ftok-99"
+    );
+    expect(screen.queryByTestId("auth-try-demo-btn")).toBeNull();
   });
 
   it("shows validation errors on empty submit", async () => {
@@ -75,8 +101,8 @@ describe("RegisterPage UI", () => {
     expect(screen.getByLabelText(/full name/i)).toBeDefined();
     expect(screen.getByLabelText(/work email/i)).toBeDefined();
     expect(screen.getByLabelText(/^password$/i, { selector: "input" })).toBeDefined();
+    expect(screen.getByTestId("auth-try-demo-btn")).toBeDefined();
 
-    // Type a strong password
     const passwordInput = screen.getByLabelText(/^password$/i, { selector: "input" });
     fireEvent.change(passwordInput, { target: { value: "SuperSecret123!" } });
 

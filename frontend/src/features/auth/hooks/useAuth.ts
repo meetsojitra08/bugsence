@@ -7,6 +7,7 @@ const FALLBACK_AUTH_CONTEXT: AuthContextType = {
   isLoading: false,
   login: async () => {},
   register: async () => {},
+  startDemo: async () => undefined,
   logout: async () => {},
   updateUser: () => {},
 };

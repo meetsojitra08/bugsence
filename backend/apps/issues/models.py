@@ -38,12 +38,21 @@ class Label(models.Model):
 
 
 class IssueStatus(models.TextChoices):
+    INBOX = "inbox", "Inbox"
     BACKLOG = "backlog", "Backlog"
     TODO = "todo", "To Do"
     IN_PROGRESS = "in_progress", "In Progress"
     IN_REVIEW = "in_review", "In Review"
     DONE = "done", "Done"
     CLOSED = "closed", "Closed"
+
+
+class IssueSource(models.TextChoices):
+    MANUAL = "manual", "Manual"
+    SLACK = "slack", "Slack"
+    EMAIL = "email", "Email"
+    SENTRY = "sentry", "Sentry"
+    PUBLIC_FORM = "public_form", "Public Form"
 
 
 class IssuePriority(models.TextChoices):
@@ -141,6 +150,27 @@ class Issue(models.Model):
         blank=True,
         related_name="duplicates",
     )
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sub_issues",
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=IssueSource.choices,
+        default=IssueSource.MANUAL,
+        db_index=True,
+    )
+    external_reporter_name = models.CharField(max_length=150, blank=True, default="")
+    external_reporter_email = models.EmailField(blank=True, default="")
+    external_ref = models.CharField(max_length=255, blank=True, default="")
+    snoozed_until = models.DateTimeField(null=True, blank=True, db_index=True)
+    resolution_note = models.TextField(blank=True, default="")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    is_blocking_release = models.BooleanField(default=False, db_index=True)
+    checklist = models.JSONField(default=list, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -247,3 +277,89 @@ class Comment(models.Model):
 
     def __str__(self) -> str:
         return f"Comment by {self.author.email} on {self.issue.key}"
+
+
+class PRState(models.TextChoices):
+    OPEN = "open", "Open"
+    MERGED = "merged", "Merged"
+    CLOSED = "closed", "Closed"
+
+
+class CIStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    SUCCESS = "success", "Success"
+    FAILURE = "failure", "Failure"
+    UNKNOWN = "unknown", "Unknown"
+
+
+class PullRequestLink(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        related_name="pull_requests",
+    )
+    pr_number = models.PositiveIntegerField()
+    title = models.CharField(max_length=255, blank=True, default="")
+    url = models.URLField(max_length=500)
+    branch = models.CharField(max_length=255, blank=True, default="")
+    repo_full_name = models.CharField(max_length=255, blank=True, default="")
+    state = models.CharField(
+        max_length=20,
+        choices=PRState.choices,
+        default=PRState.OPEN,
+    )
+    ci_status = models.CharField(
+        max_length=20,
+        choices=CIStatus.choices,
+        default=CIStatus.UNKNOWN,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "pull_request_links"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["issue", "url"],
+                name="unique_issue_pr_url",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"PR #{self.pr_number} ({self.state}) -> {self.issue.key}"
+
+
+class IssueAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    issue = models.ForeignKey(
+        Issue,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="attachments",
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploaded_attachments",
+    )
+    filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=120, default="image/png")
+    file = models.FileField(upload_to="issue_attachments/%Y/%m/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "issue_attachments"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.filename} ({self.project.key})"

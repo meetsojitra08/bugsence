@@ -7,11 +7,14 @@ from apps.issues.models import (
     Activity,
     Comment,
     Issue,
+    IssueAttachment,
     IssuePriority,
     IssueSeverity,
+    IssueSource,
     IssueStatus,
     IssueType,
     Label,
+    PullRequestLink,
 )
 
 User = get_user_model()
@@ -43,12 +46,56 @@ class IssueUserSummarySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class IssueSummaryRefSerializer(serializers.ModelSerializer):
+    key = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Issue
+        fields = ("id", "number", "key", "title", "status", "priority")
+        read_only_fields = fields
+
+
+class PullRequestLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PullRequestLink
+        fields = (
+            "id",
+            "pr_number",
+            "title",
+            "url",
+            "branch",
+            "repo_full_name",
+            "state",
+            "ci_status",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class IssueAttachmentSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = IssueAttachment
+        fields = ("id", "filename", "content_type", "url", "created_at")
+        read_only_fields = fields
+
+    def get_url(self, obj: IssueAttachment) -> str:
+        request = self.context.get("request")
+        if obj.file:
+            url = obj.file.url
+            return request.build_absolute_uri(url) if request else url
+        return ""
+
+
 class IssueListSerializer(serializers.ModelSerializer):
     key = serializers.CharField(read_only=True)
     reporter = IssueUserSummarySerializer(read_only=True)
     assignee = IssueUserSummarySerializer(read_only=True)
     labels = LabelSerializer(many=True, read_only=True)
     project_key = serializers.CharField(source="project.key", read_only=True)
+    pull_requests = PullRequestLinkSerializer(many=True, read_only=True)
 
     class Meta:
         model = Issue
@@ -58,15 +105,25 @@ class IssueListSerializer(serializers.ModelSerializer):
             "key",
             "project_key",
             "title",
+            "description",
             "status",
             "priority",
             "severity",
             "type",
+            "source",
             "reporter",
             "assignee",
+            "external_reporter_name",
+            "external_reporter_email",
             "labels",
             "due_date",
             "position",
+            "is_blocking_release",
+            "snoozed_until",
+            "resolved_at",
+            "ai_metadata",
+            "duplicate_of_id",
+            "pull_requests",
             "created_at",
             "updated_at",
         )
@@ -81,6 +138,11 @@ class IssueDetailSerializer(serializers.ModelSerializer):
     project_id = serializers.UUIDField(source="project.id", read_only=True)
     project_key = serializers.CharField(source="project.key", read_only=True)
     project_name = serializers.CharField(source="project.name", read_only=True)
+    duplicate_of = IssueSummaryRefSerializer(read_only=True)
+    parent = IssueSummaryRefSerializer(read_only=True)
+    sub_issues = IssueSummaryRefSerializer(many=True, read_only=True)
+    pull_requests = PullRequestLinkSerializer(many=True, read_only=True)
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Issue
@@ -101,18 +163,38 @@ class IssueDetailSerializer(serializers.ModelSerializer):
             "priority",
             "severity",
             "type",
+            "source",
             "reporter",
             "assignee",
+            "external_reporter_name",
+            "external_reporter_email",
+            "external_ref",
             "labels",
             "due_date",
             "position",
+            "is_blocking_release",
+            "snoozed_until",
+            "resolution_note",
+            "resolved_at",
+            "checklist",
             "ai_summary",
             "ai_metadata",
             "duplicate_of_id",
+            "duplicate_of",
+            "parent_id",
+            "parent",
+            "sub_issues",
+            "pull_requests",
+            "comments_count",
             "created_at",
             "updated_at",
         )
         read_only_fields = fields
+
+    def get_comments_count(self, obj: Issue) -> int:
+        if hasattr(obj, "comments_count"):
+            return obj.comments_count
+        return obj.comments.count()
 
 
 class IssueCreateSerializer(serializers.Serializer):
@@ -129,12 +211,23 @@ class IssueCreateSerializer(serializers.Serializer):
     priority = serializers.ChoiceField(choices=IssuePriority.choices, default=IssuePriority.MEDIUM)
     severity = serializers.ChoiceField(choices=IssueSeverity.choices, default=IssueSeverity.MINOR)
     type = serializers.ChoiceField(choices=IssueType.choices, default=IssueType.BUG)
+    source = serializers.ChoiceField(choices=IssueSource.choices, default=IssueSource.MANUAL)
 
     assignee_id = serializers.UUIDField(required=False, allow_null=True, default=None)
     label_ids = serializers.ListField(
         child=serializers.UUIDField(), required=False, allow_empty=True, default=list
     )
     due_date = serializers.DateField(required=False, allow_null=True, default=None)
+    external_reporter_name = serializers.CharField(
+        max_length=150, required=False, allow_blank=True, default=""
+    )
+    external_reporter_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    is_blocking_release = serializers.BooleanField(required=False, default=False)
+    duplicate_of_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    parent_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    checklist = serializers.ListField(
+        child=serializers.DictField(), required=False, allow_empty=True, default=list
+    )
 
 
 class IssueUpdateSerializer(serializers.Serializer):
@@ -156,6 +249,14 @@ class IssueUpdateSerializer(serializers.Serializer):
     )
     due_date = serializers.DateField(required=False, allow_null=True)
     position = serializers.FloatField(required=False)
+    external_reporter_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    external_reporter_email = serializers.EmailField(required=False, allow_blank=True)
+    is_blocking_release = serializers.BooleanField(required=False)
+    duplicate_of_id = serializers.UUIDField(required=False, allow_null=True)
+    parent_id = serializers.UUIDField(required=False, allow_null=True)
+    checklist = serializers.ListField(child=serializers.DictField(), required=False)
+    resolution_note = serializers.CharField(required=False, allow_blank=True)
+    snoozed_until = serializers.DateTimeField(required=False, allow_null=True)
 
 
 class ActivitySerializer(serializers.ModelSerializer):
@@ -241,3 +342,53 @@ class TimelineItemSerializer(serializers.Serializer):
     is_edited = serializers.BooleanField(default=False)
     edited_at = serializers.DateTimeField(allow_null=True, default=None)
     created_at = serializers.DateTimeField()
+
+
+class IssueInboxTriageSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(
+        choices=["accept", "assign", "merge", "snooze", "reject"],
+        required=True,
+    )
+    assignee_id = serializers.UUIDField(required=False, allow_null=True)
+    priority = serializers.ChoiceField(choices=IssuePriority.choices, required=False)
+    target_issue_id = serializers.UUIDField(required=False, allow_null=True)
+    snooze_hours = serializers.IntegerField(required=False, min_value=1, max_value=720, default=24)
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class IssueResolveSerializer(serializers.Serializer):
+    resolution_note = serializers.CharField(required=False, allow_blank=True, default="")
+    notify_reporter = serializers.BooleanField(required=False, default=True)
+
+
+class ChecklistConvertSerializer(serializers.Serializer):
+    item_id = serializers.CharField(required=True, max_length=64)
+
+
+class IssueBulkActionSerializer(serializers.Serializer):
+    issue_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        min_length=1,
+        max_length=100,
+    )
+    action = serializers.ChoiceField(
+        choices=["assign", "status", "add_label", "archive"],
+        required=True,
+    )
+    assignee_id = serializers.UUIDField(required=False, allow_null=True)
+    status = serializers.ChoiceField(choices=IssueStatus.choices, required=False)
+    label_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class PullRequestCreateSerializer(serializers.Serializer):
+    pr_number = serializers.IntegerField(min_value=1)
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    url = serializers.URLField(max_length=500)
+    branch = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    repo_full_name = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, default=""
+    )
+    state = serializers.ChoiceField(choices=["open", "merged", "closed"], default="open")
+    ci_status = serializers.ChoiceField(
+        choices=["pending", "success", "failure", "unknown"], default="unknown"
+    )

@@ -54,6 +54,7 @@ describe("AI API Client and Hooks", () => {
 
       expect(spy).toHaveBeenCalledWith("/ai/triage/", {
         method: "POST",
+        timeoutMs: 50000,
         body: JSON.stringify({
           project_id: "proj-123",
           raw_text: "Postgres connection pool exhausted under load",
@@ -84,6 +85,7 @@ describe("AI API Client and Hooks", () => {
 
       expect(spy).toHaveBeenCalledWith("/ai/duplicates/", {
         method: "POST",
+        timeoutMs: 50000,
         body: JSON.stringify({
           project_id: "proj-123",
           title: "Connection pool timeouts",
@@ -114,6 +116,7 @@ describe("AI API Client and Hooks", () => {
 
       expect(spy).toHaveBeenCalledWith("/issues/issue-abc/ai/summarize/", {
         method: "POST",
+        timeoutMs: 50000,
         body: JSON.stringify({ regenerate: true }),
       });
       expect(result.tldr).toBe("Issue summarized.");

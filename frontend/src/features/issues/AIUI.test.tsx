@@ -9,7 +9,7 @@ import { aiApi } from "./api/aiApi";
 import * as issuesHooks from "./hooks/useIssues";
 import * as projectsHooks from "@/features/projects/hooks/useProjects";
 
-describe("AI UI Features", () => {
+describe("AI UI Features & Capture Trust Guarantees", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
@@ -25,10 +25,9 @@ describe("AI UI Features", () => {
       data: [
         {
           id: "m-1",
-          project: "proj-1",
           user: { id: "u-1", email: "alice@example.com", full_name: "Alice Engineer" },
           role: "member",
-          joined_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         },
       ],
       isLoading: false,
@@ -51,8 +50,8 @@ describe("AI UI Features", () => {
     );
   };
 
-  describe("CreateIssueModal AI Triage and Duplicate Banner", () => {
-    it("renders AI triage assistant and populates form fields upon auto-fill", async () => {
+  describe("Capture Modal AI Triage, Trust Bugs, and Duplicate Banner", () => {
+    it("auto-fills fields on high confidence without bare percentage or silent assignee selection", async () => {
       const mockTriageResult = {
         title: "Unhandled TypeError in KanbanColumn render",
         type: "bug" as const,
@@ -64,63 +63,103 @@ describe("AI UI Features", () => {
         suggested_labels: ["Frontend"],
         possible_root_cause: "Missing optional chaining on column items",
         confidence: 0.95,
+        missing_info: [],
+        suggested_assignee: {
+          id: "u-1",
+          full_name: "Alice Engineer",
+          email: "alice@example.com",
+          reason: "Resolved related UI crashes",
+        },
         reasoning: "Critical crash on empty boards",
       };
 
       vi.spyOn(aiApi, "triageIssue").mockResolvedValueOnce(mockTriageResult);
 
       renderWithProviders(
-        <CreateIssueModal isOpen={true} onClose={() => {}} projectId="proj-1" />
+        <CreateIssueModal isOpen={true} onClose={() => {}} projectId="proj-1" projectKey="BUG" />
       );
-
-      // Verify AI triage card renders
-      expect(screen.getByTestId("ai-triage-card")).toBeInTheDocument();
-      expect(screen.getByText("AI Smart Triage")).toBeInTheDocument();
 
       const rawInput = screen.getByTestId("ai-triage-raw-input");
       fireEvent.change(rawInput, {
         target: {
-          value:
-            "Uncaught TypeError: Cannot read properties of undefined in KanbanColumn.tsx",
+          value: "Uncaught TypeError: Cannot read properties of undefined in KanbanColumn.tsx",
         },
       });
 
       const autoFillBtn = screen.getByTestId("ai-autofill-button");
       fireEvent.click(autoFillBtn);
 
-      // Verify fields auto-fill
       await waitFor(() => {
-        const titleInput = screen.getByTestId(
-          "create-issue-title-input"
-        ) as HTMLInputElement;
+        const titleInput = screen.getByTestId("create-issue-title-input") as HTMLInputElement;
         expect(titleInput.value).toBe("Unhandled TypeError in KanbanColumn render");
       });
 
-      const prioritySelect = screen.getByTestId(
-        "create-issue-priority-select"
-      ) as HTMLSelectElement;
+      const prioritySelect = screen.getByTestId("create-issue-priority-select") as HTMLSelectElement;
       expect(prioritySelect.value).toBe("urgent");
 
-      // Verify confidence chip
-      expect(screen.getByTestId("ai-confidence-chip")).toHaveTextContent("95% confidence");
+      // Never render bare percentage like "95% confidence"
+      const confidenceChip = screen.getByTestId("ai-confidence-chip");
+      expect(confidenceChip).toHaveTextContent("Fields auto-filled");
+      expect(confidenceChip.textContent).not.toMatch(/\d+%/);
 
-      // Verify root cause hint card
+      // Suggested assignee shown as 1-click suggestion, never silently selected in dropdown
+      const assigneeSelect = screen.getByTestId("create-issue-assignee-select") as HTMLSelectElement;
+      expect(assigneeSelect.value).toBe("");
+      fireEvent.click(screen.getByTestId("apply-suggested-assignee"));
+      expect(assigneeSelect.value).toBe("u-1");
+
+      // Root cause hint renders cleanly
       expect(screen.getByTestId("ai-root-cause-hint")).toBeInTheDocument();
-      expect(
-        screen.getByText("Missing optional chaining on column items")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Missing optional chaining on column items")).toBeInTheDocument();
 
-      // Test Undo button
-      const undoBtn = screen.getByTestId("ai-undo-button");
-      fireEvent.click(undoBtn);
-
-      const titleAfterUndo = screen.getByTestId(
-        "create-issue-title-input"
-      ) as HTMLInputElement;
+      // Undo restores empty draft
+      fireEvent.click(screen.getByTestId("ai-undo-button"));
+      const titleAfterUndo = screen.getByTestId("create-issue-title-input") as HTMLInputElement;
       expect(titleAfterUndo.value).toBe("");
     });
 
-    it("displays duplicate warning banner when similar issues are detected", async () => {
+    it("leaves priority blank and explains missing context when confidence is below 0.6", async () => {
+      vi.spyOn(aiApi, "triageIssue").mockResolvedValueOnce({
+        title: "Login seems broken",
+        type: "bug",
+        priority: "high",
+        severity: "major",
+        steps_to_reproduce: [],
+        expected_behavior: "",
+        actual_behavior: "",
+        suggested_labels: [],
+        possible_root_cause: "",
+        confidence: 0.42,
+        missing_info: ["browser version", "error message"],
+        suggested_assignee: null,
+        reasoning: "Short vague description",
+      });
+
+      renderWithProviders(
+        <CreateIssueModal isOpen={true} onClose={() => {}} projectId="proj-1" projectKey="BUG" />
+      );
+
+      fireEvent.change(screen.getByTestId("ai-triage-raw-input"), {
+        target: { value: "Login broken please check" },
+      });
+      fireEvent.click(screen.getByTestId("ai-autofill-button"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("ai-confidence-chip")).toHaveTextContent("Needs more context:");
+      });
+
+      expect(screen.getByTestId("ai-confidence-chip")).toHaveTextContent(
+        "Add the browser version and error message to improve this."
+      );
+
+      const prioritySelect = screen.getByTestId("create-issue-priority-select") as HTMLSelectElement;
+      expect(prioritySelect.value).toBe("");
+      expect(screen.getByTestId("priority-low-confidence-nudge")).toHaveTextContent(
+        "Pick priority (defaults to Medium)"
+      );
+    });
+
+    it("displays inline duplicate warning banner when similar issues are detected", async () => {
       const mockDuplicates = [
         {
           id: "issue-dup-1",
@@ -130,29 +169,35 @@ describe("AI UI Features", () => {
           status: "in_progress" as const,
           similarity: 0.88,
         },
+        {
+          id: "issue-dup-2",
+          number: 9,
+          key: "PROJ-9",
+          title: "Column undefined on reload",
+          status: "todo" as const,
+          similarity: 0.76,
+        },
       ];
 
       vi.spyOn(aiApi, "findDuplicates").mockResolvedValueOnce(mockDuplicates);
 
       renderWithProviders(
-        <CreateIssueModal isOpen={true} onClose={() => {}} projectId="proj-1" />
+        <CreateIssueModal isOpen={true} onClose={() => {}} projectId="proj-1" projectKey="PROJ" />
       );
 
-      const titleInput = screen.getByTestId("create-issue-title-input");
-      fireEvent.change(titleInput, {
+      fireEvent.change(screen.getByTestId("create-issue-title-input"), {
         target: { value: "Kanban column crash on empty items" },
       });
 
-      // Banner should appear after debounced query
-      expect(await screen.findByTestId("ai-duplicate-banner")).toBeInTheDocument();
-      expect(screen.getByText("1 similar issue found")).toBeInTheDocument();
+      const banner = await screen.findByTestId("ai-duplicate-banner");
+      expect(banner).toHaveTextContent("Looks similar to PROJ-5 (88%)");
+      expect(banner).toHaveTextContent("2 similar issues found");
 
-      // Expand duplicates list
-      const toggleBtn = screen.getByTestId("ai-duplicate-toggle");
-      fireEvent.click(toggleBtn);
-
+      fireEvent.click(screen.getByTestId("ai-duplicate-toggle"));
       expect(await screen.findByTestId("duplicate-item-PROJ-5")).toBeInTheDocument();
-      expect(screen.getByText("88% match")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("duplicate-link-btn"));
+      expect(banner).toHaveTextContent("Linked as duplicate of PROJ-5");
     });
   });
 
@@ -173,26 +218,17 @@ describe("AI UI Features", () => {
         <AISummaryCard issueId="issue-123" initialSummary="Initial fallback summary" />
       );
 
-      // Verify card renders and loads async summary
       expect(await screen.findByText(/Root cause found in missing/)).toBeInTheDocument();
       expect(screen.getByText("Fix PR open and awaiting review")).toBeInTheDocument();
       expect(screen.getByText("• Merge PR #45")).toBeInTheDocument();
       expect(screen.getByText("• Should we backport to v1.2?")).toBeInTheDocument();
 
-      // Toggle collapse
       const toggleBtn = screen.getByTestId("ai-summary-toggle");
       fireEvent.click(toggleBtn);
+      expect(screen.queryByText("Fix PR open and awaiting review")).not.toBeInTheDocument();
 
-      // Content collapsed
-      expect(
-        screen.queryByText("Fix PR open and awaiting review")
-      ).not.toBeInTheDocument();
-
-      // Expand again
       fireEvent.click(toggleBtn);
-      expect(
-        screen.getByText("Fix PR open and awaiting review")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Fix PR open and awaiting review")).toBeInTheDocument();
     });
   });
 });

@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { AuthLayout } from "../components/AuthLayout";
 import { PasswordStrengthMeter } from "../components/PasswordStrengthMeter";
 import { useAuth } from "../hooks/useAuth";
+import { getSafeNextPath, resolvePostAuthDestination } from "../utils/redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,11 +27,13 @@ export function RegisterPage() {
   const { register: registerUser, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const destination =
-    (location.state as { from?: { pathname?: string } })?.from?.pathname || "/dashboard";
+  const safeNext = getSafeNextPath(searchParams);
+  const destination = resolvePostAuthDestination(safeNext, location.state, "/today");
+  const isInviteFlow = Boolean(safeNext?.startsWith("/invite/"));
 
   const {
     register,
@@ -52,7 +55,7 @@ export function RegisterPage() {
     setFormError(null);
     try {
       await registerUser(data);
-      toast.success("Account created successfully! Welcome to BugSense.");
+      toast.success("Account created! Let's set up your first project.");
       navigate(destination, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
@@ -70,11 +73,14 @@ export function RegisterPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Start tracking bugs with Linear speed and Groq intelligence."
+      subtitle="Start capturing and triaging bugs with your team in under a minute."
+      inviteNotice={
+        isInviteFlow ? "Create your account to join the invited project." : null
+      }
+      hideDemoCta={isInviteFlow}
     >
       {!isLoading && isAuthenticated && <Navigate to={destination} replace />}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Form Error Alert */}
         {formError && (
           <div
             role="alert"
@@ -84,13 +90,12 @@ export function RegisterPage() {
           </div>
         )}
 
-        {/* Full Name */}
         <div className="space-y-1.5 text-left">
           <Label htmlFor="fullName">Full Name</Label>
           <Input
             id="fullName"
             type="text"
-            placeholder="Alex Developer"
+            placeholder="Alex Rivera"
             autoComplete="name"
             error={!!errors.fullName}
             {...register("fullName")}
@@ -98,13 +103,12 @@ export function RegisterPage() {
           {errors.fullName && <p className="text-[11px] text-danger">{errors.fullName.message}</p>}
         </div>
 
-        {/* Email */}
         <div className="space-y-1.5 text-left">
           <Label htmlFor="email">Work Email</Label>
           <Input
             id="email"
             type="email"
-            placeholder="alex@company.com"
+            placeholder="alex@company.dev"
             autoComplete="email"
             error={!!errors.email}
             {...register("email")}
@@ -112,7 +116,6 @@ export function RegisterPage() {
           {errors.email && <p className="text-[11px] text-danger">{errors.email.message}</p>}
         </div>
 
-        {/* Password */}
         <div className="space-y-1.5 text-left">
           <Label htmlFor="password">Password</Label>
           <div className="relative">
@@ -136,11 +139,9 @@ export function RegisterPage() {
           </div>
           {errors.password && <p className="text-[11px] text-danger">{errors.password.message}</p>}
 
-          {/* Dynamic Password Strength Meter */}
           <PasswordStrengthMeter password={passwordValue} />
         </div>
 
-        {/* Submit Button */}
         <Button
           type="submit"
           className="mt-2 flex w-full items-center justify-center gap-2"
@@ -154,10 +155,12 @@ export function RegisterPage() {
           Create Account
         </Button>
 
-        {/* Link to Login */}
-        <div className="pt-2 text-center text-xs text-text-muted">
+        <div className="pt-1 text-center text-xs text-text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-accent hover:underline">
+          <Link
+            to={safeNext ? `/login?next=${encodeURIComponent(safeNext)}` : "/login"}
+            className="font-medium text-accent hover:underline"
+          >
             Log in
           </Link>
         </div>

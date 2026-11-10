@@ -1,21 +1,25 @@
 from uuid import UUID
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.projects import selectors, services
-from apps.projects.models import Membership, Project, RoleChoices
+from apps.projects.models import InviteStatus, Membership, Project, ProjectInvite, RoleChoices
 from apps.projects.serializers import (
     MembershipCreateSerializer,
     MembershipSerializer,
     MembershipUpdateSerializer,
     ProjectCreateSerializer,
     ProjectDetailSerializer,
+    ProjectInviteCreateSerializer,
+    ProjectInviteSerializer,
     ProjectListSerializer,
     ProjectUpdateSerializer,
 )
@@ -58,7 +62,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             project = services.create_project(
                 user=request.user,
                 name=serializer.validated_data["name"],
-                key=serializer.validated_data["key"],
+                key=serializer.validated_data.get("key", ""),
                 description=serializer.validated_data.get("description", ""),
             )
         except DjangoValidationError as exc:
@@ -83,15 +87,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if user_role not in [RoleChoices.ADMIN, RoleChoices.OWNER]:
             raise PermissionDenied("Only project admins or owners can update project settings.")
 
-        serializer = self.get_serializer(project, data=request.data, partial=True)
+        serializer = self.get_serializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         try:
             updated = services.update_project(
                 project=project,
-                name=serializer.validated_data.get("name"),
-                description=serializer.validated_data.get("description"),
-                archived=serializer.validated_data.get("archived"),
+                name=data.get("name"),
+                description=data.get("description"),
+                archived=data.get("archived"),
+                default_assignee_id=data.get("default_assignee_id"),
+                has_default_assignee="default_assignee_id" in data,
+                triage_rotation_enabled=data.get("triage_rotation_enabled"),
+                triage_rotation_cadence=data.get("triage_rotation_cadence"),
+                current_triager_id=data.get("current_triager_id"),
+                has_current_triager="current_triager_id" in data,
+                ai_auto_triage=data.get("ai_auto_triage"),
+                ai_confidence_threshold=data.get("ai_confidence_threshold"),
             )
         except DjangoValidationError as exc:
             raise ValidationError(
@@ -343,3 +356,134 @@ class DirectMemberDetailView(viewsets.GenericViewSet):
             ) from exc
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProjectInviteViewSet(viewsets.GenericViewSet):
+    """Manage pending email invites and shareable invite links for a project."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectInviteSerializer
+
+    def _get_project(self, project_id: UUID) -> Project:
+        project = selectors.get_project_for_user(project_id=project_id, user=self.request.user)
+        if not project:
+            raise NotFound("Project not found.")
+        return project
+
+    def list(self, request: Request, project_id: UUID) -> Response:
+        project = self._get_project(project_id)
+        invites = ProjectInvite.objects.filter(
+            project=project,
+            status=InviteStatus.PENDING,
+        ).select_related("invited_by")
+        return Response(ProjectInviteSerializer(invites, many=True).data)
+
+    def create(self, request: Request, project_id: UUID) -> Response:
+        project = self._get_project(project_id)
+        user_role = selectors.get_user_role_in_project(project_id=project.id, user=request.user)
+        if user_role not in [RoleChoices.ADMIN, RoleChoices.OWNER]:
+            raise PermissionDenied("Only project owners or admins can send invites.")
+
+        serializer = ProjectInviteCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        requested_role = serializer.validated_data["role"]
+        if requested_role == RoleChoices.OWNER and user_role != RoleChoices.OWNER:
+            raise PermissionDenied("Only a project owner can invite another owner.")
+
+        origin = request.META.get("HTTP_ORIGIN", "")
+        try:
+            invite = services.create_project_invite(
+                project=project,
+                invited_by=request.user,
+                email=serializer.validated_data.get("email", ""),
+                role=requested_role,
+                invite_url_base=origin,
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+
+        return Response(ProjectInviteSerializer(invite).data, status=status.HTTP_201_CREATED)
+
+    def resend(self, request: Request, project_id: UUID, pk: UUID) -> Response:
+        project = self._get_project(project_id)
+        user_role = selectors.get_user_role_in_project(project_id=project.id, user=request.user)
+        if user_role not in [RoleChoices.ADMIN, RoleChoices.OWNER]:
+            raise PermissionDenied("Only project owners or admins can resend invites.")
+
+        invite = ProjectInvite.objects.filter(id=pk, project=project).first()
+        if not invite:
+            raise NotFound("Invite not found.")
+
+        origin = request.META.get("HTTP_ORIGIN", "")
+        try:
+            updated = services.resend_project_invite(invite=invite, invite_url_base=origin)
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+        return Response(ProjectInviteSerializer(updated).data)
+
+    def destroy(self, request: Request, project_id: UUID, pk: UUID) -> Response:
+        project = self._get_project(project_id)
+        user_role = selectors.get_user_role_in_project(project_id=project.id, user=request.user)
+        if user_role not in [RoleChoices.ADMIN, RoleChoices.OWNER]:
+            raise PermissionDenied("Only project owners or admins can revoke invites.")
+
+        invite = ProjectInvite.objects.filter(id=pk, project=project).first()
+        if not invite:
+            raise NotFound("Invite not found.")
+
+        services.revoke_project_invite(invite=invite)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PublicInviteDetailView(APIView):
+    """Public metadata for an invite link so unauthenticated visitors see project & role."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request, token: str) -> Response:
+        invite = (
+            ProjectInvite.objects.select_related("project", "invited_by")
+            .filter(token=token)
+            .first()
+        )
+        if not invite:
+            raise NotFound("Invite link not found.")
+        expired = bool(invite.expires_at and invite.expires_at < timezone.now())
+        return Response(
+            {
+                "project_name": invite.project.name,
+                "project_key": invite.project.key,
+                "email": invite.email,
+                "role": invite.role,
+                "status": "expired" if expired else invite.status,
+                "invited_by": (
+                    invite.invited_by.display_name if invite.invited_by else "A teammate"
+                ),
+            }
+        )
+
+
+class AcceptInviteView(APIView):
+    """Accepts a project invite link for the currently authenticated user."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, token: str) -> Response:
+        try:
+            membership = services.accept_project_invite(token=token, user=request.user)
+        except DjangoValidationError as exc:
+            raise ValidationError(
+                exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+            ) from exc
+        return Response(
+            {
+                "project_id": str(membership.project_id),
+                "project_key": membership.project.key,
+                "project_name": membership.project.name,
+                "role": membership.role,
+            }
+        )

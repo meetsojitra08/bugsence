@@ -140,7 +140,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
     Accept: "application/json",
   };
 
-  if (customConfig.body) {
+  if (customConfig.body && !(customConfig.body instanceof FormData)) {
     defaultHeaders["Content-Type"] = "application/json";
   }
 

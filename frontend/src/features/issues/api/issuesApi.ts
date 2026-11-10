@@ -1,9 +1,12 @@
 import { apiRequest } from "@/lib/apiClient";
 import type {
   BoardData,
+  BulkIssueActionPayload,
+  ChangelogEntry,
   Comment,
   CreateCommentPayload,
   CreateIssuePayload,
+  InboxTriagePayload,
   IssueActivity,
   IssueDetail,
   IssueFilters,
@@ -11,6 +14,7 @@ import type {
   Label,
   MoveIssuePayload,
   PaginatedIssues,
+  PullRequestLink,
   TimelineItem,
   UpdateCommentPayload,
   UpdateIssuePayload,
@@ -135,5 +139,89 @@ export const issuesApi = {
 
   async getTimelineByNumber(projectIdentifier: string, number: number): Promise<TimelineItem[]> {
     return apiRequest<TimelineItem[]>(`/projects/${projectIdentifier}/issues/${number}/activity/`);
+  },
+
+  async listInbox(projectId: string, includeSnoozed = false): Promise<IssueListItem[]> {
+    const q = includeSnoozed ? "?include_snoozed=true" : "";
+    return apiRequest<IssueListItem[]>(`/projects/${projectId}/inbox/${q}`);
+  },
+
+  async triageInbox(issueId: string, payload: InboxTriagePayload): Promise<IssueDetail> {
+    return apiRequest<IssueDetail>(`/issues/${issueId}/triage/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resolve(
+    issueId: string,
+    payload: { resolution_note: string; notify_reporter?: boolean }
+  ): Promise<IssueDetail> {
+    return apiRequest<IssueDetail>(`/issues/${issueId}/resolve/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async convertChecklistItem(
+    issueId: string,
+    itemId: string
+  ): Promise<{ parent: IssueDetail; sub_issue: IssueDetail }> {
+    return apiRequest<{ parent: IssueDetail; sub_issue: IssueDetail }>(
+      `/issues/${issueId}/checklist/convert/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ item_id: itemId }),
+      }
+    );
+  },
+
+  async bulkAction(
+    projectId: string,
+    payload: BulkIssueActionPayload
+  ): Promise<{ updated_count: number }> {
+    return apiRequest<{ updated_count: number }>(`/projects/${projectId}/issues/bulk/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async linkPullRequest(
+    issueId: string,
+    payload: {
+      pr_number: number;
+      title?: string;
+      url: string;
+      branch?: string;
+      repo_full_name?: string;
+      state?: "open" | "merged" | "closed";
+      ci_status?: "pending" | "success" | "failure" | "unknown";
+    }
+  ): Promise<PullRequestLink> {
+    return apiRequest<PullRequestLink>(`/issues/${issueId}/pull-requests/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async listChangelog(projectId: string): Promise<ChangelogEntry[]> {
+    return apiRequest<ChangelogEntry[]>(`/projects/${projectId}/changelog/`);
+  },
+
+  async uploadAttachment(
+    projectId: string,
+    file: File,
+    issueId?: string
+  ): Promise<{ id: string; filename: string; url: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (issueId) formData.append("issue_id", issueId);
+    return apiRequest<{ id: string; filename: string; url: string }>(
+      `/projects/${projectId}/attachments/`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
   },
 };

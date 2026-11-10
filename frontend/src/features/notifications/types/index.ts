@@ -4,7 +4,10 @@ export type NotificationKind =
   | "mention"
   | "status_changed"
   | "comment_created"
-  | "comment";
+  | "comment"
+  | "inbox_arrival"
+  | "pr_status"
+  | "resolved";
 
 export interface NotificationActor {
   id: string;

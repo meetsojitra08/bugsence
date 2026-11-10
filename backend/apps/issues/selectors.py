@@ -23,11 +23,14 @@ def get_project_issues(
     search: str | None = None,
     ordering: str | None = None,
     overdue: bool = False,
+    exclude_inbox: bool = False,
+    recently_closed: bool = False,
+    blocking: bool = False,
 ) -> QuerySet[Issue]:
     """
     Returns active issues for a project if the requesting user is a member.
     Supports filtering by status, priority, severity, type, assignee, label,
-    search query, and ordering.
+    search query, saved views, and ordering.
     """
     # Enforce project membership isolation
     project = get_project_for_user(project_id=project_id, user=user)
@@ -36,9 +39,20 @@ def get_project_issues(
 
     qs = (
         Issue.objects.filter(project_id=project_id)
-        .select_related("project", "reporter", "assignee", "duplicate_of")
-        .prefetch_related("labels")
+        .select_related("project", "reporter", "assignee", "duplicate_of", "parent")
+        .prefetch_related("labels", "pull_requests", "sub_issues")
     )
+
+    if exclude_inbox and not status:
+        qs = qs.exclude(status=IssueStatus.INBOX)
+
+    if recently_closed:
+        qs = qs.filter(status__in=[IssueStatus.DONE, IssueStatus.CLOSED])
+        if not ordering:
+            ordering = "-updated_at"
+
+    if blocking:
+        qs = qs.filter(is_blocking_release=True)
 
     if status:
         statuses = [s.strip() for s in status.split(",") if s.strip()]
@@ -119,10 +133,32 @@ def get_issue_for_user(*, issue_id: UUID, user: User) -> Issue | None:
             id=issue_id,
             project__memberships__user=user,
         )
-        .select_related("project", "reporter", "assignee", "duplicate_of")
-        .prefetch_related("labels")
+        .select_related("project", "reporter", "assignee", "duplicate_of", "parent")
+        .prefetch_related("labels", "pull_requests", "sub_issues")
         .first()
     )
+
+
+def get_project_inbox_issues(
+    *,
+    project_id: UUID,
+    user: User,
+    include_snoozed: bool = False,
+) -> QuerySet[Issue]:
+    """Returns untriaged Inbox issues for a project."""
+    project = get_project_for_user(project_id=project_id, user=user)
+    if not project:
+        return Issue.objects.none()
+
+    qs = (
+        Issue.objects.filter(project_id=project_id, status=IssueStatus.INBOX)
+        .select_related("project", "reporter", "assignee", "duplicate_of", "parent")
+        .prefetch_related("labels", "pull_requests")
+    )
+    if not include_snoozed:
+        now = timezone.now()
+        qs = qs.filter(Q(snoozed_until__isnull=True) | Q(snoozed_until__lte=now))
+    return qs.order_by("-created_at")
 
 
 def get_project_labels(*, project_id: UUID, user: User) -> QuerySet[Label]:
@@ -168,8 +204,9 @@ def get_project_board_issues(
 
     qs = (
         Issue.objects.filter(project_id=project_id)
-        .select_related("project", "reporter", "assignee", "duplicate_of")
-        .prefetch_related("labels")
+        .exclude(status=IssueStatus.INBOX)
+        .select_related("project", "reporter", "assignee", "duplicate_of", "parent")
+        .prefetch_related("labels", "pull_requests")
     )
 
     if priority:
@@ -198,7 +235,15 @@ def get_project_board_issues(
 
     qs = qs.order_by("position", "created_at")
 
-    board: dict[str, list[Issue]] = {status_choice[0]: [] for status_choice in IssueStatus.choices}
+    board_statuses = [
+        IssueStatus.BACKLOG,
+        IssueStatus.TODO,
+        IssueStatus.IN_PROGRESS,
+        IssueStatus.IN_REVIEW,
+        IssueStatus.DONE,
+        IssueStatus.CLOSED,
+    ]
+    board: dict[str, list[Issue]] = {s: [] for s in board_statuses}
     for item in qs:
         if item.status in board:
             board[item.status].append(item)

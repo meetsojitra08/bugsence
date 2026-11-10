@@ -1,6 +1,7 @@
 import logging
 import re
-from datetime import date
+import uuid
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -15,9 +16,18 @@ from apps.issues.models import (
     Issue,
     IssuePriority,
     IssueSeverity,
+    IssueSource,
     IssueStatus,
     IssueType,
     Label,
+    PullRequestLink,
+)
+from apps.issues.notifications_dispatch import (
+    notify_inbox_arrival,
+    notify_issue_resolved,
+    send_email_safely,
+    send_slack_message_safely,
+    user_wants_channel,
 )
 from apps.notifications.models import Notification, NotificationKind
 from apps.projects.models import Membership, Project
@@ -74,16 +84,67 @@ def create_issue(
     priority: str = IssuePriority.MEDIUM,
     severity: str = IssueSeverity.MINOR,
     type: str = IssueType.BUG,
+    source: str = IssueSource.MANUAL,
     assignee: User | None = None,
     labels: list[Label] | None = None,
     due_date: date | None = None,
     position: float | None = None,
+    external_reporter_name: str = "",
+    external_reporter_email: str = "",
+    external_ref: str = "",
+    is_blocking_release: bool = False,
+    duplicate_of: Issue | None = None,
+    parent: Issue | None = None,
+    checklist: list[dict] | None = None,
+    ai_metadata: dict[str, Any] | None = None,
 ) -> Issue:
     """
     Creates a new issue in the project inside an atomic transaction.
     Allocates issue number, computes initial board position, attaches labels,
     and records an activity log entry.
     """
+    cleaned_title = title.strip()
+    cleaned_desc = description.strip()
+
+    meta = dict(ai_metadata or {})
+    if status == IssueStatus.INBOX:
+        if "possible_duplicates" not in meta:
+            from apps.ai.services.duplicates import find_duplicate_issues
+
+            dups = find_duplicate_issues(
+                project=project,
+                title=cleaned_title,
+                description=cleaned_desc,
+                threshold=0.55,
+                limit=3,
+                user=reporter,
+            )
+            if dups:
+                meta["possible_duplicates"] = dups
+        if "suggested_assignee" not in meta:
+            from apps.ai.services.fallback import suggest_assignee_for_report
+
+            suggested = suggest_assignee_for_report(
+                project=project,
+                raw_text=cleaned_desc,
+                title=cleaned_title,
+            )
+            if suggested:
+                meta["suggested_assignee"] = suggested
+
+    normalized_checklist = []
+    for item in checklist or []:
+        if isinstance(item, dict) and item.get("text"):
+            normalized_checklist.append(
+                {
+                    "id": str(item.get("id") or uuid.uuid4()),
+                    "text": str(item["text"]).strip(),
+                    "done": bool(item.get("done", False)),
+                    "sub_issue_id": item.get("sub_issue_id"),
+                    "sub_issue_key": item.get("sub_issue_key"),
+                }
+            )
+
     with transaction.atomic():
         number = allocate_next_issue_number(project)
 
@@ -100,8 +161,8 @@ def create_issue(
         issue = Issue.objects.create(
             project=project,
             number=number,
-            title=title.strip(),
-            description=description.strip(),
+            title=cleaned_title,
+            description=cleaned_desc,
             steps_to_reproduce=steps_to_reproduce.strip(),
             expected=expected.strip(),
             actual=actual.strip(),
@@ -110,10 +171,19 @@ def create_issue(
             priority=priority,
             severity=severity,
             type=type,
+            source=source,
             reporter=reporter,
             assignee=assignee,
             due_date=due_date,
             position=position,
+            external_reporter_name=external_reporter_name.strip(),
+            external_reporter_email=external_reporter_email.strip().lower(),
+            external_ref=external_ref.strip(),
+            is_blocking_release=is_blocking_release,
+            duplicate_of=duplicate_of,
+            parent=parent,
+            checklist=normalized_checklist,
+            ai_metadata=meta,
         )
 
         if labels:
@@ -127,15 +197,36 @@ def create_issue(
             new_value=issue.title,
         )
 
+        if status == IssueStatus.INBOX:
+            notify_inbox_arrival(
+                issue=issue,
+                actor=reporter if source == IssueSource.MANUAL else None,
+            )
+
         if assignee and assignee != reporter:
             actor_name = reporter.full_name or reporter.email
-            Notification.objects.create(
-                recipient=assignee,
-                actor=reporter,
-                issue=issue,
-                kind=NotificationKind.ASSIGNED,
-                title=f"{actor_name} assigned you to {issue.key}",
-                message=issue.title,
+            if user_wants_channel(assignee, "assigned", "in_app"):
+                Notification.objects.create(
+                    recipient=assignee,
+                    actor=reporter,
+                    issue=issue,
+                    kind=NotificationKind.ASSIGNED,
+                    title=f"{actor_name} assigned you to {issue.key}",
+                    message=issue.title,
+                )
+            if user_wants_channel(assignee, "assigned", "email"):
+                send_email_safely(
+                    to_email=assignee.email,
+                    subject=f"[{project.key}] Assigned to you: {issue.key}",
+                    body=f"{actor_name} assigned you to {issue.key}: {issue.title}",
+                )
+            send_slack_message_safely(
+                project=project,
+                event_key="assigned",
+                text=(
+                    f":bust_in_silhouette: *[{issue.key}]* {issue.title} "
+                    f"assigned to {assignee.display_name}"
+                ),
             )
 
     return issue
@@ -165,6 +256,14 @@ def update_issue(
         "assignee",
         "due_date",
         "position",
+        "external_reporter_name",
+        "external_reporter_email",
+        "is_blocking_release",
+        "duplicate_of",
+        "parent",
+        "checklist",
+        "resolution_note",
+        "snoozed_until",
     ]
 
     update_fields = ["updated_at"]
@@ -226,6 +325,10 @@ def update_issue(
             )
 
         if len(update_fields) > 1:
+            if "status" in kwargs and issue.status in (IssueStatus.DONE, IssueStatus.CLOSED):
+                if issue.resolved_at is None:
+                    issue.resolved_at = timezone.now()
+                    update_fields.append("resolved_at")
             issue.save(update_fields=update_fields)
 
         if activities_to_create:
@@ -241,15 +344,30 @@ def update_issue(
             and issue.assignee != old_assignee
             and issue.assignee != actor
         ):
-            notifs_to_create.append(
-                Notification(
-                    recipient=issue.assignee,
-                    actor=actor,
-                    issue=issue,
-                    kind=NotificationKind.ASSIGNED,
-                    title=f"{actor_name} assigned you to {issue.key}",
-                    message=issue.title,
+            if user_wants_channel(issue.assignee, "assigned", "in_app"):
+                notifs_to_create.append(
+                    Notification(
+                        recipient=issue.assignee,
+                        actor=actor,
+                        issue=issue,
+                        kind=NotificationKind.ASSIGNED,
+                        title=f"{actor_name} assigned you to {issue.key}",
+                        message=issue.title,
+                    )
                 )
+            if user_wants_channel(issue.assignee, "assigned", "email"):
+                send_email_safely(
+                    to_email=issue.assignee.email,
+                    subject=f"[{issue.project.key}] Assigned to you: {issue.key}",
+                    body=f"{actor_name} assigned you to {issue.key}: {issue.title}",
+                )
+            send_slack_message_safely(
+                project=issue.project,
+                event_key="assigned",
+                text=(
+                    f":bust_in_silhouette: *[{issue.key}]* {issue.title} "
+                    f"assigned to {issue.assignee.display_name}"
+                ),
             )
 
         if "status" in kwargs and issue.status != old_status:
@@ -662,3 +780,304 @@ def delete_comment(
     Deletes a comment.
     """
     comment.delete()
+
+
+def triage_inbox_issue(
+    *,
+    issue: Issue,
+    actor: User,
+    action: str,
+    assignee: User | None = None,
+    priority: str | None = None,
+    target_issue: Issue | None = None,
+    snooze_hours: int = 24,
+    reason: str = "",
+) -> Issue:
+    """Executes one-click Inbox triage actions."""
+    with transaction.atomic():
+        if action == "accept":
+            kwargs: dict[str, Any] = {"status": IssueStatus.TODO, "snoozed_until": None}
+            if assignee is not None:
+                kwargs["assignee"] = assignee
+            if priority:
+                kwargs["priority"] = priority
+            update_issue(issue=issue, actor=actor, **kwargs)
+
+        elif action == "assign":
+            if assignee is None:
+                raise ValidationError({"assignee_id": "Select a team member to assign."})
+            kwargs = {"status": IssueStatus.TODO, "assignee": assignee, "snoozed_until": None}
+            if priority:
+                kwargs["priority"] = priority
+            update_issue(issue=issue, actor=actor, **kwargs)
+
+        elif action == "merge":
+            if target_issue is None or target_issue.id == issue.id:
+                raise ValidationError(
+                    {"target_issue_id": "Choose a different issue to merge into."}
+                )
+            if target_issue.project_id != issue.project_id:
+                raise ValidationError(
+                    {"target_issue_id": "Target issue must belong to the same project."}
+                )
+
+            issue.duplicate_of = target_issue
+            issue.status = IssueStatus.CLOSED
+            issue.resolution_note = f"Merged as duplicate of {target_issue.key}"
+            issue.resolved_at = timezone.now()
+            issue.snoozed_until = None
+            issue.save(
+                update_fields=[
+                    "duplicate_of",
+                    "status",
+                    "resolution_note",
+                    "resolved_at",
+                    "snoozed_until",
+                    "updated_at",
+                ]
+            )
+            log_activity(
+                project=issue.project,
+                issue=issue,
+                actor=actor,
+                verb="merged",
+                field="duplicate_of",
+                new_value=target_issue.key,
+            )
+            log_activity(
+                project=issue.project,
+                issue=target_issue,
+                actor=actor,
+                verb="merged_report",
+                new_value=f"{issue.key}: {issue.title}",
+            )
+
+        elif action == "snooze":
+            until = timezone.now() + timedelta(hours=snooze_hours)
+            issue.snoozed_until = until
+            issue.save(update_fields=["snoozed_until", "updated_at"])
+            log_activity(
+                project=issue.project,
+                issue=issue,
+                actor=actor,
+                verb="snoozed",
+                new_value=f"{snooze_hours}h",
+            )
+
+        elif action == "reject":
+            note = reason.strip() or "Won't fix"
+            issue.status = IssueStatus.CLOSED
+            issue.resolution_note = note
+            issue.resolved_at = timezone.now()
+            issue.snoozed_until = None
+            issue.save(
+                update_fields=[
+                    "status",
+                    "resolution_note",
+                    "resolved_at",
+                    "snoozed_until",
+                    "updated_at",
+                ]
+            )
+            log_activity(
+                project=issue.project,
+                issue=issue,
+                actor=actor,
+                verb="rejected",
+                field="status",
+                old_value=IssueStatus.INBOX,
+                new_value=IssueStatus.CLOSED,
+            )
+            if issue.external_reporter_email:
+                send_email_safely(
+                    to_email=issue.external_reporter_email,
+                    subject=f"[{issue.key}] Closed: {issue.title}",
+                    body=(
+                        f"Your report ({issue.key}: {issue.title}) "
+                        f"was reviewed and closed: {note}"
+                    ),
+                )
+
+    return issue
+
+
+def resolve_issue(
+    *,
+    issue: Issue,
+    actor: User,
+    resolution_note: str = "",
+    notify_reporter: bool = True,
+) -> Issue:
+    """Marks an issue Done with a 'What fixed it?' note and notifies the reporter."""
+    cleaned_note = resolution_note.strip()
+    old_status = issue.status
+    with transaction.atomic():
+        issue.status = IssueStatus.DONE
+        issue.resolution_note = cleaned_note
+        issue.resolved_at = timezone.now()
+        issue.save(update_fields=["status", "resolution_note", "resolved_at", "updated_at"])
+
+        log_activity(
+            project=issue.project,
+            issue=issue,
+            actor=actor,
+            verb="resolved",
+            field="status",
+            old_value=old_status,
+            new_value=cleaned_note or IssueStatus.DONE,
+        )
+
+        if notify_reporter:
+            notify_issue_resolved(issue=issue, actor=actor, resolution_note=cleaned_note)
+
+    return issue
+
+
+def convert_checklist_item_to_sub_issue(
+    *,
+    issue: Issue,
+    item_id: str,
+    actor: User,
+) -> tuple[Issue, Issue]:
+    """Converts a checklist item on an issue into a tracked sub-issue."""
+    checklist = list(issue.checklist or [])
+    target_item = next((it for it in checklist if str(it.get("id")) == str(item_id)), None)
+    if not target_item:
+        raise ValidationError({"item_id": "Checklist item not found."})
+
+    if target_item.get("sub_issue_id"):
+        existing = Issue.objects.filter(id=target_item["sub_issue_id"]).first()
+        if existing:
+            return issue, existing
+
+    sub_issue = create_issue(
+        project=issue.project,
+        reporter=actor,
+        title=str(target_item.get("text", "")).strip()[:255] or f"Sub-task of {issue.key}",
+        status=IssueStatus.TODO,
+        priority=issue.priority,
+        severity=issue.severity,
+        type=IssueType.TASK,
+        parent=issue,
+    )
+    target_item["sub_issue_id"] = str(sub_issue.id)
+    target_item["sub_issue_key"] = sub_issue.key
+    issue.checklist = checklist
+    issue.save(update_fields=["checklist", "updated_at"])
+    return issue, sub_issue
+
+
+def bulk_update_issues(
+    *,
+    project: Project,
+    actor: User,
+    issue_ids: list[UUID],
+    action: str,
+    assignee: User | None = None,
+    status_val: str | None = None,
+    label: Label | None = None,
+) -> int:
+    """Applies bulk assign, status, label, or archive actions to project issues."""
+    issues = list(Issue.objects.filter(project=project, id__in=issue_ids))
+    if not issues:
+        return 0
+
+    with transaction.atomic():
+        for issue in issues:
+            if action == "assign":
+                update_issue(issue=issue, actor=actor, assignee=assignee)
+            elif action == "status" and status_val:
+                update_issue(issue=issue, actor=actor, status=status_val)
+            elif action == "add_label" and label:
+                issue.labels.add(label)
+                log_activity(
+                    project=project,
+                    issue=issue,
+                    actor=actor,
+                    verb="updated",
+                    field="labels",
+                    new_value=label.name,
+                )
+            elif action == "archive":
+                delete_issue(issue=issue, actor=actor, soft_delete=True)
+    return len(issues)
+
+
+def link_pull_request(
+    *,
+    issue: Issue,
+    pr_number: int,
+    url: str,
+    title: str = "",
+    branch: str = "",
+    repo_full_name: str = "",
+    state: str = "open",
+    ci_status: str = "unknown",
+    actor: User | None = None,
+    auto_transition: bool = True,
+) -> PullRequestLink:
+    """Links or updates a GitHub PR on an issue and updates workflow status."""
+    with transaction.atomic():
+        pr_link, created = PullRequestLink.objects.update_or_create(
+            issue=issue,
+            url=url.strip(),
+            defaults={
+                "pr_number": pr_number,
+                "title": title.strip()[:255],
+                "branch": branch.strip()[:255],
+                "repo_full_name": repo_full_name.strip()[:255],
+                "state": state,
+                "ci_status": ci_status,
+            },
+        )
+
+        if created:
+            log_activity(
+                project=issue.project,
+                issue=issue,
+                actor=actor,
+                verb="pr_linked",
+                field="pull_request",
+                new_value=f"PR #{pr_number}",
+            )
+
+        if auto_transition:
+            if state == "open" and issue.status in (
+                IssueStatus.INBOX,
+                IssueStatus.BACKLOG,
+                IssueStatus.TODO,
+                IssueStatus.IN_PROGRESS,
+            ):
+                old_s = issue.status
+                issue.status = IssueStatus.IN_REVIEW
+                issue.save(update_fields=["status", "updated_at"])
+                log_activity(
+                    project=issue.project,
+                    issue=issue,
+                    actor=actor,
+                    verb="status_changed",
+                    field="status",
+                    old_value=old_s,
+                    new_value=IssueStatus.IN_REVIEW,
+                )
+                recipients = {u for u in (issue.reporter, issue.assignee) if u}
+                for r in recipients:
+                    if user_wants_channel(r, "pr_status", "in_app"):
+                        Notification.objects.create(
+                            recipient=r,
+                            actor=actor,
+                            issue=issue,
+                            kind=NotificationKind.PR_STATUS,
+                            title=f"PR #{pr_number} opened for {issue.key}",
+                            message=title or url,
+                        )
+            elif state == "merged" and issue.status not in (IssueStatus.DONE, IssueStatus.CLOSED):
+                note = issue.resolution_note or f"Fixed in PR #{pr_number}: {title or branch}"
+                resolve_issue(
+                    issue=issue,
+                    actor=actor or issue.assignee or issue.reporter,
+                    resolution_note=note,
+                    notify_reporter=True,
+                )
+
+    return pr_link

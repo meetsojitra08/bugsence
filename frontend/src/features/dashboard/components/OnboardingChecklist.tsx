@@ -19,7 +19,7 @@ export function OnboardingChecklist({ project, totalIssues }: OnboardingChecklis
   const steps = [
     {
       id: "project",
-      label: "Create a project workspace",
+      label: "Create a project",
       done: Boolean(project),
       action: () => {},
     },
@@ -31,13 +31,13 @@ export function OnboardingChecklist({ project, totalIssues }: OnboardingChecklis
     },
     {
       id: "ai",
-      label: "Test Groq AI Triage assistant (⌘J)",
+      label: "Run AI triage on a bug report (C)",
       done: totalIssues > 2,
-      action: () => navigate("/issues"),
+      action: () => navigate("/inbox"),
     },
     {
       id: "members",
-      label: "Invite engineering team members",
+      label: "Invite engineering members",
       done: (project?.members_count || 1) > 1,
       action: () => navigate("/settings/members"),
     },
@@ -62,7 +62,7 @@ export function OnboardingChecklist({ project, totalIssues }: OnboardingChecklis
             <Sparkles className="h-3.5 w-3.5" />
           </div>
           <div>
-            <h3 className="text-[13px] font-semibold text-text">Workspace Setup Guide</h3>
+            <h3 className="text-[13px] font-semibold text-text">Project Setup Guide</h3>
             <p className="text-[11px] text-text-muted">
               {completedCount} of {steps.length} complete · {progressPct}%
             </p>

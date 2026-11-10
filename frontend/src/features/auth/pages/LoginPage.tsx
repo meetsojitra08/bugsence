@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { toast } from "sonner";
 
 import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../hooks/useAuth";
+import { getSafeNextPath, resolvePostAuthDestination } from "../utils/redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,11 +25,13 @@ export function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const destination =
-    (location.state as { from?: { pathname?: string } })?.from?.pathname || "/dashboard";
+  const safeNext = getSafeNextPath(searchParams);
+  const destination = resolvePostAuthDestination(safeNext, location.state, "/today");
+  const isInviteFlow = Boolean(safeNext?.startsWith("/invite/"));
 
   const {
     register,
@@ -46,7 +49,7 @@ export function LoginPage() {
     setFormError(null);
     try {
       await login(data);
-      toast.success("Welcome back to BugSense AI!");
+      toast.success("Signed in to BugSense.");
       navigate(destination, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
@@ -60,11 +63,14 @@ export function LoginPage() {
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Sign in to your BugSense workspace."
+      subtitle="Sign in to open your project inbox, board, and assigned work."
+      inviteNotice={
+        isInviteFlow ? "Sign in to your account to accept the project invitation." : null
+      }
+      hideDemoCta={isInviteFlow}
     >
       {!isLoading && isAuthenticated && <Navigate to={destination} replace />}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Generic Form Error Alert */}
         {formError && (
           <div
             role="alert"
@@ -74,13 +80,12 @@ export function LoginPage() {
           </div>
         )}
 
-        {/* Email Field */}
         <div className="space-y-1.5 text-left">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
-            placeholder="developer@example.com"
+            placeholder="you@company.dev"
             autoComplete="email"
             error={!!errors.email}
             {...register("email")}
@@ -88,16 +93,13 @@ export function LoginPage() {
           {errors.email && <p className="text-[11px] text-danger">{errors.email.message}</p>}
         </div>
 
-        {/* Password Field */}
         <div className="space-y-1.5 text-left">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-          </div>
+          <Label htmlFor="password">Password</Label>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               autoComplete="current-password"
               className="pr-9"
               error={!!errors.password}
@@ -115,7 +117,6 @@ export function LoginPage() {
           {errors.password && <p className="text-[11px] text-danger">{errors.password.message}</p>}
         </div>
 
-        {/* Submit Button */}
         <Button
           type="submit"
           className="mt-2 flex w-full items-center justify-center gap-2"
@@ -129,10 +130,12 @@ export function LoginPage() {
           Sign In
         </Button>
 
-        {/* Link to Register */}
-        <div className="pt-2 text-center text-xs text-text-muted">
+        <div className="pt-1 text-center text-xs text-text-muted">
           Don&apos;t have an account?{" "}
-          <Link to="/register" className="font-medium text-accent hover:underline">
+          <Link
+            to={safeNext ? `/register?next=${encodeURIComponent(safeNext)}` : "/register"}
+            className="font-medium text-accent hover:underline"
+          >
             Sign up
           </Link>
         </div>

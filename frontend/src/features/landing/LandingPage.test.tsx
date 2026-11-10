@@ -1,18 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LandingPage } from "./LandingPage";
 import * as authHook from "@/features/auth/hooks/useAuth";
 
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 describe("LandingPage Component", () => {
   let queryClient: QueryClient;
+  const mockStartDemo = vi.fn();
 
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
     vi.clearAllMocks();
+    mockStartDemo.mockResolvedValue({ id: "demo-1", key: "DEMO", name: "Acme Checkout" });
 
     vi.spyOn(authHook, "useAuth").mockReturnValue({
       user: null,
@@ -20,6 +31,7 @@ describe("LandingPage Component", () => {
       isLoading: false,
       login: vi.fn(),
       register: vi.fn(),
+      startDemo: mockStartDemo,
       logout: vi.fn(),
       updateUser: vi.fn(),
     });
@@ -35,60 +47,50 @@ describe("LandingPage Component", () => {
     );
   };
 
-  it("renders the hero headline, subhead and calls to action", () => {
+  it("renders the redesigned hero headline and demo CTA", () => {
     renderLanding();
 
     const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent(/turn bug reports/i);
-    expect(heading).toHaveTextContent(/find the next clear step/i);
-    expect(screen.getByRole("button", { name: /get started/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /explore product features/i })).toBeInTheDocument();
+    expect(heading).toHaveTextContent("Messy bug report in. Clear ticket out.");
+    expect(screen.getAllByRole("button", { name: /try the demo workspace/i }).length).toBeGreaterThanOrEqual(
+      1
+    );
+    expect(screen.getByRole("link", { name: /sign in to existing project/i })).toBeInTheDocument();
   });
 
-  it("renders the core feature grid", () => {
+  it("renders the interactive 3-stage demo and switches stages on tab click", () => {
     renderLanding();
 
-    expect(screen.getByText("Turn rough reports into clear issues")).toBeInTheDocument();
-    expect(screen.getByText("Spot similar reports early")).toBeInTheDocument();
-    expect(screen.getByText("A board that shows the next step")).toBeInTheDocument();
-    expect(screen.getByText("Understand project health at a glance")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /1\. Paste/i })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("tab", { name: /2\. Triaged/i }));
+    expect(screen.getByRole("tab", { name: /2\. Triaged/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByText(/Drafted from report/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /3\. Assigned/i }));
+    expect(screen.getByText(/Accepted to Todo/i)).toBeInTheDocument();
   });
 
-  it("toggles FAQ disclosure state and hides the panel from assistive tech when closed", () => {
+  it("renders the before/after comparison and the 3 core benefits", () => {
     renderLanding();
 
-    expect(screen.getByTestId("faq-accordion")).toBeInTheDocument();
-    const faqToggle1 = screen.getByTestId("faq-toggle-1");
-    const panel = document.getElementById("faq-panel-1");
-
-    expect(faqToggle1).toHaveAttribute("aria-expanded", "false");
-    expect(panel).toHaveAttribute("aria-hidden", "true");
-
-    fireEvent.click(faqToggle1);
-
-    expect(faqToggle1).toHaveAttribute("aria-expanded", "true");
-    expect(panel).toHaveAttribute("aria-hidden", "false");
-    expect(screen.getByText(/Create, assign, prioritize and track issues/i)).toBeInTheDocument();
-
-    fireEvent.click(faqToggle1);
-    expect(faqToggle1).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText(/Before · Incoming report/i)).toBeInTheDocument();
+    expect(screen.getByText("Inbox with AI triage")).toBeInTheDocument();
+    expect(screen.getByText("Duplicate detection")).toBeInTheDocument();
+    expect(screen.getByText("GitHub and Slack built in")).toBeInTheDocument();
   });
 
-  it("opens the mobile navigation menu", () => {
+  it("launches zero-signup demo workspace when clicking Try the demo workspace", async () => {
     renderLanding();
 
-    fireEvent.click(screen.getByRole("button", { name: /open menu/i }));
+    const ctaButtons = screen.getAllByRole("button", { name: /try the demo workspace/i });
+    fireEvent.click(ctaButtons[0]);
 
-    const mobileNav = screen.getByRole("navigation", { name: /mobile navigation/i });
-    expect(within(mobileNav).getByText("Workflow")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /close menu/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockStartDemo).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith("/today");
+    });
   });
-
-  it("shows the product principles and open-source path", () => {
-    renderLanding();
-
-    expect(screen.getByText("The details stay with the work.")).toBeInTheDocument();
-    expect(screen.getByText("Open source under the MIT License")).toBeInTheDocument();
-  });
-
 });

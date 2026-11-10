@@ -18,10 +18,10 @@
     --primary-foreground: 0 0% 100%;
     --primary-hover: 0 0% 15%;
 
-    /* Accent = signal red */
-    --accent: 0 98% 37%; /* #BC0202 */
+    /* Accent = focused engineering blue (red reserved for urgent & destructive only) */
+    --accent: 221 83% 53%; /* #2563EB */
     --accent-foreground: 0 0% 100%;
-    --accent-soft: 0 70% 96%;
+    --accent-soft: 221 90% 96%;
     --secondary: 0 0% 40%;
     --secondary-foreground: 0 0% 100%;
 
@@ -29,21 +29,21 @@
     --success-foreground: 0 0% 100%;
     --warning: 33 88% 34%;
     --warning-foreground: 0 0% 100%;
-    --danger: 0 100% 26%; /* #830000 */
+    --danger: 0 72% 48%; /* #DC2626 */
     --danger-foreground: 0 0% 100%;
     --info: 204 42% 40%;
     --info-foreground: 0 0% 100%;
 
     --status-backlog: 30 5% 45%;
     --status-todo: 0 0% 38%;
-    --status-in-progress: 0 98% 37%;
-    --status-in-review: 0 100% 26%;
-    --status-done: 0 0% 30%;
+    --status-in-progress: 221 83% 53%;
+    --status-in-review: 262 65% 50%;
+    --status-done: 152 39% 30%;
     --status-closed: 30 4% 40%;
 
-    --priority-urgent: 0 98% 37%;
-    --priority-high: 0 100% 26%;
-    --priority-medium: 30 5% 45%;
+    --priority-urgent: 0 72% 48%;
+    --priority-high: 25 90% 45%;
+    --priority-medium: 221 55% 45%;
     --priority-low: 30 5% 42%;
 
     color-scheme: light;
@@ -63,9 +63,9 @@
     --primary-foreground: 0 0% 4%;
     --primary-hover: 0 0% 82%;
 
-    --accent: 0 100% 50%; /* #FF0000 */
-    --accent-foreground: 0 0% 0%;
-    --accent-soft: 0 60% 7%;
+    --accent: 217 91% 60%; /* #3B82F6 */
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 217 55% 12%;
     --secondary: 0 0% 70%;
     --secondary-foreground: 0 0% 0%;
 
@@ -73,21 +73,21 @@
     --success-foreground: 0 0% 4%;
     --warning: 34 69% 61%;
     --warning-foreground: 0 0% 4%;
-    --danger: 0 100% 71%; /* #FF6B6B */
+    --danger: 0 84% 64%; /* #F87171 */
     --danger-foreground: 0 0% 4%;
     --info: 204 51% 67%;
     --info-foreground: 0 0% 4%;
 
     --status-backlog: 0 0% 64%;
     --status-todo: 0 0% 80%;
-    --status-in-progress: 0 100% 50%;
-    --status-in-review: 0 100% 71%;
-    --status-done: 0 0% 90%;
+    --status-in-progress: 217 91% 60%;
+    --status-in-review: 263 70% 68%;
+    --status-done: 148 42% 57%;
     --status-closed: 0 0% 55%;
 
-    --priority-urgent: 0 100% 50%;
-    --priority-high: 0 100% 71%;
-    --priority-medium: 0 0% 64%;
+    --priority-urgent: 0 84% 64%;
+    --priority-high: 28 90% 60%;
+    --priority-medium: 217 70% 65%;
     --priority-low: 0 0% 62%;
 
     color-scheme: dark;

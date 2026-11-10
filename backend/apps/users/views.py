@@ -151,3 +151,20 @@ class ChangePasswordView(APIView):
             {"message": "Password updated successfully."},
             status=status.HTTP_200_OK,
         )
+
+
+class DemoWorkspaceView(APIView):
+    """Creates a ready-to-explore demo workspace session without signup."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        from apps.projects.demo import create_demo_workspace_session
+
+        user, tokens, project_info = create_demo_workspace_session()
+        output = TokenResponseSerializer(
+            {"access": tokens["access"], "refresh": tokens["refresh"], "user": user}
+        )
+        data = dict(output.data)
+        data["project"] = project_info
+        return Response(data, status=status.HTTP_201_CREATED)

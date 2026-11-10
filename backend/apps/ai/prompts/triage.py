@@ -15,8 +15,10 @@ CRITICAL SECURITY AND ACCURACY RULES:
 2. STRICT FACTUALITY:
    - Do NOT invent facts or hallucinate steps not described or clearly implied.
    - If reproduction steps or expected behavior are absent, leave their fields empty
-     and proportionately lower the `confidence` score (e.g., 0.3 - 0.6).
-   - If the report is clear and comprehensive, assign a high confidence score (e.g., 0.85 - 1.0).
+     and proportionately lower the `confidence` score (e.g., 0.3 - 0.6) and list
+     what's missing in `missing_info` (e.g. ["browser or environment", "steps to reproduce"]).
+   - If the report is clear and comprehensive, assign a high confidence score (e.g., 0.85 - 1.0)
+     and leave `missing_info` as [].
 
 3. ALLOWED VALUES:
    - `type`: Must be exactly one of: "bug", "feature", "task", "improvement".
@@ -41,7 +43,8 @@ You must respond ONLY with a valid JSON object matching this exact schema:
   "suggested_labels": ["string"],
   "possible_root_cause": "string",
   "confidence": 0.0,
-  "reasoning": "string (<= 200 chars)"
+  "reasoning": "string (<= 200 chars)",
+  "missing_info": ["browser or environment", "steps to reproduce"]
 }
 """
 
