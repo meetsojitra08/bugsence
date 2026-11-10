@@ -104,6 +104,7 @@ export interface IssueFilters {
   label?: string;
   search?: string;
   ordering?: string;
+  overdue?: boolean;
   page?: number;
   page_size?: number;
 }

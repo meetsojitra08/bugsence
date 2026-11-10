@@ -158,6 +158,21 @@ export function IssueFilterBar({
             </button>
           );
         })}
+        <span className="ml-2 mr-1 text-[11px] font-medium text-text-muted">Due date:</span>
+        <button
+          type="button"
+          onClick={() => onSetFilter("overdue", filters.overdue ? undefined : "true")}
+          className={cn(
+            "inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-all duration-150",
+            filters.overdue
+              ? "border-danger/40 bg-danger/10 text-danger shadow-xs"
+              : "border-border bg-background/50 text-text-muted hover:border-border/80 hover:bg-background hover:text-text"
+          )}
+          data-testid="overdue-filter-chip"
+          aria-pressed={Boolean(filters.overdue)}
+        >
+          Overdue
+        </button>
       </div>
     </div>
   );

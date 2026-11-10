@@ -52,6 +52,11 @@ from apps.projects.selectors import get_project_for_user, get_user_role_in_proje
             ),
             OpenApiParameter(name="label", type=str, description="Filter by label name"),
             OpenApiParameter(
+                name="overdue",
+                type=bool,
+                description="When true, show past-due issues that are still open",
+            ),
+            OpenApiParameter(
                 name="search",
                 type=str,
                 description="Search query across title, description, or number",
@@ -103,6 +108,7 @@ class ProjectIssueViewSet(viewsets.GenericViewSet):
             label_name=request.query_params.get("label"),
             search=request.query_params.get("search"),
             ordering=request.query_params.get("ordering"),
+            overdue=request.query_params.get("overdue") == "true",
         )
         page = self.paginate_queryset(issues)
         if page is not None:

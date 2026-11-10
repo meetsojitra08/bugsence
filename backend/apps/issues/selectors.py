@@ -2,6 +2,7 @@ from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 
 from apps.issues.models import Activity, Comment, Issue, IssueStatus, Label
 from apps.projects.selectors import get_project_for_user
@@ -21,6 +22,7 @@ def get_project_issues(
     label_name: str | None = None,
     search: str | None = None,
     ordering: str | None = None,
+    overdue: bool = False,
 ) -> QuerySet[Issue]:
     """
     Returns active issues for a project if the requesting user is a member.
@@ -73,6 +75,17 @@ def get_project_issues(
             Q(title__icontains=search_term)
             | Q(description__icontains=search_term)
             | Q(number__icontains=search_term)
+        )
+
+    if overdue:
+        qs = qs.filter(
+            due_date__lt=timezone.localdate(),
+            status__in=[
+                IssueStatus.BACKLOG,
+                IssueStatus.TODO,
+                IssueStatus.IN_PROGRESS,
+                IssueStatus.IN_REVIEW,
+            ],
         )
 
     # Valid ordering keys

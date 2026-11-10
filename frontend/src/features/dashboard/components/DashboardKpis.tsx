@@ -15,7 +15,7 @@ export function DashboardKpis({ overview }: DashboardKpisProps) {
     {
       label: "Total issues",
       value: overview.total_issues,
-      hint: "Across all sprints",
+      hint: "Across this project",
       icon: Layers,
       testId: "kpi-total",
     },
@@ -69,7 +69,7 @@ export function DashboardKpis({ overview }: DashboardKpisProps) {
               <Icon className="h-3.5 w-3.5 text-text-muted" />
             </div>
             <div
-              className={`mt-2.5 text-[26px] font-semibold leading-none tracking-tight tabular-nums ${
+              className={`mt-2.5 text-[26px] font-semibold tabular-nums leading-none tracking-tight ${
                 isOverdue ? "text-danger" : "text-text"
               }`}
               data-testid={card.testId}

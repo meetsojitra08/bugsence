@@ -17,7 +17,7 @@ import { TrendsChart } from "./components/TrendsChart";
 import { StatusDistributionChart } from "./components/StatusDistributionChart";
 import { SeverityPriorityBreakdown } from "./components/SeverityPriorityBreakdown";
 import { WorkloadChart } from "./components/WorkloadChart";
-import { AIInsightCard } from "./components/AIInsightCard";
+import { ProjectAttentionCard } from "./components/ProjectAttentionCard";
 import { OnboardingChecklist } from "./components/OnboardingChecklist";
 
 export function DashboardPage() {
@@ -39,18 +39,13 @@ export function DashboardPage() {
     isError: overviewError,
     refetch: refetchOverview,
   } = useProjectOverview(activeProject?.id);
-  const { data: trends = [], isLoading: trendsLoading } = useProjectTrends(
-    activeProject?.id,
-    days
-  );
-  const { data: workload = [], isLoading: workloadLoading } = useProjectWorkload(
-    activeProject?.id
-  );
+  const { data: trends = [], isLoading: trendsLoading } = useProjectTrends(activeProject?.id, days);
+  const { data: workload = [], isLoading: workloadLoading } = useProjectWorkload(activeProject?.id);
 
   if (!projectsLoading && projects.length === 0) {
     return (
       <div
-        className="animate-in fade-in flex min-h-[60vh] flex-col items-center justify-center text-center duration-300"
+        className="flex min-h-[60vh] flex-col items-center justify-center text-center duration-300 animate-in fade-in"
         data-testid="dashboard-empty"
       >
         <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface text-accent shadow-xs">
@@ -61,7 +56,8 @@ export function DashboardPage() {
           Welcome to BugSense, {user?.fullName || "Developer"}
         </h2>
         <p className="mt-2 max-w-md text-sm leading-relaxed text-text-muted">
-          Create your first workspace to organize issues, plan sprint boards, and invite your team.
+          Create your first workspace to organize issues, track progress on a board, and invite your
+          team.
         </p>
 
         <Button onClick={() => setIsCreateOpen(true)} className="mt-6 gap-2">
@@ -142,7 +138,7 @@ export function DashboardPage() {
         </div>
       ) : overview ? (
         <>
-          <AIInsightCard overview={overview} />
+          <ProjectAttentionCard overview={overview} projectKey={activeProject?.key || ""} />
           <OnboardingChecklist project={activeProject} totalIssues={overview.total_issues} />
 
           <DashboardKpis overview={overview} />

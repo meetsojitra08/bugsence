@@ -299,6 +299,8 @@ export function useIssueUrlFilters() {
     const orderingParam = searchParams.get("ordering");
     if (orderingParam) res.ordering = orderingParam;
 
+    if (searchParams.get("overdue") === "true") res.overdue = true;
+
     const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
     if (Number.isFinite(pageParam) && pageParam > 1) res.page = pageParam;
 
@@ -340,8 +342,8 @@ export function useIssueUrlFilters() {
   const clearFilters = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      ["status", "priority", "assignee", "label", "search", "ordering", "page"].forEach((k) =>
-        next.delete(k)
+      ["status", "priority", "assignee", "label", "search", "ordering", "overdue", "page"].forEach(
+        (k) => next.delete(k)
       );
       return next;
     });
@@ -354,6 +356,7 @@ export function useIssueUrlFilters() {
     if (filters.assignee) count++;
     if (filters.label) count++;
     if (filters.search) count++;
+    if (filters.overdue) count++;
     return count;
   }, [filters]);
 
